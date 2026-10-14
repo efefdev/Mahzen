@@ -41,12 +41,26 @@ def _unlock(args) -> Vault:
         with open(args.anahtar, "rb") as f:
             keyfiles.append(f.read())
     keyfiles += KeyfileStore.standard().candidates(header.vault_id)
-    for keyfile in keyfiles:
-        try:
-            return Vault.unlock(folder, password, keyfile)
-        except WrongPassword:
-            continue
-    return Vault.unlock(folder, password)
+    try:
+        for keyfile in keyfiles:
+            try:
+                vault = Vault.unlock(folder, password, keyfile)
+                break
+            except WrongPassword:
+                continue
+        else:
+            vault = Vault.unlock(folder, password)
+    except WrongPassword:
+        # Arayüzdeki gibi: yanlış parola sınırı açıksa say, aşıldıysa anahtarları yok et.
+        wiped, remaining = vaultmod.record_failed_attempt(folder)
+        if wiped:
+            print("Yanlış parola sınırı aşıldı: kasanın anahtarları yok edildi, kasa kalıcı olarak silindi.",
+                  file=sys.stderr)
+        elif remaining is not None:
+            print(f"Kalan deneme: {remaining}", file=sys.stderr)
+        raise
+    vault.clear_failed_attempts()
+    return vault
 
 
 def _size(n: int) -> str:
@@ -59,10 +73,13 @@ def _size(n: int) -> str:
 
 def cmd_info(args) -> int:
     header = vaultmod.read_header(args.kasa)
+    limit = header.wipe_after_failed_attempts
     print(f"Kasa kimliği : {header.vault_id}")
     print(f"Biçim        : {header.version}")
     print(f"Oluşturulma  : {header.raw.get('createdAt')}")
     print(f"Şifreleme    : AES-256-GCM · {header.kdf_summary}")
+    print("Yanlış parola: " + (f"{limit} denemede kasa silinir (şu an {header.failed_attempts} yanlış)" if limit
+                                else "sınır yok"))
     return 0
 
 
