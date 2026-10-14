@@ -1,0 +1,39 @@
+{
+  "files" : [
+    {
+      "id" : "C82119A9-483C-48EC-A505-65AB1EBF47C7",
+      "name" : "merhaba.txt",
+      "sha256" : "c9bb1e29cc74c4c8cc32f4837098a9497817053b8793628fcf3bbb3eb2a83c5d",
+      "size" : 28,
+      "thumb" : "ae88bcc0a90c1837198306f042a4e0d55ba3681378b0fc3f821ee9c5b1ce7cfa"
+    },
+    {
+      "id" : "5EE03269-DFE5-4859-95E6-533CA5D8DA26",
+      "name" : "boş.txt",
+      "sha256" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size" : 0,
+      "thumb" : ""
+    },
+    {
+      "id" : "AEDDEC58-C213-435D-A714-5E12136DA49A",
+      "name" : "büyük.bin",
+      "sha256" : "9ccbc939eecc9406320247438228e1b767203a9cc27cb7a15065b307adf485dd",
+      "size" : 1100000,
+      "thumb" : ""
+    },
+    {
+      "id" : "940A4F05-1204-4538-A762-C6760255A41A",
+      "name" : "silinen.txt",
+      "sha256" : "ebc13698d97f1c25bd69d1f9a45bd8eee646427d9057340a11d78fae12252b86",
+      "size" : 5,
+      "thumb" : ""
+    }
+  ],
+  "folders" : [
+    "BC7662CF-2836-4C10-8B67-ABE55A8075CF",
+    "519C133E-8A5D-47E3-BAC0-6253BA612CCB"
+  ],
+  "note" : "2ED55F61-539B-48F5-BCE5-CEBAC52163CC",
+  "password" : "doğru-at-pil-zımba-42",
+  "secret" : "1D6B6D54-1D8D-4044-AFA2-E521D93D3887"
+}
