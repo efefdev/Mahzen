@@ -1,0 +1,13 @@
+.build/
+dist/
+.DS_Store
+*.xcodeproj
+.swiftpm/
+# Kasa verileri ve anahtarlar asla depoya girmesin
+Mahzen Kasası*/
+vault.json*
+index.enc*
+*.mhz
+Anahtarlar/
+*.mahzenkey
+yedek.bin
