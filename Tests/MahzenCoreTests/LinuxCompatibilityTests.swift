@@ -22,6 +22,9 @@ final class LinuxCompatibilityTests: XCTestCase {
             Expected.self, from: Data(contentsOf: fixtures.appendingPathComponent("python-expected.json")))
         let vault = try Vault.unlock(at: fixtures.appendingPathComponent("python-vault"), password: expected.password)
         XCTAssertFalse(vault.needsKDFUpgrade)
+        XCTAssertEqual(vault.header.wipeAfterFailedAttempts, 7)
+        XCTAssertEqual(vault.header.failedAttempts, 2)
+        XCTAssertEqual(Vault.remainingAttempts(at: fixtures.appendingPathComponent("python-vault")), 5)
         let (index, recovered) = try vault.loadIndex()
         XCTAssertFalse(recovered)
 

@@ -27,6 +27,8 @@ from .index import VaultIndex, now
 
 CURRENT_VERSION = 2
 KEYFILE_LENGTH = 64
+AUTO_WIPE_MIN, AUTO_WIPE_MAX = 3, 99
+DEFAULT_AUTO_WIPE_ATTEMPTS = 5
 MINIMUM_PASSWORD_LENGTH = 10
 
 HEADER_NAME = "vault.json"
@@ -93,6 +95,16 @@ class Header:
         return base64.b64decode(self.raw["wrappedMasterKey"])
 
     @property
+    def wipe_after_failed_attempts(self) -> int | None:
+        value = self.raw.get("wipeAfterFailedAttempts")
+        return int(value) if isinstance(value, int) and value > 0 else None
+
+    @property
+    def failed_attempts(self) -> int:
+        value = self.raw.get("failedAttempts")
+        return int(value) if isinstance(value, int) and value > 0 else 0
+
+    @property
     def kdf_summary(self) -> str:
         k = self.raw["kdf"]
         if k.get("algorithm") == crypto.ARGON2ID and k.get("memoryKiB") and k.get("parallelism"):
@@ -134,6 +146,65 @@ def _write_json_atomic(path: str, payload: bytes) -> None:
 def write_header(header: Header, folder: str) -> None:
     payload = json.dumps(header.raw, indent=2, sort_keys=True, ensure_ascii=False).encode()
     _write_json_atomic(os.path.join(folder, HEADER_NAME), payload)
+
+
+# MARK: - Yanlış parola sınırı
+#
+# Art arda belirli sayıda yanlış paroladan sonra kasanın anahtarları yok edilir (macOS'taki `AutoWipe.swift`).
+# Ayar ve sayaç kilitliyken okunabilmesi için şifresiz başlıkta durur. Sınır aşılınca sarılmış ana anahtarı
+# taşıyan vault.json (ve varsa vault.json.bak) rastgele baytlarla ezilip silinir; kasa kalıcı olarak açılamaz.
+# Bu koruma Mahzen uygulamaları içindir: kasayı önceden kopyalayan ya da vault.json'u elle düzenleyen biri
+# sayaçtan etkilenmez; yedekler kendi başlıklarıyla açılmaya devam eder.
+
+def record_failed_attempt(folder: str) -> tuple[bool, int | None]:
+    """Yanlış bir parola denemesini kaydeder. (silindi_mi, kalan_deneme) döndürür; sınır kapalıysa kalan None.
+    Sayaç yazılamazsa (ör. salt okunur disk) deneme sayılmaz."""
+    header = read_header(folder)
+    limit = header.wipe_after_failed_attempts
+    if limit is None:
+        return False, None
+    count = header.failed_attempts + 1
+    if count >= limit:
+        destroy_keys(folder)
+        return True, 0
+    header.raw["failedAttempts"] = count
+    try:
+        write_header(header, folder)
+    except OSError:
+        pass
+    return False, limit - count
+
+
+def remaining_attempts(folder: str) -> int | None:
+    try:
+        header = read_header(folder)
+    except Exception:  # noqa: BLE001
+        return None
+    limit = header.wipe_after_failed_attempts
+    return None if limit is None else max(limit - header.failed_attempts, 0)
+
+
+def destroy_keys(folder: str) -> None:
+    """Ana anahtarı taşıyan başlık dosyalarını rastgele baytlarla ezip siler. Geri alınamaz."""
+    first_error: OSError | None = None
+    for name in (HEADER_NAME, HEADER_BACKUP_NAME):
+        path = os.path.join(folder, name)
+        if not os.path.exists(path):
+            continue
+        try:
+            size = os.path.getsize(path)
+            with open(path, "r+b") as f:
+                f.write(os.urandom(max(size, 512)))
+                f.flush()
+                os.fsync(f.fileno())
+            os.remove(path)
+        except OSError as e:
+            try:
+                os.remove(path)
+            except OSError:
+                first_error = first_error or e
+    if first_error:
+        raise first_error
 
 
 # MARK: - Bakım raporları
@@ -259,6 +330,31 @@ class Vault:
     def upgrade_kdf(self, password: str, kdf: crypto.KDFSettings = crypto.RECOMMENDED) -> None:
         """Yalnızca bu nesneyi açan parolayla çağrılmalıdır."""
         self._rewrap(password, kdf, self._keyfile)
+
+    def clear_failed_attempts(self) -> None:
+        """Başarılı açılıştan sonra sayacı sıfırlar."""
+        if self.header.failed_attempts <= 0:
+            return
+        raw = dict(self.header.raw)
+        raw.pop("failedAttempts", None)
+        try:
+            write_header(Header(raw), self.folder)
+            self.header = Header(raw)
+        except OSError:
+            pass
+
+    def set_auto_wipe(self, attempts: int | None) -> None:
+        """Yanlış parola sınırını açar (`attempts` dolu) veya kapatır (None). Sayaç sıfırlanır."""
+        if attempts is not None and not AUTO_WIPE_MIN <= attempts <= AUTO_WIPE_MAX:
+            raise Corrupted(f"deneme sınırı {AUTO_WIPE_MIN}–{AUTO_WIPE_MAX} arasında olmalı")
+        raw = dict(self.header.raw)
+        raw.pop("failedAttempts", None)
+        if attempts is None:
+            raw.pop("wipeAfterFailedAttempts", None)
+        else:
+            raw["wipeAfterFailedAttempts"] = attempts
+        write_header(Header(raw), self.folder)
+        self.header = Header(raw)
 
     def _rewrap(self, password: str, kdf: crypto.KDFSettings, keyfile: bytes | None) -> None:
         params = kdf.params(crypto.random_bytes(32))

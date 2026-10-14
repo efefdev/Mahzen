@@ -6,6 +6,7 @@ struct SettingsView: View {
     @EnvironmentObject private var state: AppState
     @State private var changingPassword = false
     @State private var keyfileSheet: KeyfileSheet.Mode?
+    @State private var confirmAutoWipe = false
     @State private var showGenerator = false
 
     var body: some View {
@@ -80,6 +81,34 @@ struct SettingsView: View {
             } footer: {
                 Text("SSD çıkarıldığında kasa her zaman kilitlenir.")
                     .foregroundStyle(.secondary)
+            }
+
+            SwiftUI.Section {
+                Toggle("Yanlış parolada kasayı kalıcı olarak sil", isOn: Binding(
+                    get: { state.autoWipeAttempts != nil },
+                    set: { on in
+                        if on { confirmAutoWipe = true } else { state.setAutoWipe(nil) }
+                    }
+                ))
+                if let attempts = state.autoWipeAttempts {
+                    Stepper(value: Binding(get: { attempts }, set: { state.setAutoWipe($0) }),
+                            in: Vault.autoWipeRange) {
+                        LabeledContent("Deneme sayısı", value: "\(attempts) yanlış parola")
+                    }
+                }
+            } header: {
+                Text("Yanlış parola sınırı")
+            } footer: {
+                Text("Açıkken art arda bu kadar yanlış parola girilirse kasanın anahtarları yok edilir ve kasadaki her şey kalıcı olarak açılamaz hale gelir; geri alınamaz. Sayaç doğru parolayla açılınca sıfırlanır. Anahtar dosyalı bir kasayı başka bir Mac'te açmaya çalışmak da yanlış deneme sayılır. Yedekler bu ayardan etkilenmez.")
+                    .foregroundStyle(.secondary)
+            }
+            .confirmationDialog("Yanlış parola sınırı açılsın mı?", isPresented: $confirmAutoWipe, titleVisibility: .visible) {
+                Button("\(Vault.defaultAutoWipeAttempts) yanlış denemede sil", role: .destructive) {
+                    state.setAutoWipe(Vault.defaultAutoWipeAttempts)
+                }
+                Button("Vazgeç", role: .cancel) {}
+            } message: {
+                Text("Art arda \(Vault.defaultAutoWipeAttempts) yanlış parola girilirse kasa kalıcı olarak silinir ve hiçbir şekilde geri getirilemez. Deneme sayısını sonra değiştirebilirsiniz. Güncel bir yedeğiniz olduğundan emin olun.")
             }
 
             SwiftUI.Section {
