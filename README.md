@@ -4,7 +4,7 @@
 
 Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde saklayan yerel bir macOS uygulamasıdır. Uygulama ile kasa yan yana bir SSD'de durabilir ve her Mac'te açılabilir. İnternete hiçbir şey gönderilmez, hesap gerekmez.
 
-> 🪟 **Windows sürümü yakında geliyor.** Kasa biçimi platformdan bağımsız tasarlandı; Windows uygulaması aynı kasayı açabilecek.
+> 🐧 **Linux sürümü yakında geliyor.** Kasa biçimi platformdan bağımsız tasarlandı; Linux uygulaması aynı kasayı açabilecek.
 
 <p align="center">
   <img src="docs/ekran/kilit.png" width="49%" alt="Kilit ekranı">
@@ -115,7 +115,7 @@ scripts/          Uygulama paketleme ve simge üretme
 
 ## Yol haritası
 
-- [ ] **Windows uygulaması** (yakında)
+- [ ] **Linux uygulaması** (yakında)
 - [ ] Hazır derlenmiş sürümler
 - [ ] Markdown notlar, notlara dosya ekleme
 - [ ] Parola sağlığı ekranı (zayıf / tekrar kullanılan parolalar)
