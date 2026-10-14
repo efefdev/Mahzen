@@ -21,7 +21,8 @@ from mahzen.core.errors import Corrupted, PasswordTooShort, WrongPassword  # noq
 from mahzen.core.importplan import ImportPlan  # noqa: E402
 from mahzen.core.index import VaultIndex, new_file_record, new_note, new_secret  # noqa: E402
 from mahzen.core.keyfiles import KeyfileStore  # noqa: E402
-from mahzen.core.vault import Vault, read_header  # noqa: E402
+from mahzen.core.vault import (Vault, destroy_keys, read_header, record_failed_attempt,  # noqa: E402
+                               remaining_attempts)
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 SMALL = crypto.KDFSettings(iterations=1, memory_kib=8192, parallelism=1)
@@ -198,6 +199,55 @@ class VaultTests(unittest.TestCase):
         v = Vault.create(self.dir, PASSWORD, SMALL)
         with self.assertRaises(Corrupted):
             v.backup(os.path.join(self.dir, "yedek"), set(), set())
+
+
+class AutoWipeTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="mahzen-wipe-")
+        self.dir = os.path.join(self.tmp, "kasa")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_off_by_default(self):
+        Vault.create(self.dir, PASSWORD, SMALL)
+        for _ in range(10):
+            self.assertEqual(record_failed_attempt(self.dir), (False, None))
+        self.assertNotIn("failedAttempts", read_header(self.dir).raw)
+        Vault.unlock(self.dir, PASSWORD)
+
+    def test_wipes_after_limit(self):
+        v = Vault.create(self.dir, PASSWORD, SMALL)
+        v.set_auto_wipe(3)
+        self.assertEqual(record_failed_attempt(self.dir), (False, 2))
+        self.assertEqual(record_failed_attempt(self.dir), (False, 1))
+        self.assertEqual(remaining_attempts(self.dir), 1)
+        self.assertEqual(record_failed_attempt(self.dir), (True, 0))
+        self.assertFalse(os.path.exists(os.path.join(self.dir, "vault.json")))
+        with self.assertRaises(Exception):
+            Vault.unlock(self.dir, PASSWORD)
+
+    def test_reset_on_success_and_setting_survives_rewrap(self):
+        v = Vault.create(self.dir, PASSWORD, SMALL)
+        v.set_auto_wipe(4)
+        record_failed_attempt(self.dir)
+        record_failed_attempt(self.dir)
+        opened = Vault.unlock(self.dir, PASSWORD)
+        opened.clear_failed_attempts()
+        self.assertNotIn("failedAttempts", read_header(self.dir).raw)
+        opened.change_password(PASSWORD, "yeni-parola-12345", SMALL)
+        self.assertEqual(read_header(self.dir).wipe_after_failed_attempts, 4)
+        opened.set_auto_wipe(None)
+        self.assertIsNone(read_header(self.dir).wipe_after_failed_attempts)
+        with self.assertRaises(Corrupted):
+            opened.set_auto_wipe(1)
+
+    def test_destroy_keys_removes_backup_header_too(self):
+        Vault.create(self.dir, PASSWORD, SMALL)
+        shutil.copyfile(os.path.join(self.dir, "vault.json"), os.path.join(self.dir, "vault.json.bak"))
+        destroy_keys(self.dir)
+        self.assertFalse(os.path.exists(os.path.join(self.dir, "vault.json.bak")))
+        self.assertTrue(os.path.exists(os.path.join(self.dir, "index.enc")))
 
 
 class IndexTests(unittest.TestCase):

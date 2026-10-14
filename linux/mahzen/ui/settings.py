@@ -72,6 +72,23 @@ class SettingsPage(Adw.Bin):
             security.add(row)
         page.add(security)
 
+        # Yanlış parola sınırı
+        wipe = Adw.PreferencesGroup(
+            title="Yanlış parola sınırı",
+            description="Açıkken art arda bu kadar yanlış parola girilirse kasanın anahtarları yok edilir ve kasadaki "
+                        "her şey kalıcı olarak açılamaz hale gelir; geri alınamaz. Sayaç doğru parolayla açılınca "
+                        "sıfırlanır. Anahtar dosyalı bir kasayı başka bir bilgisayarda açmaya çalışmak da yanlış "
+                        "deneme sayılır. Yedekler bu ayardan etkilenmez.")
+        self.wipe_row = Adw.SwitchRow(title="Yanlış parolada kasayı kalıcı olarak sil")
+        self.wipe_row.connect("notify::active", self._on_wipe_toggled)
+        wipe.add(self.wipe_row)
+        self.wipe_count_row = Adw.SpinRow.new_with_range(vaultmod.AUTO_WIPE_MIN, vaultmod.AUTO_WIPE_MAX, 1)
+        self.wipe_count_row.set_title("Deneme sayısı")
+        self.wipe_count_row.connect(
+            "notify::value", lambda r, _p: None if self._loading else self.state.set_auto_wipe(int(r.get_value())))
+        wipe.add(self.wipe_count_row)
+        page.add(wipe)
+
         # Anahtar dosyası
         keyfile = Adw.PreferencesGroup(
             title="Anahtar dosyası",
@@ -181,6 +198,10 @@ class SettingsPage(Adw.Bin):
                                       else "Kapalı: kasa yalnızca parolayla açılıyor")
         self.keyfile_btn.set_label("Kapat…" if enabled else "Etkinleştir…")
         self.keyfile_export_row.set_visible(enabled)
+        limit = v.header.wipe_after_failed_attempts
+        self.wipe_row.set_active(limit is not None)
+        self.wipe_count_row.set_visible(limit is not None)
+        self.wipe_count_row.set_value(limit or vaultmod.DEFAULT_AUTO_WIPE_ATTEMPTS)
         self.retention_row.set_value(int(p.get("trashRetentionDays", 30)))
         self.ask_trash_row.set_active(bool(p.get("askToTrashOriginals", True)))
         self.backup_path_row.set_subtitle(p.get("backupPath") or "Seçilmedi")
@@ -241,6 +262,34 @@ class SettingsPage(Adw.Bin):
         dialog.connect("response", on_response)
         dialog.present(self)
         GLib.idle_add(lambda: current.grab_focus() and False)
+
+    # MARK: - Yanlış parola sınırı
+
+    def _on_wipe_toggled(self, row, _pspec) -> None:
+        if self._loading:
+            return
+        if not row.get_active():
+            self.state.set_auto_wipe(None)
+            return
+        n = vaultmod.DEFAULT_AUTO_WIPE_ATTEMPTS
+        dialog = Adw.AlertDialog(
+            heading="Yanlış parola sınırı açılsın mı?",
+            body=f"Art arda {n} yanlış parola girilirse kasa kalıcı olarak silinir ve hiçbir şekilde geri "
+                 "getirilemez. Deneme sayısını sonra değiştirebilirsiniz. Güncel bir yedeğiniz olduğundan emin olun.")
+        dialog.add_response("cancel", "Vazgeç")
+        dialog.add_response("ok", f"{n} Yanlış Denemede Sil")
+        dialog.set_response_appearance("ok", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("cancel")
+        dialog.set_close_response("cancel")
+
+        def on_response(_d, response):
+            if response == "ok":
+                self.state.set_auto_wipe(n)
+            else:
+                self.refresh()  # anahtarı geri kapat
+
+        dialog.connect("response", on_response)
+        dialog.present(self)
 
     # MARK: - Anahtar dosyası
 

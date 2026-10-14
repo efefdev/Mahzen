@@ -33,6 +33,7 @@ Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde 
 **Güvenlik ve bakım**
 - Hareketsizlikte, uykuda, ekran kilidinde ve SSD çıkarıldığında otomatik kilit
 - İsteğe bağlı: kasayı bir Mac'e bağlayan **anahtar dosyası** (parola + o Mac'te saklanan rastgele dosya)
+- İsteğe bağlı: **yanlış parola sınırı** — art arda belirli sayıda (varsayılan 5, 3–99 arası ayarlanabilir) yanlış parola girilirse kasa kalıcı olarak silinir ([ayrıntılar](#yanlış-parola-sınırı))
 - Pencereyi ekran görüntüsü, kayıt ve ekran paylaşımında gizleme
 - Çöp Kutusu (ayarlanabilir süre), tek tıkla artımlı yedek, yedek hatırlatması
 - Bütünlük taraması: her dosyayı çözerek doğrular, bozuk olanları yedekten geri yükler
@@ -55,13 +56,28 @@ Kasa klasöründe yalnızca rastgele adlı şifreli dosyalar bulunur; **dosya ad
 
 ```
 Mahzen Kasası/
-├── vault.json        şifresiz başlık: tuz, Argon2id ayarları, sarılmış ana anahtar (sır içermez)
+├── vault.json        şifresiz başlık: tuz, Argon2id ayarları, sarılmış ana anahtar, yanlış parola sınırı ve sayacı (sır içermez)
 ├── index.enc         şifreli dizin (+ index.enc.bak: bir önceki sürüm)
 ├── blobs/xx/<id>.mhz şifreli dosya içerikleri
 └── thumbs/<id>.mhz   şifreli küçük resimler
 ```
 
 Uygulamada açık anahtarlı şifreleme (RSA/ECC) bulunmaz; bu yüzden kuantum bilgisayarların kırabildiği türden bir bileşen yoktur. Grover algoritması AES-256'nın etkin gücünü yaklaşık 128 bite indirir; bu hâlâ pratikte kırılamaz kabul edilir. Zayıf bir parolayı ise hiçbir algoritma kurtaramaz.
+
+### Yanlış parola sınırı
+
+**Ayarlar → Yanlış parola sınırı** bölümünden açılıp kapatılır; deneme sayısı 3 ile 99 arasında seçilir (açılırken 5). Açıkken:
+
+- Kilit ekranında her yanlış parola sayılır ve kalan deneme hakkı gösterilir. Doğru parolayla açılınca sayaç sıfırlanır.
+- Sınıra ulaşıldığında kasanın sarılmış ana anahtarını taşıyan `vault.json` (ve varsa `vault.json.bak`) rastgele baytlarla ezilip silinir. Ana anahtar başka hiçbir yerde olmadığından kasadaki dosyalar, notlar ve parolalar **doğru parolayla bile bir daha açılamaz; geri alınamaz.** Klasörde kalan şifreli dosyalar işe yaramaz hale gelir.
+- Ayar macOS ve Linux sürümlerinde ortaktır (kasa başlığında durur); `mahzen-cli` de denemeleri sayar.
+
+Bu özellik kilit ekranında parola deneyen birine karşıdır; bilinmesi gerekenler:
+
+- Ayar ve sayaç kilitliyken okunabilmesi için şifresiz başlıkta durur. Kasa klasörünü önceden kopyalayan ya da `vault.json`'u elle düzenleyen biri sayaçtan etkilenmez; böyle bir saldırıya karşı asıl koruma güçlü parola ve Argon2id'dir.
+- Alınmış yedekler kendi başlıklarıyla açılmaya devam eder (bu bir güvence olarak da kullanılabilir).
+- Anahtar dosyalı bir kasayı anahtar dosyasının olmadığı bir bilgisayarda açmaya çalışmak da yanlış deneme sayılır.
+- SSD'lerde ezilen baytların fiziksel kopyası disk denetleyicisinde bir süre kalabilir.
 
 ### Sınırlar — lütfen okuyun
 

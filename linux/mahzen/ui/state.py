@@ -179,6 +179,7 @@ class AppState(GObject.Object):
 
         def work():
             vault = self._unlock_with_keyfiles(path, password)
+            vault.clear_failed_attempts()
             index, recovered = vault.load_index()
             # Eski (PBKDF2) kasaları doğru parola elimizdeyken Argon2id'ye yükselt.
             if vault.needs_kdf_upgrade:
@@ -187,16 +188,54 @@ class AppState(GObject.Object):
 
         def finished(result, error):
             if error:
+                message = _error_text(error)
+                if isinstance(error, WrongPassword):
+                    # Yanlış parola sınırı açıksa say; aşıldıysa anahtarlar yok edilir.
+                    try:
+                        wiped, remaining = vaultmod.record_failed_attempt(path)
+                    except Exception:  # noqa: BLE001
+                        wiped, remaining = False, None
+                    if wiped:
+                        done("Kasa silindi.")
+                        self._vault_wiped(path)
+                        return
+                    if remaining == 1:
+                        message = "Parola yanlış. Son deneme hakkı: bir yanlış daha kasayı siler."
+                    elif remaining is not None:
+                        message = f"Parola yanlış. Kalan deneme: {remaining}"
                 # Arayüzde deneme hızını yavaşlatır; asıl koruma anahtar türetmenin maliyetidir.
                 self._failed_attempts += 1
                 delay = min(self._failed_attempts, 5)
-                GLib.timeout_add_seconds(delay, lambda: done(_error_text(error)) and False)
+                GLib.timeout_add_seconds(delay, lambda: done(message) and False)
                 return
             self._failed_attempts = 0
             done(None)
             self._open(*result)
 
         self.run_background(work, finished)
+
+    def _vault_wiped(self, path: str) -> None:
+        """Yanlış parola sınırı aşıldı: anahtarlar yok edildi, kasa artık açılamaz."""
+        self._failed_attempts = 0
+        self.vault_path = None
+        if self.settings.get("lastVaultPath") == path:
+            self.settings.pop("lastVaultPath", None)
+            paths.save_settings(self.settings)
+        self.phase = "welcome"
+        self.emit("phase-changed")
+        self.alert("Kasa kalıcı olarak silindi",
+                   "Yanlış parola sınırı aşıldığı için kasanın anahtarları yok edildi. Kasadaki veriler artık hiçbir "
+                   "parolayla açılamaz. Klasörde kalan şifreli dosyalar işe yaramaz; silebilirsiniz.")
+
+    def set_auto_wipe(self, attempts: int | None) -> None:
+        """Yanlış parola sınırını açar (`attempts` dolu) veya kapatır (None)."""
+        if not self.vault:
+            return
+        try:
+            self.vault.set_auto_wipe(attempts)
+        except Exception as e:  # noqa: BLE001
+            self.alert("Ayar kaydedilemedi", _error_text(e))
+        self.emit("prefs-changed")
 
     def _unlock_with_keyfiles(self, path: str, password: str) -> Vault:
         """Bu bilgisayarda kasa için bir anahtar dosyası varsa onunla açar; olmazsa yalnızca parolayla dener."""

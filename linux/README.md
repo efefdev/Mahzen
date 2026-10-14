@@ -49,7 +49,9 @@ macOS sürümündeki özelliklerin çoğu Linux'ta da var:
 - **Parolalar:** hesap, kart, Wi-Fi, sunucu kayıtları; parola üretici ve güç ölçer; kopyalanan parola seçilen süre
   sonunda panodan silinir
 - **Güvenlik:** hareketsizlikte, uykuda, ekran kilitlenince ve kasa diski çıkarılınca otomatik kilit;
-  isteğe bağlı anahtar dosyası; eski (PBKDF2) kasaları açılışta Argon2id'ye yükseltme
+  isteğe bağlı anahtar dosyası; isteğe bağlı **yanlış parola sınırı** (art arda N yanlış parolada kasa kalıcı olarak
+  silinir; Ayarlar'dan açılıp kapatılır, sayı 3–99 arası; ayrıntılar ana [README](../README.md#yanlış-parola-sınırı)'de);
+  eski (PBKDF2) kasaları açılışta Argon2id'ye yükseltme
 - **Bakım:** çöp kutusu (ayarlanabilir süre), artımlı yedek ve hatırlatma, bütünlük taraması ve yedekten geri yükleme
 - **Görünüm:** açık / koyu / sistem teması, 9 vurgu rengi (ayarlar kasada saklanır, iki sistemde ortaktır)
 
@@ -78,7 +80,7 @@ mahzen-cli yedekle "/media/ssd/Mahzen Kasası" "/media/yedek/Mahzen Kasası Yede
 ```
 
 Parola her seferinde sorulur (`--parola-stdin` ile standart girdiden okunabilir); anahtar dosyası gerekiyorsa
-`--anahtar dosya.mahzenkey`.
+`--anahtar dosya.mahzenkey`. Yanlış parola sınırı açıksa komut satırındaki yanlış denemeler de sayılır.
 
 ## Şifreleme
 

@@ -70,6 +70,8 @@ final class AppState: ObservableObject {
     @Published var integrityReport: IntegrityReport?
     /// Açık kasa bu Mac'teki anahtar dosyasıyla mı korunuyor?
     @Published private(set) var keyfileEnabled = false
+    /// Yanlış parola sınırı (kasa başlığında); `nil` = kapalı.
+    @Published private(set) var autoWipeAttempts: Int?
     private var cancelFlag = CancelFlag()
     /// Her kilit açılışında değişir. Kilitten sonra biten bir işlem, sonucunu yeni oturuma yazamaz.
     private var session = UUID()
@@ -157,6 +159,7 @@ final class AppState: ObservableObject {
         do {
             let (vault, loaded, recovered) = try await Task.detached(priority: .userInitiated) {
                 let vault = try Self.unlockVault(at: url, password: password)
+                vault.clearFailedAttempts()
                 let (index, recovered) = try vault.loadIndex()
                 // Eski (PBKDF2) kasaları doğru parola elimizdeyken Argon2id'ye yükselt.
                 if vault.needsKDFUpgrade { try vault.upgradeKDF(password: password) }
@@ -166,11 +169,50 @@ final class AppState: ObservableObject {
             await beforeOpen?()
             open(vault, index: loaded, recovered: recovered)
             return nil
+        } catch VaultError.wrongPassword {
+            // Yanlış parola sınırı açıksa say; aşıldıysa anahtarlar yok edilir.
+            let outcome = try? await Task.detached { try Vault.recordFailedAttempt(at: url) }.value
+            if outcome == .wiped {
+                vaultWiped(url)
+                return "Kasa silindi."
+            }
+            failedAttempts += 1
+            try? await Task.sleep(for: .seconds(min(Double(failedAttempts), 5)))
+            if case .counted(let remaining?) = outcome {
+                return remaining == 1 ? "Parola yanlış. Son deneme hakkı: bir yanlış daha kasayı siler."
+                    : "Parola yanlış. Kalan deneme: \(remaining)"
+            }
+            return VaultError.wrongPassword.localizedDescription
         } catch {
             // Arayüzde deneme hızını yavaşlatır; asıl koruma anahtar türetmenin maliyetidir.
             failedAttempts += 1
             try? await Task.sleep(for: .seconds(min(Double(failedAttempts), 5)))
             return error.localizedDescription
+        }
+    }
+
+    /// Yanlış parola sınırı aşıldı: anahtarlar yok edildi, kasa artık açılamaz.
+    private func vaultWiped(_ url: URL) {
+        failedAttempts = 0
+        vaultURL = nil
+        if UserDefaults.standard.string(forKey: "lastVaultPath") == url.path {
+            UserDefaults.standard.removeObject(forKey: "lastVaultPath")
+        }
+        phase = .welcome
+        alert = AlertItem(
+            title: "Kasa kalıcı olarak silindi",
+            message: "Yanlış parola sınırı aşıldığı için kasanın anahtarları yok edildi. Kasadaki veriler artık hiçbir parolayla açılamaz. Klasörde kalan şifreli dosyalar işe yaramaz; silebilirsiniz."
+        )
+    }
+
+    /// Yanlış parola sınırını açar (`attempts` dolu) veya kapatır (`nil`).
+    func setAutoWipe(_ attempts: Int?) {
+        guard let vault else { return }
+        do {
+            try vault.setAutoWipe(attempts: attempts)
+            autoWipeAttempts = attempts
+        } catch {
+            alert = AlertItem(title: "Ayar kaydedilemedi", message: error.localizedDescription)
         }
     }
 
@@ -196,6 +238,7 @@ final class AppState: ObservableObject {
         self.index = index
         kdfSummary = vault.header.kdf.summary
         keyfileEnabled = vault.requiresKeyfile
+        autoWipeAttempts = vault.header.wipeAfterFailedAttempts
         recoveredFromBackup = recovered
         vaultURL = vault.folder
         UserDefaults.standard.set(vault.folder.path, forKey: "lastVaultPath")

@@ -53,6 +53,11 @@ def main() -> None:
     idx.secrets.append(trashed)
     idx.preferences["accent"] = "green"
     v.save_index(idx)
+    # Yanlış parola sınırı: 7 denemede silinir, 2 yanlış girilmiş (macOS bu alanları okuyabilmeli).
+    v.set_auto_wipe(7)
+    v.header.raw["failedAttempts"] = 2
+    from mahzen.core.vault import write_header
+    write_header(v.header, out)
     with open(os.path.join(FIXTURES, "python-expected.json"), "w", encoding="utf-8") as f:
         json.dump({"password": PASSWORD, "files": expected, "folder": folder,
                    "thumb": hashlib.sha256(b"linux-kucuk-resim").hexdigest()}, f, ensure_ascii=False, indent=2)

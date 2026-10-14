@@ -38,6 +38,10 @@ public struct VaultHeader: Codable, Sendable {
     public var kdf: KDFParams
     public var wrappedMasterKey: Data
     // Bilerek anahtar dosyası alanı yok: başlıktan kasanın anahtar dosyası isteyip istemediği anlaşılamaz.
+    /// Bu kadar yanlış paroladan sonra anahtarlar yok edilir; `nil` = kapalı. Bkz. `AutoWipe.swift`.
+    public var wipeAfterFailedAttempts: Int?
+    /// Son başarılı açılıştan bu yana art arda yanlış parola sayısı.
+    public var failedAttempts: Int?
 }
 
 /// Açılmış bir kasa. Anahtarlar yalnızca bu nesne yaşadığı sürece bellekte durur.
@@ -63,6 +67,8 @@ public final class Vault: @unchecked Sendable {
 
     public let folder: URL
     public private(set) var header: VaultHeader
+
+    func setHeader(_ updated: VaultHeader) { header = updated }
     private let master: SymmetricKey
     private var keyfile: Data?
     let indexKey: SymmetricKey

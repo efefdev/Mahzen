@@ -2,18 +2,18 @@
   "password": "doğru-at-pil-zımba-42",
   "files": [
     {
-      "id": "53F4FB79-DA44-48FB-80B9-D076F723F387",
+      "id": "F318BADD-6801-4317-B5F3-3A397AF68F60",
       "name": "linux.txt",
       "size": 32,
       "sha256": "681fc000067c1dc792557f28c12550c286d292f66c21c7cc85365da255c8ba72"
     },
     {
-      "id": "22F4FF17-8D82-4E4F-9098-3148B0EF793D",
+      "id": "A8FBDADC-1024-4B77-9DE6-5B2DBAC25F30",
       "name": "parçalı.bin",
       "size": 1050000,
       "sha256": "2965e045df87941df0addc2fbb7fe5aff00eca7c976c75a7b33d1e3db304f6ce"
     }
   ],
-  "folder": "9FCCD225-48CE-41B2-B89C-86CF4B012397",
+  "folder": "BE90925E-08D1-4AA2-B7FF-62D054C36DED",
   "thumb": "206facfe48dba1cf0edb7fbd7eebec5c37e42cdb6e2d3724c192d78f8516c0bb"
 }
