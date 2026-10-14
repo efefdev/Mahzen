@@ -2,9 +2,9 @@
 
 **Dosyaların, notların ve parolaların için şifreli, taşınabilir bir kasa.**
 
-Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde saklayan yerel bir macOS uygulamasıdır. Uygulama ile kasa yan yana bir SSD'de durabilir ve her Mac'te açılabilir. İnternete hiçbir şey gönderilmez, hesap gerekmez.
+Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde saklayan yerel bir macOS ve Linux uygulamasıdır. Uygulama ile kasa yan yana bir SSD'de durabilir; aynı kasa her Mac'te ve her Linux bilgisayarda açılabilir. İnternete hiçbir şey gönderilmez, hesap gerekmez.
 
-> 🐧 **Linux sürümü yakında geliyor.** Kasa biçimi platformdan bağımsız tasarlandı; Linux uygulaması aynı kasayı açabilecek.
+> 🐧 **Linux sürümü:** [`linux/`](linux/) klasöründe (GTK 4 + libadwaita). macOS ile aynı kasa biçimini kullanır; bir kasa iki sistemde de açılır ve düzenlenir. Kurulum: `cd linux && ./install.sh` — ayrıntılar [linux/README.md](linux/README.md)'de.
 
 <p align="center">
   <img src="docs/ekran/kilit.png" width="49%" alt="Kilit ekranı">
@@ -75,6 +75,8 @@ Uygulamada açık anahtarlı şifreleme (RSA/ECC) bulunmaz; bu yüzden kuantum b
 
 ## Kurulum
 
+> Linux için: [linux/README.md](linux/README.md)
+
 ### Hazır uygulama
 [Sürümler](../../releases) sayfasına eklenecek. Şimdilik kaynaktan derleyin.
 
@@ -100,7 +102,9 @@ Uygulama ad-hoc imzalıdır (Apple tarafından noterize edilmemiştir). Kendi de
 swift test
 ```
 
-43 test; şifreleme, parça doğrulama, kurcalama/kesme tespiti, Argon2 referans test vektörleri, anahtar dosyası (arşivleme dahil), içe aktarma planı, yedekleme ve bütünlük taramasını kapsar.
+44 test; şifreleme, parça doğrulama, kurcalama/kesme tespiti, Argon2 referans test vektörleri, anahtar dosyası (arşivleme dahil), içe aktarma planı, yedekleme ve bütünlük taramasını kapsar. `LinuxCompatibilityTests`, Linux sürümüyle oluşturulmuş bir kasayı açarak iki sürümün aynı biçimi konuştuğunu doğrular.
+
+Linux çekirdeğinin testleri: `python3 -m unittest discover -s linux/tests`
 
 ## Proje yapısı
 
@@ -111,11 +115,12 @@ Sources/
 └── Mahzen/       SwiftUI uygulaması
 Tests/            Çekirdek testleri
 scripts/          Uygulama paketleme ve simge üretme
+linux/            Linux uygulaması (Python, GTK 4 + libadwaita) ve aynı kasa biçiminin Python çekirdeği
 ```
 
 ## Yol haritası
 
-- [ ] **Linux uygulaması** (yakında)
+- [x] **Linux uygulaması** ([linux/](linux/))
 - [ ] Hazır derlenmiş sürümler
 - [ ] Markdown notlar, notlara dosya ekleme
 - [ ] Parola sağlığı ekranı (zayıf / tekrar kullanılan parolalar)
