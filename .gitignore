@@ -11,3 +11,7 @@ index.enc*
 Anahtarlar/
 *.mahzenkey
 yedek.bin
+
+# Linux sürümünün uyumluluk testlerinde kullanılan, test parolasıyla oluşturulmuş örnek kasalar
+!linux/tests/fixtures/**
+__pycache__/

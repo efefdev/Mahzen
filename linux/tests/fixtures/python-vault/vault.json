@@ -1,0 +1,15 @@
+{
+  "cipher": "AES-256-GCM",
+  "createdAt": "2026-10-14T17:20:24Z",
+  "format": "mahzen-vault",
+  "kdf": {
+    "algorithm": "Argon2id",
+    "iterations": 1,
+    "memoryKiB": 8192,
+    "parallelism": 1,
+    "salt": "toZudtJzvD7pYZAcBGVZxjN+KTcL83ZFNz+ccYMC7qk="
+  },
+  "vaultID": "1DDD1765-3B1E-4822-B711-0B80D8CD3EA7",
+  "version": 2,
+  "wrappedMasterKey": "pbgwsZ0BmDvgr6jYm2TBfGyFrPtLywWxGup0n17pKWfc1ouWT4tyBtVv+XBasey8333xJZOTPX0sG7pz"
+}

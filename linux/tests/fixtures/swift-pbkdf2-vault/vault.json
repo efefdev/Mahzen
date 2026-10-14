@@ -1,0 +1,13 @@
+{
+  "cipher" : "AES-256-GCM",
+  "createdAt" : "2026-10-14T17:19:17Z",
+  "format" : "mahzen-vault",
+  "kdf" : {
+    "algorithm" : "PBKDF2-HMAC-SHA512",
+    "iterations" : 1000,
+    "salt" : "KGra7IyD5Ao14eMkcoLGBw5s+JW2\/pH7l4g41vZ4\/Bs="
+  },
+  "vaultID" : "1C01C940-6404-4572-8C33-06C38E96F66E",
+  "version" : 2,
+  "wrappedMasterKey" : "D4g6WPIiz1KGgmBqEES1\/bQhm68j6l6wRQOm3a8MPF1\/x1STtrQ\/8SqhTx1mXXlCTyCsoUWvROMaM2fH"
+}
