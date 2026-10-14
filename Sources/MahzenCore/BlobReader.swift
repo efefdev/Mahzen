@@ -30,6 +30,9 @@ public final class BlobReader: @unchecked Sendable {
         guard body >= Int64(BlobCrypto.tagSize) else { throw VaultError.corrupted("dosya kesik") }
         chunkCount = Int((body + full - 1) / full)
         plainSize = body - Int64(chunkCount * BlobCrypto.tagSize)
+        // Boyut kimliği doğrulanmamış dosya uzunluğundan geliyor: son parçayı baştan "son" olarak
+        // doğrula. Böylece sondan kesilmiş ya da sonuna çöp eklenmiş dosya, okumaya başlamadan reddedilir.
+        _ = try decryptChunk(chunkCount - 1)
     }
 
     deinit { try? handle.close() }

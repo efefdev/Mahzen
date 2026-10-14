@@ -368,16 +368,25 @@ final class BlobReaderTests: XCTestCase {
         }
     }
 
-    func testTamperedChunkFailsOnlyWhenRead() throws {
+    func testTamperedMiddleChunkFailsWhenRead() throws {
         let key = SymmetricKey(size: .bits256)
         let plain = Crypto.randomBytes(4096 * 3)
         let url = try write(plain, chunk: 4096, key: key)
         var raw = try Data(contentsOf: url)
-        raw[BlobCrypto.headerSize + (4096 + 16) * 2 + 10] ^= 0xFF // son parça
+        raw[BlobCrypto.headerSize + (4096 + 16) * 1 + 10] ^= 0xFF // orta parça
         try raw.write(to: url)
         let reader = try BlobReader(url: url, key: key)
         XCTAssertEqual(try reader.read(offset: 0, length: 4096), plain.prefix(4096))
-        XCTAssertThrowsError(try reader.read(offset: 4096 * 2, length: 10))
+        XCTAssertThrowsError(try reader.read(offset: 4096, length: 10))
+    }
+
+    func testTamperedFinalChunkRejectedOnOpen() throws {
+        let key = SymmetricKey(size: .bits256)
+        let url = try write(Crypto.randomBytes(4096 * 3), chunk: 4096, key: key)
+        var raw = try Data(contentsOf: url)
+        raw[BlobCrypto.headerSize + (4096 + 16) * 2 + 10] ^= 0xFF // son parça
+        try raw.write(to: url)
+        XCTAssertThrowsError(try BlobReader(url: url, key: key))
     }
 
     func testTruncatedFileIsRejected() throws {
@@ -386,8 +395,7 @@ final class BlobReaderTests: XCTestCase {
         let url = try write(plain, chunk: 4096, key: key)
         let raw = try Data(contentsOf: url)
         try raw.prefix(BlobCrypto.headerSize + 2 * (4096 + 16)).write(to: url)
-        let reader = try BlobReader(url: url, key: key)
-        XCTAssertThrowsError(try reader.read(offset: 4096, length: 10), "kesilmiş dosyanın son parçası 'son' olarak doğrulanamamalı")
+        XCTAssertThrowsError(try BlobReader(url: url, key: key), "kesilmiş dosya açılırken reddedilmeli")
     }
 }
 
@@ -548,5 +556,109 @@ final class KeyfileTests: XCTestCase {
         try again.setKeyfile(nil, password: "yeni-parola-uzun-99", kdf: fast)
         XCTAssertFalse(again.requiresKeyfile)
         XCTAssertNoThrow(try Vault.unlock(at: dir, password: "yeni-parola-uzun-99"))
+    }
+}
+
+final class AuditFixTests: XCTestCase {
+    var dir: URL!
+
+    override func setUpWithError() throws {
+        dir = FileManager.default.temporaryDirectory.appendingPathComponent("mahzen-fix-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        // Okunamaz yapılan klasörün iznini geri ver ki silinebilsin.
+        try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.appendingPathComponent("Proje/kilitli").path)
+        try? FileManager.default.removeItem(at: dir)
+    }
+
+    // Denetim: oynatıcı sondan kesilmiş dosyayı fark etmiyordu.
+    func testBlobReaderRejectsTruncatedOrPaddedFile() throws {
+        let key = SymmetricKey(size: .bits256)
+        let plain = Crypto.randomBytes(4096 * 3 + 500)
+        let sealed = try BlobCrypto.encrypt(data: plain, key: key, chunkSize: 4096)
+        let cases: [Data] = [
+            sealed.prefix(sealed.count - 516) + Crypto.randomBytes(16), // son parça yerine çöp
+            sealed.prefix(sealed.count - 516),                          // son parça tamamen silinmiş
+            sealed + Crypto.randomBytes(40),                            // sonuna çöp eklenmiş
+        ]
+        for (i, data) in cases.enumerated() {
+            let url = dir.appendingPathComponent("k\(i).mhz")
+            try data.write(to: url)
+            XCTAssertThrowsError(try BlobReader(url: url, key: key), "durum \(i) reddedilmeli")
+        }
+        let ok = dir.appendingPathComponent("ok.mhz")
+        try sealed.write(to: ok)
+        XCTAssertEqual(try BlobReader(url: ok, key: key).read(offset: 0, length: plain.count), plain)
+    }
+
+    func testProgressCanCancelMidFile() throws {
+        let key = SymmetricKey(size: .bits256)
+        let src = dir.appendingPathComponent("buyuk.bin")
+        try Crypto.randomBytes(5 << 20).write(to: src)
+        let dest = dir.appendingPathComponent("buyuk.mhz")
+        var calls = 0
+        XCTAssertThrowsError(try BlobCrypto.encryptFile(at: src, to: dest, key: key) { _ in
+            calls += 1
+            if calls == 2 { throw MaintenanceCancelled() }
+        })
+        XCTAssertFalse(FileManager.default.fileExists(atPath: dest.path), "yarım dosya kalmamalı")
+        let leftovers = try FileManager.default.contentsOfDirectory(atPath: dir.path).filter { $0.hasSuffix(".tmp") }
+        XCTAssertEqual(leftovers, [])
+    }
+
+    // Denetim: anahtar dosyası sorgusuz siliniyor / üzerine yazılıyordu.
+    func testKeyfileStoreNeverLosesAKey() throws {
+        let store = KeyfileStore(directory: dir.appendingPathComponent("Anahtarlar"))
+        let id = UUID()
+        let first = Vault.generateKeyfile(), second = Vault.generateKeyfile()
+        try store.save(first, for: id)
+        try store.save(first, for: id) // aynısı: arşiv oluşmamalı
+        try store.save(second, for: id)
+        XCTAssertEqual(store.load(for: id), second)
+        XCTAssertEqual(store.candidates(for: id), [second, first])
+
+        try store.archive(for: id)
+        XCTAssertNil(store.load(for: id))
+        XCTAssertEqual(Set(store.candidates(for: id)), [first, second], "kaldırılan anahtar arşivden hâlâ denenebilmeli")
+        let perms = try FileManager.default.attributesOfItem(atPath: store.directory.path)[.posixPermissions] as? Int
+        XCTAssertEqual(perms, 0o700)
+    }
+
+    // Denetim: klasördeki gizli dosya/paket/kısayol atlanınca orijinal yine de çöpe önerilebiliyordu.
+    func testImportPlanCountsSkippedItems() throws {
+        let fm = FileManager.default
+        let project = dir.appendingPathComponent("Proje")
+        try fm.createDirectory(at: project.appendingPathComponent("alt"), withIntermediateDirectories: true)
+        try Data("a".utf8).write(to: project.appendingPathComponent("not.txt"))
+        try Data("b".utf8).write(to: project.appendingPathComponent("alt/rapor.txt"))
+        try Data("SECRET=1".utf8).write(to: project.appendingPathComponent(".env"))
+        try Data().write(to: project.appendingPathComponent(".DS_Store"))
+        try fm.createDirectory(at: project.appendingPathComponent("Eklenti.bundle/Contents"), withIntermediateDirectories: true)
+        try fm.createSymbolicLink(at: project.appendingPathComponent("kisayol"), withDestinationURL: project.appendingPathComponent("not.txt"))
+        let locked = project.appendingPathComponent("kilitli")
+        try fm.createDirectory(at: locked, withIntermediateDirectories: true)
+        try Data("c".utf8).write(to: locked.appendingPathComponent("gizli.txt"))
+        try fm.setAttributes([.posixPermissions: 0o000], ofItemAtPath: locked.path)
+
+        let clean = dir.appendingPathComponent("Temiz")
+        try fm.createDirectory(at: clean, withIntermediateDirectories: true)
+        try Data("d".utf8).write(to: clean.appendingPathComponent("foto.jpg"))
+        let single = dir.appendingPathComponent("tek.txt")
+        try Data("e".utf8).write(to: single)
+
+        let plan = ImportPlan(urls: [project, clean, single])
+        XCTAssertEqual(Set(plan.items.map(\.url.lastPathComponent)), ["not.txt", "rapor.txt", "foto.jpg", "tek.txt"])
+        XCTAssertEqual(plan.items.first { $0.url.lastPathComponent == "rapor.txt" }?.folderPath, ["Proje", "alt"])
+        let skippedNames = Set(plan.skipped[project] ?? [])
+        XCTAssertTrue(skippedNames.isSuperset(of: [".env", "Eklenti.bundle", "kisayol", "kilitli"]), "atlananlar: \(skippedNames)")
+        XCTAssertFalse(skippedNames.contains(".DS_Store"))
+
+        // Hepsi güvenle kaydedilmiş olsa bile atlanan öğesi olan klasör çöpe önerilmez.
+        let stored: [URL: Int] = [project: 2, clean: 1, single: 1]
+        XCTAssertEqual(Set(plan.removableSources(safelyStored: stored)), [clean, single])
+        // Bir dosyası eksik kaydedilen kaynak da önerilmez.
+        XCTAssertEqual(plan.removableSources(safelyStored: [clean: 0, single: 1]), [single])
     }
 }

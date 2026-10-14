@@ -31,7 +31,9 @@ public struct IntegrityReport: Sendable {
     public init() {}
 }
 
-public struct MaintenanceCancelled: Error {}
+public struct MaintenanceCancelled: Error {
+    public init() {}
+}
 
 extension Vault {
     // MARK: - Yedekleme

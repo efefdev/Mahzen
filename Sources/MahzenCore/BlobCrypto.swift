@@ -31,7 +31,7 @@ public enum BlobCrypto {
         write: (Data) throws -> Void,
         key: SymmetricKey,
         chunkSize: Int = defaultChunkSize,
-        progress: ((Int) -> Void)? = nil
+        progress: ((Int) throws -> Void)? = nil
     ) throws {
         let hdr = header(chunkSize: chunkSize)
         try write(hdr)
@@ -42,7 +42,7 @@ public enum BlobCrypto {
             let isFinal = next.isEmpty
             let box = try AES.GCM.seal(current, using: key, nonce: nonce(index: index, isFinal: isFinal), authenticating: hdr)
             try write(box.ciphertext + box.tag)
-            progress?(current.count)
+            try progress?(current.count)
             if isFinal { return }
             current = next
             index += 1
@@ -53,7 +53,7 @@ public enum BlobCrypto {
         read: (Int) throws -> Data,
         write: (Data) throws -> Void,
         key: SymmetricKey,
-        progress: ((Int) -> Void)? = nil
+        progress: ((Int) throws -> Void)? = nil
     ) throws {
         let hdr = Data(try read(headerSize))
         guard hdr.count == headerSize, hdr.prefix(4) == magic else {
@@ -82,7 +82,7 @@ public enum BlobCrypto {
                 throw VaultError.corrupted("içerik doğrulanamadı (bozulmuş, değiştirilmiş veya yanlış anahtar)")
             }
             try write(plain)
-            progress?(plain.count)
+            try progress?(plain.count)
             if isFinal { return }
             current = next
             index += 1
@@ -93,7 +93,7 @@ public enum BlobCrypto {
 
     /// Şifrelerken düz içeriğin SHA-256 özetini de hesaplar (mükerrer dosya tespiti için).
     @discardableResult
-    public static func encryptFile(at source: URL, to destination: URL, key: SymmetricKey, progress: ((Int) -> Void)? = nil) throws -> SHA256.Digest {
+    public static func encryptFile(at source: URL, to destination: URL, key: SymmetricKey, progress: ((Int) throws -> Void)? = nil) throws -> SHA256.Digest {
         let input = try FileHandle(forReadingFrom: source)
         defer { try? input.close() }
         var hasher = SHA256()
@@ -110,7 +110,7 @@ public enum BlobCrypto {
         return hasher.finalize()
     }
 
-    public static func decryptFile(at source: URL, to destination: URL, key: SymmetricKey, progress: ((Int) -> Void)? = nil) throws {
+    public static func decryptFile(at source: URL, to destination: URL, key: SymmetricKey, progress: ((Int) throws -> Void)? = nil) throws {
         let input = try FileHandle(forReadingFrom: source)
         defer { try? input.close() }
         try writeAtomically(to: destination) { out in

@@ -71,6 +71,11 @@ final class AppState: ObservableObject {
     /// Açık kasa bu Mac'teki anahtar dosyasıyla mı korunuyor?
     @Published private(set) var keyfileEnabled = false
     private var cancelFlag = CancelFlag()
+    /// Her kilit açılışında değişir. Kilitten sonra biten bir işlem, sonucunu yeni oturuma yazamaz.
+    private var session = UUID()
+    /// Hassas olarak kopyalanan son içeriğin pano sayacı (kilitte/çıkışta temizlemek için).
+    private var sensitiveClipboardCount: Int?
+    private let keyfiles = KeyfileStore.standard
 
     private(set) var vault: Vault?
     private var thumbnails: [UUID: NSImage] = [:]
@@ -99,7 +104,22 @@ final class AppState: ObservableObject {
         }
         installObservers()
         applyAppearance()
+        Self.removeStaleTemporaryFolders()
     }
+
+    /// Önceki bir çalışmadan (ör. çökme) kalan, 1 saatten eski şifresiz geçici klasörleri siler.
+    private static func removeStaleTemporaryFolders() {
+        let fm = FileManager.default
+        let tmp = fm.temporaryDirectory
+        let cutoff = Date().addingTimeInterval(-3600)
+        for name in (try? fm.contentsOfDirectory(atPath: tmp.path)) ?? [] where name.hasPrefix("Mahzen-") {
+            let url = tmp.appendingPathComponent(name)
+            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+            if modified < cutoff { try? fm.removeItem(at: url) }
+        }
+    }
+
+    private func isCurrent(_ token: UUID) -> Bool { token == session && phase == .unlocked && vault != nil }
 
     // MARK: - Kasa açma / kapama
 
@@ -159,17 +179,19 @@ final class AppState: ObservableObject {
     /// dosyası yoktur ve sonuç sadece "Parola yanlış" olur; kasanın anahtar dosyası istediği anlaşılmaz.
     nonisolated static func unlockVault(at url: URL, password: String) throws -> Vault {
         let header = try Vault.readHeader(at: url)
-        if let keyfile = KeyfileStore.load(for: header.vaultID) {
+        // Etkin anahtar, sonra arşivdekiler (kasa ile yedekleri aynı kimliği paylaşır), en son yalnızca parola.
+        for keyfile in KeyfileStore.standard.candidates(for: header.vaultID) {
             do {
                 return try Vault.unlock(at: url, password: password, keyfile: keyfile)
             } catch VaultError.wrongPassword {
-                return try Vault.unlock(at: url, password: password)
+                continue
             }
         }
         return try Vault.unlock(at: url, password: password)
     }
 
     private func open(_ vault: Vault, index: VaultIndex, recovered: Bool) {
+        session = UUID()
         self.vault = vault
         self.index = index
         kdfSummary = vault.header.kdf.summary
@@ -188,9 +210,15 @@ final class AppState: ObservableObject {
         if recovered || !expired.isEmpty { scheduleSave() }
     }
 
+    /// Her zaman anında kilitler. Çalışan bir işlem varsa durdurulur; oturum değiştiği için
+    /// sonucu kasaya yazılamaz, çöpe taşıma önerisi de gösterilemez.
     func lock() {
-        guard phase == .unlocked, task == nil else { return }
+        guard phase == .unlocked else { return }
+        cancelTask()
+        task = nil
         flushSave()
+        session = UUID()
+        clearSensitiveClipboard()
         vault = nil
         index = VaultIndex()
         thumbnails.removeAll()
@@ -208,38 +236,47 @@ final class AppState: ObservableObject {
     func enableKeyfile(password: String) async -> String? {
         guard let vault else { return "Kasa kilitli." }
         let id = vault.header.vaultID
+        // Bu kimlik için zaten bir anahtar varken anahtarsız açılmış kasa, büyük olasılıkla anahtar
+        // dosyası eklenmeden önce alınmış bir yedektir. Bağlamak asıl kasanın anahtarını değiştirirdi.
+        if !vault.requiresKeyfile, !keyfiles.candidates(for: id).isEmpty {
+            return "Bu Mac'te bu kasa için zaten bir anahtar dosyası var. Açtığın kasa, anahtar dosyası eklenmeden önce alınmış bir yedek olabilir. Asıl kasayı korumak için işlem yapılmadı; asıl kasayı açıp oradan devam et."
+        }
         let keyfile = Vault.generateKeyfile()
         do {
-            try KeyfileStore.save(keyfile, for: id)
+            try keyfiles.save(keyfile, for: id)
         } catch {
             return "Anahtar dosyası bu Mac'e kaydedilemedi: \(error.localizedDescription)"
         }
         do {
             try await Task.detached(priority: .userInitiated) { try vault.setKeyfile(keyfile, password: password) }.value
         } catch {
-            KeyfileStore.delete(for: id)
+            try? keyfiles.archive(for: id)
             return error.localizedDescription
         }
         keyfileEnabled = true
         return nil
     }
 
+    /// Bu kasayı yeniden yalnızca parolayla açılır yapar. Anahtar dosyası silinmez, arşivlenir:
+    /// aynı kimliği taşıyan yedekler (veya asıl kasa) onu hâlâ gerektirebilir ve kilit açılırken denenir.
     func disableKeyfile(password: String) async -> String? {
         guard let vault else { return "Kasa kilitli." }
+        let id = vault.header.vaultID
+        let used = vault.keyfileData
         do {
             try await Task.detached(priority: .userInitiated) { try vault.setKeyfile(nil, password: password) }.value
         } catch {
             return error.localizedDescription
         }
-        KeyfileStore.delete(for: vault.header.vaultID)
+        if let used, keyfiles.load(for: id) == used { try? keyfiles.archive(for: id) }
         keyfileEnabled = false
         showToast("Kasa artık yalnızca parolayla açılıyor")
         return nil
     }
 
-    /// Mac bozulursa kurtarabilmek için anahtar dosyasının bir kopyasını kullanıcının seçtiği yere yazar.
+    /// Mac bozulursa kurtarabilmek için kasayı açan anahtar dosyasının bir kopyasını seçilen yere yazar.
     func exportKeyfile() {
-        guard let vault, let keyfile = KeyfileStore.load(for: vault.header.vaultID) else { return }
+        guard let keyfile = vault?.keyfileData else { return }
         let panel = NSSavePanel()
         panel.title = "Anahtar dosyasının yedeği"
         panel.message = "SSD'den ayrı, güvendiğin bir yere kaydet. Dosya adı içeriği belli etmesin."
@@ -250,17 +287,16 @@ final class AppState: ObservableObject {
             alert = AlertItem(title: "Bu konum seçilemez", message: "Anahtar dosyasının yedeği kasayla aynı diskte olursa koruma anlamını yitirir.")
             return
         }
-        do {
-            try keyfile.write(to: url, options: .atomic)
-            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
-            showToast("Anahtar dosyasının yedeği kaydedildi")
-        } catch {
-            alert = AlertItem(title: "Kaydedilemedi", message: error.localizedDescription)
+        // Dosya baştan yalnızca kullanıcının okuyabileceği izinle oluşturulur.
+        guard FileManager.default.createFile(atPath: url.path, contents: keyfile, attributes: [.posixPermissions: 0o600]) else {
+            alert = AlertItem(title: "Kaydedilemedi", message: url.path)
+            return
         }
+        showToast("Anahtar dosyasının yedeği kaydedildi")
     }
 
-    /// Başka bir Mac'te ya da Mac yeniden kurulduktan sonra: yedek anahtar dosyasını seçili kasa için içe alır.
-    /// Dosyanın doğru olup olmadığı bilerek kontrol edilmez; doğruysa kasa parolayla açılır.
+    /// Yedek anahtar dosyasını seçili kasa için içe alır. Mevcut anahtar varsa silinmez, arşivlenir.
+    /// Dosyanın doğruluğu bilerek denetlenmez; doğruysa kasa parolayla açılır.
     func importKeyfile() {
         guard let vaultURL, let header = try? Vault.readHeader(at: vaultURL) else {
             alert = AlertItem(title: "Önce kasayı seç", message: "Anahtar dosyası, seçili kasa için içe aktarılır.")
@@ -276,8 +312,9 @@ final class AppState: ObservableObject {
             return
         }
         do {
-            try KeyfileStore.save(data, for: header.vaultID)
-            showToast("Anahtar dosyası içe aktarıldı")
+            let hadOne = keyfiles.load(for: header.vaultID) != nil
+            try keyfiles.save(data, for: header.vaultID)
+            showToast(hadOne ? "Anahtar dosyası içe aktarıldı (öncekisi arşivlendi)" : "Anahtar dosyası içe aktarıldı")
         } catch {
             alert = AlertItem(title: "İçe aktarılamadı", message: error.localizedDescription)
         }
@@ -318,22 +355,35 @@ final class AppState: ObservableObject {
 
     private func scheduleSave(delay: Double = 0.05) {
         saveWork?.cancel()
-        let work = DispatchWorkItem { [weak self] in self?.performSave(sync: false) }
+        let work = DispatchWorkItem { [weak self] in self?.performSave() }
         saveWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
-    func flushSave() {
-        guard saveWork != nil else { return }
+    /// Bekleyen kaydı hemen ve eşzamanlı yapar; sıradaki eski kayıtların bitmesini de bekler.
+    /// Dizin diske yazıldıysa `true`.
+    @discardableResult
+    func flushSave() -> Bool {
         saveWork?.cancel()
-        performSave(sync: true)
+        saveWork = nil
+        guard let vault else { return false }
+        let snapshot = index
+        var failure: Error?
+        io.sync {
+            do { try vault.saveIndex(snapshot) } catch { failure = error }
+        }
+        if let failure {
+            alert = AlertItem(title: "Kaydedilemedi", message: "\(failure.localizedDescription)\nSSD çıkarılmış olabilir.")
+            return false
+        }
+        return true
     }
 
-    private func performSave(sync: Bool) {
+    private func performSave() {
         saveWork = nil
         guard let vault else { return }
         let snapshot = index
-        let save = {
+        io.async {
             do {
                 try vault.saveIndex(snapshot)
             } catch {
@@ -342,7 +392,6 @@ final class AppState: ObservableObject {
                 }
             }
         }
-        if sync { io.sync(execute: save) } else { io.async(execute: save) }
     }
 
     // MARK: - Dosyalar
@@ -363,9 +412,18 @@ final class AppState: ObservableObject {
 
     func importFiles(_ urls: [URL], into folder: UUID?) {
         guard let vault, task == nil else { return }
-        let items = Self.expand(urls)
-        guard !items.isEmpty else { return }
+        let plan = ImportPlan(urls: urls)
+        guard !plan.items.isEmpty else {
+            if plan.skippedCount > 0 {
+                alert = AlertItem(title: "Eklenecek dosya yok", message: "Gizli dosyalar, paketler (ör. Keynote belgeleri), kısayollar ve okunamayan öğeler kasaya eklenmez.")
+            }
+            return
+        }
+        let items = plan.items
         let total = max(items.reduce(0) { $0 + $1.size }, 1)
+        let token = session
+        let flag = CancelFlag()
+        cancelFlag = flag
         cancelRequested = false
         task = TaskProgress(title: "Şifreleniyor", fraction: 0, cancellable: true)
 
@@ -377,21 +435,24 @@ final class AppState: ObservableObject {
             // Bir kaynağın orijinali ancak içindeki her dosya kasaya güvenle girdiyse çöpe taşınabilir.
             var safelyStored: [URL: Int] = [:]
             for (i, item) in items.enumerated() {
-                if cancelRequested { break }
+                guard !flag.value, isCurrent(token) else { break }
                 task?.title = "Şifreleniyor (\(i + 1)/\(items.count))"
                 task?.detail = item.url.lastPathComponent
                 let id = UUID()
                 do {
                     let hash = try await Task.detached(priority: .userInitiated) {
                         try vault.importFile(at: item.url, id: id) { n in
+                            if flag.value { throw MaintenanceCancelled() }
                             counter.done += Int64(n)
                             let now = Date()
                             guard now.timeIntervalSince(counter.lastReport) > 0.1 else { return }
                             counter.lastReport = now
                             let fraction = Double(counter.done) / Double(total)
-                            DispatchQueue.main.async { self.task?.fraction = fraction }
+                            DispatchQueue.main.async { if self.isCurrent(token) { self.task?.fraction = fraction } }
                         }
                     }.value
+                    // Kilitlendiyse kayıt yeni oturuma yazılmaz; şifreli içerik artık dosya olarak kalır.
+                    guard isCurrent(token) else { vault.deleteFile(id); break }
                     // Aynı içerik zaten kasadaysa yeni şifreli kopyayı at.
                     if index.existingFile(withHash: hash) != nil {
                         vault.deleteFile(id)
@@ -403,6 +464,7 @@ final class AppState: ObservableObject {
                     if let thumb = await Self.makeThumbnail(for: item.url) {
                         hasThumb = (try? await Task.detached { try vault.writeThumbnail(thumb, id: id) }.value) != nil
                     }
+                    guard isCurrent(token) else { vault.deleteFile(id); break }
                     mutate { idx in
                         let target = idx.ensureFolderPath(item.folderPath, under: folder)
                         idx.files.append(FileRecord(
@@ -418,26 +480,34 @@ final class AppState: ObservableObject {
                     }
                     added += 1
                     safelyStored[item.source, default: 0] += 1
+                } catch is MaintenanceCancelled {
+                    vault.deleteFile(id)
+                    break
                 } catch {
                     vault.deleteFile(id)
                     failures.append("\(item.url.lastPathComponent): \(error.localizedDescription)")
                 }
             }
-            flushSave()
+            // Kasa bu arada kilitlendiyse hiçbir şey yazılmaz ve hiçbir şey önerilmez.
+            guard isCurrent(token) else { return }
             task = nil
-            let expected = Dictionary(grouping: items, by: \.source).mapValues(\.count)
-            let removable = expected.filter { safelyStored[$0.key] == $0.value }.map(\.key)
-            if !removable.isEmpty { offerToTrashOriginals(removable) }
-            if !failures.isEmpty {
-                alert = AlertItem(title: "Bazı dosyalar eklenemedi", message: failures.prefix(8).joined(separator: "\n"))
-            } else if !duplicates.isEmpty {
-                alert = AlertItem(
-                    title: "\(added) dosya şifrelendi, \(duplicates.count) kopya atlandı",
-                    message: "Bu dosyalar kasada zaten var:\n" + duplicates.prefix(10).joined(separator: "\n")
-                        + (duplicates.count > 10 ? "\n… ve \(duplicates.count - 10) dosya daha" : "")
-                )
+            // Orijinaller ancak dizin diske gerçekten yazıldıktan sonra çöpe önerilir.
+            let saved = flushSave()
+            let removable = plan.removableSources(safelyStored: safelyStored)
+            if saved, !removable.isEmpty { offerToTrashOriginals(removable) }
+            var notes: [String] = []
+            if !failures.isEmpty { notes.append("Eklenemeyenler:\n" + failures.prefix(8).joined(separator: "\n")) }
+            if plan.skippedCount > 0 {
+                notes.append("\(plan.skippedCount) öğe eklenmedi (gizli dosya, paket, kısayol veya okunamayan öğe); bunları içeren klasörlerin orijinalleri çöpe önerilmedi.")
+            }
+            if !duplicates.isEmpty {
+                notes.append("\(duplicates.count) dosya kasada zaten vardı: " + duplicates.prefix(6).joined(separator: ", ")
+                    + (duplicates.count > 6 ? " …" : ""))
+            }
+            if notes.isEmpty {
+                showToast(flag.value ? "Durduruldu · \(added) dosya eklendi" : "\(added) dosya şifrelendi")
             } else {
-                showToast(cancelRequested ? "Durduruldu · \(added) dosya eklendi" : "\(added) dosya şifrelendi")
+                alert = AlertItem(title: "\(added) dosya şifrelendi", message: notes.joined(separator: "\n\n"))
             }
         }
     }
@@ -501,6 +571,7 @@ final class AppState: ObservableObject {
         flushSave()
         let fileIDs = Set(index.files.map(\.id))
         let thumbIDs = Set(index.files.filter(\.hasThumbnail).map(\.id))
+        let token = session
         let flag = CancelFlag()
         cancelFlag = flag
         cancelRequested = false
@@ -519,6 +590,7 @@ final class AppState: ObservableObject {
                         return !flag.value
                     }
                 }.value
+                guard isCurrent(token) else { return }
                 task = nil
                 updatePreferences { $0.lastBackupAt = Date() }
                 flushSave()
@@ -546,6 +618,7 @@ final class AppState: ObservableObject {
         guard let vault, task == nil else { return }
         flushSave()
         let files = index.files
+        let token = session
         let flag = CancelFlag()
         cancelFlag = flag
         task = TaskProgress(title: "Bütünlük taraması", detail: "\(files.count) dosya çözülerek doğrulanıyor", fraction: 0, cancellable: true)
@@ -563,6 +636,7 @@ final class AppState: ObservableObject {
                         return !flag.value
                     }
                 }.value
+                guard isCurrent(token) else { return }
                 task = nil
                 // Eski kayıtların eksik parmak izlerini tamamla, bozuk küçük resimleri bırak.
                 mutate { idx in
@@ -654,12 +728,18 @@ final class AppState: ObservableObject {
         provider.registerFileRepresentation(forTypeIdentifier: file.utType.identifier, fileOptions: [], visibility: .all) { completion in
             Task { @MainActor in
                 guard let vault = self.vault else { return completion(nil, false, VaultError.notAVault) }
+                let token = self.session
                 let dir = self.tempRoot.appendingPathComponent("surukle-\(UUID().uuidString)", isDirectory: true)
                 let dest = dir.appendingPathComponent(name)
                 Task.detached(priority: .userInitiated) {
                     do {
                         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
                         try vault.exportFile(id, to: dest)
+                        let stillOpen = await MainActor.run { self.isCurrent(token) }
+                        guard stillOpen else {
+                            try? FileManager.default.removeItem(at: dir)
+                            return completion(nil, false, VaultError.notAVault)
+                        }
                         completion(dest, false, nil)
                     } catch {
                         completion(nil, false, error)
@@ -716,39 +796,6 @@ final class AppState: ObservableObject {
         if fileIDs.isEmpty { showToast("Taşındı: \(index.folder(folder)?.name ?? "Dosyalar")") }
     }
 
-    private struct ImportItem: Sendable {
-        let url: URL
-        let size: Int64
-        let modified: Date?
-        /// Sürüklenen klasörün kasada yeniden oluşturulacak yolu (ör. ["Tatil", "2026"]).
-        var folderPath: [String] = []
-        /// Kullanıcının seçtiği/sürüklediği üst öğe (orijinali çöpe taşırken kullanılır).
-        var source: URL
-    }
-
-    /// Klasörleri içindeki dosyalara açar; gizli dosyaları atlar.
-    private static func expand(_ urls: [URL]) -> [ImportItem] {
-        let keys: [URLResourceKey] = [.isRegularFileKey, .isDirectoryKey, .fileSizeKey, .contentModificationDateKey]
-        var result: [ImportItem] = []
-        func add(_ url: URL, folderPath: [String] = [], source: URL) {
-            guard let v = try? url.resourceValues(forKeys: Set(keys)), v.isRegularFile == true else { return }
-            result.append(ImportItem(url: url, size: Int64(v.fileSize ?? 0), modified: v.contentModificationDate, folderPath: folderPath, source: source))
-        }
-        for url in urls {
-            if (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
-                let root = url.standardizedFileURL.pathComponents
-                let e = FileManager.default.enumerator(at: url, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles, .skipsPackageDescendants])
-                while let child = e?.nextObject() as? URL {
-                    let parent = child.deletingLastPathComponent().standardizedFileURL.pathComponents
-                    add(child, folderPath: [url.lastPathComponent] + parent.dropFirst(root.count), source: url)
-                }
-            } else {
-                add(url, source: url)
-            }
-        }
-        return result
-    }
-
     nonisolated private static func makeThumbnail(for url: URL) async -> Data? {
         let request = QLThumbnailGenerator.Request(fileAt: url, size: CGSize(width: 220, height: 220), scale: 2, representationTypes: .thumbnail)
         guard let rep = try? await QLThumbnailGenerator.shared.generateBestRepresentation(for: request) else { return nil }
@@ -785,32 +832,40 @@ final class AppState: ObservableObject {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        guard panel.runModal() == .OK, let dir = panel.url else { return }
+        let token = session
+        guard panel.runModal() == .OK, let dir = panel.url, isCurrent(token) else { return }
         let total = max(files.reduce(0) { $0 + $1.size }, 1)
-        cancelRequested = false
+        let flag = CancelFlag()
+        cancelFlag = flag
         task = TaskProgress(title: "Dışa aktarılıyor", fraction: 0, cancellable: true)
         Task {
             let counter = ProgressCounter()
             var failures: [String] = []
             for file in files {
-                if cancelRequested { break }
+                guard !flag.value, isCurrent(token) else { break }
                 task?.detail = file.name
                 let dest = Self.uniqueURL(in: dir, name: file.name)
                 let id = file.id
                 do {
                     try await Task.detached(priority: .userInitiated) {
                         try vault.exportFile(id, to: dest) { n in
+                            if flag.value { throw MaintenanceCancelled() }
                             counter.done += Int64(n)
                             let fraction = Double(counter.done) / Double(total)
                             DispatchQueue.main.async { self.task?.fraction = fraction }
                         }
                     }.value
+                } catch is MaintenanceCancelled {
+                    break
                 } catch {
                     failures.append("\(file.name): \(error.localizedDescription)")
                 }
             }
+            guard isCurrent(token) else { return }
             task = nil
-            if failures.isEmpty {
+            if flag.value {
+                showToast("Dışa aktarma durduruldu")
+            } else if failures.isEmpty {
                 showToast("\(files.count) dosya dışa aktarıldı")
                 NSWorkspace.shared.activateFileViewerSelecting([dir])
             } else {
@@ -830,9 +885,11 @@ final class AppState: ObservableObject {
             alert.addButton(withTitle: "Vazgeç")
             alert.showsSuppressionButton = true
             alert.suppressionButton?.title = "Bir daha sorma"
-            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            let token = session
+            guard alert.runModal() == .alertFirstButtonReturn, isCurrent(token) else { return }
             if alert.suppressionButton?.state == .on { UserDefaults.standard.set(true, forKey: "tempOpenWarned") }
         }
+        let token = session
         let dir = tempRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let dest = dir.appendingPathComponent(file.name)
         let id = file.id
@@ -845,9 +902,13 @@ final class AppState: ObservableObject {
                     try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.deletingLastPathComponent().path)
                     try vault.exportFile(id, to: dest)
                 }.value
+                // Bu arada kilitlendiyse geçici klasör çoktan silindi; yeni çözülen kopyayı da sil.
+                guard isCurrent(token) else { try? FileManager.default.removeItem(at: dir); return }
                 task = nil
                 NSWorkspace.shared.open(dest)
             } catch {
+                try? FileManager.default.removeItem(at: dir)
+                guard isCurrent(token) else { return }
                 task = nil
                 alert = AlertItem(title: "Açılamadı", message: error.localizedDescription)
             }
@@ -1001,11 +1062,16 @@ final class AppState: ObservableObject {
 
     func copy(_ text: String, sensitive: Bool = true, label: String = "Kopyalandı") {
         let pb = NSPasteboard.general
-        pb.clearContents()
+        // Hassas içerik Evrensel Pano ile iPhone'a / diğer Mac'lere gitmesin.
+        pb.prepareForNewContents(with: sensitive ? .currentHostOnly : [])
         pb.setString(text, forType: .string)
-        guard sensitive else { return showToast(label) }
+        guard sensitive else {
+            sensitiveClipboardCount = nil
+            return showToast(label)
+        }
         // Pano yöneticilerine "bunu geçmişe kaydetme" işareti.
         pb.setString("", forType: NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType"))
+        sensitiveClipboardCount = pb.changeCount
         let seconds = prefs.clipboardClearSeconds
         if seconds > 0 {
             let count = pb.changeCount
@@ -1016,6 +1082,13 @@ final class AppState: ObservableObject {
         } else {
             showToast(label)
         }
+    }
+
+    /// Panoda hâlâ bizim kopyaladığımız hassas içerik duruyorsa siler (kilitte ve çıkışta).
+    private func clearSensitiveClipboard() {
+        let pb = NSPasteboard.general
+        if let count = sensitiveClipboardCount, pb.changeCount == count { pb.clearContents() }
+        sensitiveClipboardCount = nil
     }
 
     func showToast(_ message: String) {
@@ -1058,9 +1131,11 @@ final class AppState: ObservableObject {
             MainActor.assumeIsolated { self?.lastActivity = Date() }
             return event
         }
-        Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+        // .common: kaydet/aç pencereleri gibi kalıcı pencereler açıkken de otomatik kilit çalışsın.
+        let timer = Timer(timeInterval: 10, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.checkAutoLock() }
         }
+        RunLoop.main.add(timer, forMode: .common)
         let workspace = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
             workspace.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
@@ -1074,15 +1149,17 @@ final class AppState: ObservableObject {
         workspace.addObserver(forName: NSWorkspace.willUnmountNotification, object: nil, queue: .main) { [weak self] note in
             let path = note.userInfo?["NSDevicePath"] as? String
             MainActor.assumeIsolated {
-                guard let self, let path, let vaultPath = self.vaultURL?.path, vaultPath.hasPrefix(path) else { return }
-                self.cancelRequested = true
-                self.task = nil
+                guard let self, let path, let vaultPath = self.vaultURL?.standardizedFileURL.path else { return }
+                // "/Volumes/SSD" çıkarılınca "/Volumes/SSD 2" üzerindeki kasa etkilenmesin.
+                let mount = path.hasSuffix("/") ? path : path + "/"
+                guard vaultPath.hasPrefix(mount) || vaultPath == path else { return }
                 self.lock()
             }
         }
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.flushSave()
+                self?.clearSensitiveClipboard()
                 self?.wipeTemporaryFiles()
             }
         }

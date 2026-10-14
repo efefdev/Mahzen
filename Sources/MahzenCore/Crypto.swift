@@ -9,7 +9,7 @@ public enum KDFSettings: Sendable, Equatable {
     case pbkdf2(iterations: UInt32)
     case argon2id(time: UInt32, memoryKiB: UInt32, parallelism: UInt32)
 
-    /// Varsayılan: Argon2id, 1 GB bellek, 3 geçiş, 4 iş parçacığı (Apple Silicon üzerinde ~0,5 sn).
+    /// Varsayılan: Argon2id, 1 GB bellek, 3 geçiş, 4 iş parçacığı (release derlemede Apple Silicon'da ~0,7 sn).
     public static let recommended = KDFSettings.argon2id(time: 3, memoryKiB: 1024 * 1024, parallelism: 4)
 
     func params(salt: Data) -> KDFParams {

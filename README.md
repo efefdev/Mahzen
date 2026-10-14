@@ -46,10 +46,10 @@ Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde 
 | Katman | Yöntem |
 |---|---|
 | Veri şifreleme | **AES-256-GCM** (Apple CryptoKit). Her dosya kendi anahtarıyla, 1 MB'lık parçalar halinde şifrelenir. |
-| Paroladan anahtar | **Argon2id** — 1 GB bellek, 3 geçiş, 4 iş parçacığı (Apple Silicon'da ~0,7 sn). Ekran kartıyla toplu tahmini pahalılaştırır. |
+| Paroladan anahtar | **Argon2id** — 1 GB bellek, 3 geçiş, 4 iş parçacığı (release derlemede, Apple Silicon'da deneme başına ~0,7 sn). Ekran kartıyla toplu tahmini pahalılaştırır. |
 | Anahtar hiyerarşisi | Rastgele 256 bitlik ana anahtar, paroladan türetilen anahtarla sarılır. Dosya, küçük resim ve dizin anahtarları ana anahtardan HKDF-SHA256 ile türetilir. |
 | Anahtar dosyası (isteğe bağlı) | Sarma anahtarı = HKDF(Argon2id(parola) ‖ 512 bit rastgele dosya). Kasa başlığında anahtar dosyasına dair hiçbir alan yoktur. |
-| Bütünlük | Parçaların sırası ve "son parça" bilgisi nonce'a bağlıdır; değiştirilen, yer değiştirilen veya kesilen dosyalar reddedilir. |
+| Bütünlük | Parçaların sırası ve "son parça" bilgisi nonce'a bağlıdır; değiştirilen, yer değiştirilen, kesilen veya sonuna veri eklenen dosyalar — oynatıcının rastgele erişimli okumasında da — reddedilir. |
 
 Kasa klasöründe yalnızca rastgele adlı şifreli dosyalar bulunur; **dosya adları, klasörler, etiketler, notlar ve parolalar da şifrelidir.**
 
@@ -61,7 +61,7 @@ Mahzen Kasası/
 └── thumbs/<id>.mhz   şifreli küçük resimler
 ```
 
-AES-256 ve Argon2id kuantum bilgisayarlara karşı da güçlü kabul edilir; uygulamada açık anahtarlı şifreleme (RSA/ECC) bulunmadığından kuantum saldırılarının asıl hedefi olan bir bileşen yoktur.
+Uygulamada açık anahtarlı şifreleme (RSA/ECC) bulunmaz; bu yüzden kuantum bilgisayarların kırabildiği türden bir bileşen yoktur. Grover algoritması AES-256'nın etkin gücünü yaklaşık 128 bite indirir; bu hâlâ pratikte kırılamaz kabul edilir. Zayıf bir parolayı ise hiçbir algoritma kurtaramaz.
 
 ### Sınırlar — lütfen okuyun
 
@@ -69,7 +69,9 @@ AES-256 ve Argon2id kuantum bilgisayarlara karşı da güçlü kabul edilir; uyg
 - **Güvenlik parolanızın gücüne bağlıdır.** Rastgele seçilmiş 5+ kelime veya 12+ rastgele karakter önerilir.
 - **Parola unutulursa veriler kurtarılamaz.** Anahtar dosyası kullanılıyorsa onun da yedeği alınmalıdır.
 - Dosya **boyutları ve sayısı** kasa klasörüne bakan biri tarafından görülebilir.
-- "Geçici Aç" ve Finder'a sürükleme, kasa dışında şifresiz kopya oluşturur.
+- "Geçici Aç" ve Finder'a sürükleme, kasa dışında şifresiz kopya oluşturur (kilitte ve bir sonraki açılışta temizlenir).
+- Kasa klasörüne yazabilen biri dizin dosyasını eski bir kopyasıyla değiştirerek notları/parolaları eski hâline döndürebilir; bu henüz tespit edilmiyor.
+- Parola değiştirmek veya anahtar dosyası eklemek ana anahtarı yenilemez; eski bir başlık kopyası ile eski parola, verileri açmaya yeter.
 
 ## Kurulum
 
@@ -78,7 +80,7 @@ AES-256 ve Argon2id kuantum bilgisayarlara karşı da güçlü kabul edilir; uyg
 
 ### Kaynaktan derleme
 
-Gereksinimler: macOS 14+, Xcode 16+ (Swift 5.10+)
+Gereksinimler: macOS 14+, **tam Xcode 15.3 veya üstü** (Swift 5.10+; Apple Silicon + Intel tek pakette derlendiği için yalnızca Komut Satırı Araçları yetmez)
 
 ```bash
 git clone https://github.com/efefdev/Mahzen.git
@@ -88,7 +90,9 @@ cd Mahzen
 
 Uygulamayı SSD'ye taşımak için `dist/Mahzen.app` klasörünü SSD'nin köküne kopyalayın. İlk açılışta kasa, uygulamanın yanında `Mahzen Kasası` olarak oluşturulur.
 
-Uygulama ad-hoc imzalıdır (Apple tarafından noterize edilmemiştir). İnternetten indirilen bir kopyada macOS uyarı verirse Finder'da sağ tık → **Aç** ile açabilirsiniz.
+Uygulama ad-hoc imzalıdır (Apple tarafından noterize edilmemiştir). Kendi derlediğiniz kopya uyarısız açılır. İnternetten indirilmiş bir kopyayı açarken macOS uyarı verirse:
+- **macOS 15 ve sonrası:** Önce açmayı deneyin, sonra **Sistem Ayarları → Gizlilik ve Güvenlik** sayfasının altındaki **"Yine de Aç"** düğmesini kullanın.
+- **macOS 14:** Finder'da sağ tık → **Aç**.
 
 ### Testler
 
@@ -96,7 +100,7 @@ Uygulama ad-hoc imzalıdır (Apple tarafından noterize edilmemiştir). İnterne
 swift test
 ```
 
-38 test; şifreleme, parça doğrulama, kurcalama/kesme tespiti, Argon2 referans test vektörleri, anahtar dosyası, yedekleme ve bütünlük taramasını kapsar.
+43 test; şifreleme, parça doğrulama, kurcalama/kesme tespiti, Argon2 referans test vektörleri, anahtar dosyası (arşivleme dahil), içe aktarma planı, yedekleme ve bütünlük taramasını kapsar.
 
 ## Proje yapısı
 

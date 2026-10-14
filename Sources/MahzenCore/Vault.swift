@@ -84,6 +84,9 @@ public final class Vault: @unchecked Sendable {
     /// Bu nesne bir anahtar dosyasıyla mı açıldı? (Yalnızca açık kasa bilir; başlık bunu söylemez.)
     public var requiresKeyfile: Bool { keyfile != nil }
 
+    /// Kasayı açan anahtar dosyası (yedeğini dışa aktarmak için). Kasa kilitlenince bu nesneyle birlikte gider.
+    public var keyfileData: Data? { keyfile }
+
     public static func generateKeyfile() -> Data { Crypto.randomBytes(keyfileLength) }
 
     /// Sarma anahtarı: Argon2id(parola); anahtar dosyası varsa ikisi HKDF ile birleştirilir.
@@ -255,14 +258,14 @@ public final class Vault: @unchecked Sendable {
 
     /// Dosyayı şifreleyip kasaya yazar; düz içeriğin SHA-256 özetini (onaltılık) döndürür.
     @discardableResult
-    public func importFile(at source: URL, id: UUID, progress: ((Int) -> Void)? = nil) throws -> String {
+    public func importFile(at source: URL, id: UUID, progress: ((Int) throws -> Void)? = nil) throws -> String {
         let dest = blobURL(id)
         try FileManager.default.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
         let digest = try BlobCrypto.encryptFile(at: source, to: dest, key: fileKey(id), progress: progress)
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 
-    public func exportFile(_ id: UUID, to destination: URL, progress: ((Int) -> Void)? = nil) throws {
+    public func exportFile(_ id: UUID, to destination: URL, progress: ((Int) throws -> Void)? = nil) throws {
         try BlobCrypto.decryptFile(at: blobURL(id), to: destination, key: fileKey(id), progress: progress)
     }
 

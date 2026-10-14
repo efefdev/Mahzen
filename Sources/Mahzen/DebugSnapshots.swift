@@ -75,6 +75,7 @@ enum DebugSnapshots {
 
         report += await backupAndIntegrityChecks(state, vaultURL: vaultURL, work: work, password: password)
         report += await keyfileChecks(state, vaultURL: vaultURL, password: password)
+        report += await lockDuringTaskCheck(state, work: work, password: password)
 
         if let first = state.index.notes.last?.id { state.deleteNote(first) }
         report.append("Çöp kutusu: \(state.index.trashCount) öğe · etiketler \(state.index.allTags)")
@@ -216,30 +217,69 @@ enum DebugSnapshots {
     private static func keyfileChecks(_ state: AppState, vaultURL: URL, password: String) async -> [String] {
         var out: [String] = []
         guard let id = state.vault?.header.vaultID else { return ["Anahtar dosyası testi: kasa yok"] }
-        defer { KeyfileStore.delete(for: id) }
+        let store = KeyfileStore.standard
+        // Yalnızca bu demo kasanın kimliğiyle başlayan dosyalar; başka (gerçek) anahtarlara dokunulmaz.
+        func demoFiles() -> [URL] {
+            let prefix = id.uuidString.lowercased()
+            return ((try? FileManager.default.contentsOfDirectory(atPath: store.directory.path)) ?? [])
+                .filter { $0.hasPrefix(prefix) }
+                .map { store.directory.appendingPathComponent($0) }
+        }
+        defer { demoFiles().forEach { try? FileManager.default.removeItem(at: $0) } }
+
         let enableError = await state.enableKeyfile(password: password)
         let headerText = (try? String(contentsOf: vaultURL.appendingPathComponent("vault.json"), encoding: .utf8)) ?? ""
-        out.append("Bu Mac'e bağla: \(enableError ?? "tamam") · başlıkta iz: \((headerText.lowercased().contains("keyfile") || headerText.lowercased().contains("anahtar")) ? "VAR" : "yok") · dosya izinleri \(String(format: "%o", ((try? FileManager.default.attributesOfItem(atPath: KeyfileStore.url(for: id).path))?[.posixPermissions] as? Int) ?? 0))")
+        let perms = (try? FileManager.default.attributesOfItem(atPath: store.url(for: id).path))?[.posixPermissions] as? Int ?? 0
+        out.append("Bu Mac'e bağla: \(enableError ?? "tamam") · başlıkta iz: \((headerText.lowercased().contains("keyfile") || headerText.lowercased().contains("anahtar")) ? "VAR" : "yok") · dosya izinleri \(String(format: "%o", perms))")
 
         state.lock()
-        let sameMac = await state.unlock(password: password)
-        out.append("Bu Mac'te açılış: \(sameMac ?? "açıldı")")
+        out.append("Bu Mac'te açılış: \(await state.unlock(password: password) ?? "açıldı")")
 
-        // Başka bir Mac'i taklit et: anahtar dosyası yok.
-        let stored = KeyfileStore.load(for: id)
-        KeyfileStore.delete(for: id)
+        // Başka bir Mac'i taklit et: demo anahtarlarını geçici olarak kenara al.
+        let aside = FileManager.default.temporaryDirectory.appendingPathComponent("mahzen-kenar-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: aside, withIntermediateDirectories: true)
+        let moved = demoFiles()
+        for url in moved { try? FileManager.default.moveItem(at: url, to: aside.appendingPathComponent(url.lastPathComponent)) }
         state.lock()
-        let otherMac = await state.unlock(password: password)
-        out.append("Başka Mac'te doğru parola: \(otherMac ?? "AÇILDI (HATA)")")
-        if let stored { try? KeyfileStore.save(stored, for: id) }
-        let back = await state.unlock(password: password)
-        out.append("Anahtar geri gelince: \(back ?? "açıldı")")
+        out.append("Başka Mac'te doğru parola: \(await state.unlock(password: password) ?? "AÇILDI (HATA)")")
+        for url in moved { try? FileManager.default.moveItem(at: aside.appendingPathComponent(url.lastPathComponent), to: url) }
+        try? FileManager.default.removeItem(at: aside)
+        out.append("Anahtar geri gelince: \(await state.unlock(password: password) ?? "açıldı")")
 
         let disableError = await state.disableKeyfile(password: password)
         state.lock()
         let plain = await state.unlock(password: password)
-        out.append("Bağlantı kaldırılınca: \(disableError ?? "tamam") · dosyasız açılış \(plain ?? "açıldı") · Mac'teki dosya \(KeyfileStore.load(for: id) == nil ? "silindi" : "DURUYOR")")
+        out.append("Bağlantı kaldırılınca: \(disableError ?? "tamam") · dosyasız açılış \(plain ?? "açıldı") · etkin anahtar \(store.load(for: id) == nil ? "arşivlendi" : "DURUYOR") · arşivde \(store.candidates(for: id).count)")
+
+        // Denetim bulgusu: anahtarsız açılmış eski bir kopya "bağlanmaya" çalışılınca asıl anahtar değişmemeli.
+        let refusal = await state.enableKeyfile(password: password)
+        out.append("Arşivde anahtar varken yeniden bağlama: \(refusal == nil ? "İZİN VERİLDİ (HATA)" : "engellendi")")
         return out
+    }
+
+    /// Denetim bulgusu: işlem sürerken kilit çalışmıyordu. Büyük dosya şifrelenirken kilitle.
+    private static func lockDuringTaskCheck(_ state: AppState, work: URL, password: String) async -> [String] {
+        let big = work.appendingPathComponent("buyuk-video.bin")
+        FileManager.default.createFile(atPath: big.path, contents: nil)
+        if let h = try? FileHandle(forWritingTo: big) {
+            for _ in 0..<300 { h.write(Crypto.randomBytes(1 << 20)) }
+            try? h.close()
+        }
+        let before = state.index.files.count
+        guard let vault = state.vault else { return ["Kilit testi: kasa yok"] }
+        let blobsBefore = ((FileManager.default.enumerator(atPath: vault.folder.appendingPathComponent("blobs").path)?.allObjects as? [String]) ?? []).filter { $0.hasSuffix(".mhz") }.count
+        state.importFiles([big], into: nil)
+        try? await Task.sleep(for: .milliseconds(400))
+        let wasRunning = state.task != nil
+        let start = Date()
+        state.lock()
+        let lockDelay = Date().timeIntervalSince(start)
+        let lockedNow = state.phase == .locked && state.task == nil
+        try? await Task.sleep(for: .seconds(2))
+        _ = await state.unlock(password: password)
+        let blobsAfter = ((FileManager.default.enumerator(atPath: vault.folder.appendingPathComponent("blobs").path)?.allObjects as? [String]) ?? []).filter { $0.hasSuffix(".mhz") }.count
+        let tmpLeft = (FileManager.default.enumerator(atPath: vault.folder.path)?.allObjects as? [String] ?? []).filter { $0.hasSuffix(".tmp") }.count
+        return ["İşlem sürerken kilit: işlem sürüyordu=\(wasRunning) · anında kilitlendi=\(lockedNow) (\(String(format: "%.2f", lockDelay)) sn) · yeni kayıt=\(state.index.files.count - before) · yeni şifreli dosya=\(blobsAfter - blobsBefore) · yarım dosya=\(tmpLeft)"]
     }
 
     private static func writeTestMovie(to url: URL) async throws {
