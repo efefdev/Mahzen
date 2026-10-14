@@ -1,0 +1,7 @@
+Bu klasör bir Mahzen şifreli kasasıdır.
+
+• İçindeki her şey (dosyalar, dosya adları, notlar, parolalar) AES-256-GCM ile şifrelidir.
+• Açmak için Mahzen uygulamasını ve kasa parolasını kullanın.
+• Klasördeki dosyaları elle değiştirmeyin, silmeyin veya yeniden adlandırmayın.
+• Yedek almak için bu klasörün tamamını başka bir diske kopyalayın.
+• Parola unutulursa veriler kurtarılamaz; parolanın bir kopyasını güvenli bir yerde saklayın.
