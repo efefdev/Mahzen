@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="440 440 1120 1120" width="1120" height="1120">
+  <title>Mahzen</title>
+  <defs>
+    <radialGradient id="frame" gradientUnits="userSpaceOnUse" cx="1000" cy="1150" r="640">
+      <stop offset="0" stop-color="#FBB06E"/>
+      <stop offset="0.55" stop-color="#F3924D"/>
+      <stop offset="1" stop-color="#C55F2A"/>
+    </radialGradient>
+    <linearGradient id="sill" gradientUnits="userSpaceOnUse" x1="661" y1="0" x2="1339" y2="0">
+      <stop offset="0" stop-color="#C9652E"/>
+      <stop offset="0.12" stop-color="#E9894A"/>
+      <stop offset="0.5" stop-color="#F09A5C"/>
+      <stop offset="0.88" stop-color="#E9894A"/>
+      <stop offset="1" stop-color="#C9652E"/>
+    </linearGradient>
+    <radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="1000" cy="1060" r="250">
+      <stop offset="0" stop-color="#F59A55" stop-opacity="0.6"/>
+      <stop offset="0.45" stop-color="#E07A3A" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#E07A3A" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="key" gradientUnits="userSpaceOnUse" cx="1000" cy="1010" r="210">
+      <stop offset="0" stop-color="#FABB82"/>
+      <stop offset="1" stop-color="#F39049"/>
+    </radialGradient>
+  </defs>
+  <!-- Kemer taşları -->
+  <path fill="#25262B" stroke="#25262B" stroke-width="24" stroke-linejoin="round" d="M538.0,915.0 A462,462 0 0 1 570.2,757.5 L699.7,816.5 A320,320 0 0 0 680.0,915.0 Z M590.1,713.8 A462,462 0 0 1 682.1,591.7 L774.5,699.9 A320,320 0 0 0 719.6,772.9 Z M718.6,560.6 A462,462 0 0 1 857.4,487.6 L894.3,625.0 A320,320 0 0 0 811.0,668.8 Z M903.8,475.1 A462,462 0 0 1 1096.2,475.1 L1059.4,612.6 A320,320 0 0 0 940.6,612.6 Z M1142.6,487.6 A462,462 0 0 1 1281.4,560.6 L1189.0,668.8 A320,320 0 0 0 1105.7,625.0 Z M1317.9,591.7 A462,462 0 0 1 1409.9,713.8 L1280.4,772.9 A320,320 0 0 0 1225.5,699.9 Z M1429.8,757.5 A462,462 0 0 1 1462.0,915.0 L1320.0,915.0 A320,320 0 0 0 1300.3,816.5 Z"/>
+  <!-- Yan bloklar ve taban -->
+  <g fill="#25262B">
+    <rect x="518" y="953" width="200" height="160" rx="12"/>
+    <rect x="518" y="1139" width="200" height="160" rx="12"/>
+    <rect x="518" y="1325" width="200" height="160" rx="12"/>
+    <rect x="1282" y="953" width="200" height="160" rx="12"/>
+    <rect x="1282" y="1139" width="200" height="160" rx="12"/>
+    <rect x="1282" y="1325" width="200" height="160" rx="12"/>
+    <rect x="458" y="1446" width="1084" height="96" rx="12"/>
+  </g>
+  <!-- İç karanlık ve ışıma -->
+  <path d="M737,1397 V963 A263,263 0 0 1 1263,963 V1397 Z" fill="#111015"/>
+  <circle cx="1000" cy="1060" r="250" fill="url(#glow)"/>
+  <!-- Turuncu kemer çerçevesi -->
+  <path fill-rule="evenodd" fill="url(#frame)"
+        d="M661,1494 V963 A339,339 0 0 1 1339,963 V1494 Z M737,1397 V963 A263,263 0 0 1 1263,963 V1397 Z"/>
+  <!-- Eşik eğimi -->
+  <path d="M737,1397 H1263 L1339,1494 H661 Z" fill="url(#sill)"/>
+  <!-- Anahtar deliği -->
+  <path fill="url(#key)" d="M1000,917 a72,72 0 0 1 34,135.5 L1060,1189 a14,14 0 0 1 -13.7,16.5 H953.7 a14,14 0 0 1 -13.7,-16.5 L966,1052.5 A72,72 0 0 1 1000,917 Z"/>
+</svg>
