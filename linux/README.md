@@ -4,6 +4,19 @@ Mahzen'in Linux uygulaması: GTK 4 + libadwaita arayüzü, Python ile yazılmı�
 **macOS sürümüyle aynı kasa biçimini kullanır.** Bir SSD'deki `Mahzen Kasası` klasörü hem Mac'te hem Linux'ta açılır;
 iki uygulama da aynı kasaya dosya, not ve parola ekleyebilir.
 
+<p align="center">
+  <img src="../docs/ekran/linux/kilit.png" width="49%" alt="Kilit ekranı">
+  <img src="../docs/ekran/linux/dosyalar.png" width="49%" alt="Dosyalar">
+</p>
+<p align="center">
+  <img src="../docs/ekran/linux/notlar.png" width="49%" alt="Notlar">
+  <img src="../docs/ekran/linux/parolalar.png" width="49%" alt="Parolalar">
+</p>
+<p align="center">
+  <img src="../docs/ekran/linux/ayarlar.png" width="49%" alt="Ayarlar: yanlış parola sınırı">
+  <img src="../docs/ekran/linux/koyu-dosyalar.png" width="49%" alt="Koyu tema">
+</p>
+
 ## Kurulum
 
 Gereksinimler: Python 3.10+, GTK 4, **libadwaita 1.5+**, PyGObject, `cryptography`, `argon2-cffi`.
@@ -65,6 +78,28 @@ macOS sürümündeki özelliklerin çoğu Linux'ta da var:
 | Geçici açma | Şifresiz kopya `$XDG_RUNTIME_DIR` altına (oturuma özel, çoğu sistemde bellekte) yazılır; kilitte ve çıkışta silinir. |
 | Ekran görüntüsünden gizleme | Wayland/X11'de uygulamalar bunu engelleyemez; bu ayar Linux'ta etkisizdir. |
 | Anahtar dosyaları | `~/.local/share/Mahzen/Anahtarlar` (izinler 700/600). Mac'teki anahtar dosyasını taşımak için Mac'te "Dışa aktar", Linux'ta kilit ekranındaki menüden "Anahtar Dosyası İçe Aktar". |
+
+## Test etme (ilk kurulumdan sonra)
+
+Gerçek kasanızla değil, **deneme amaçlı yeni bir kasayla** başlayın:
+
+1. `mahzen` → **Yeni Kasa Oluştur** → konum olarak örneğin `~/Mahzen Deneme` seçin, bir parola belirleyin.
+   Kasa oluşturma birkaç saniye sürer (Argon2id 1 GB bellek kullanır).
+2. **Dosyalar:** birkaç görsel ve bir klasör sürükleyip bırakın ya da `+` ile ekleyin. Küçük resimler oluşmalı,
+   klasör yapısı korunmalı. Bir görsele ve bir `.txt` dosyasına çift tıklayıp önizleyin; birini **Geçici Olarak Aç**,
+   birini **Dışa Aktar** ile deneyin.
+3. **Notlar ve Parolalar:** bir not ve bir parola kaydı ekleyin; parola üreticiyi ve **Kopyala**'yı deneyin
+   (kopyalanan parola 30 sn sonra panodan silinmeli).
+4. **Kilit:** `Ctrl+L` ile kilitleyin, yanlış sonra doğru parola girin. Ekran kilidinde/uykuda da kilitlenmeli.
+5. **Yanlış parola sınırı:** Ayarlar → *Yanlış parola sınırı*'nı açın, deneme sayısını 3 yapın, kilitleyin ve
+   3 kez yanlış parola girin: kasa kalıcı olarak silinmeli. (Bunu yalnızca deneme kasasında yapın!)
+6. **macOS ile ortak kasa (isteğe bağlı):** Mac'te oluşturulmuş bir kasayı (ör. SSD'deki `Mahzen Kasası`)
+   kilit ekranındaki menüden **Başka Kasa Aç…** ile seçin; Mac'teki dosya, not ve parolalar görünmeli.
+   Linux'ta eklediğiniz bir dosya da Mac'te görünmeli.
+7. **Yedek ve bakım:** Ayarlar'dan bir yedek konumu seçip **Şimdi Yedekle**, ardından **Bütünlük taraması**.
+
+Bir sorun görürseniz terminalden `mahzen` ile başlatıp çıktıyı da ekleyerek
+[bir konu açın](https://github.com/efefdev/Mahzen/issues).
 
 ## Komut satırı
 
