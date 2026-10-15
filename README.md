@@ -15,6 +15,13 @@ Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde 
   <img src="docs/ekran/notlar.png" width="49%" alt="Notlar">
 </p>
 
+**Linux sürümü** (GTK 4 + libadwaita):
+
+<p align="center">
+  <img src="docs/ekran/linux/dosyalar.png" width="49%" alt="Linux: Dosyalar">
+  <img src="docs/ekran/linux/parolalar.png" width="49%" alt="Linux: Parolalar">
+</p>
+
 ## Özellikler
 
 **Dosyalar**
@@ -67,6 +74,14 @@ Uygulamada açık anahtarlı şifreleme (RSA/ECC) bulunmaz; bu yüzden kuantum b
 ### Yanlış parola sınırı
 
 **Ayarlar → Yanlış parola sınırı** bölümünden açılıp kapatılır; deneme sayısı 3 ile 99 arasında seçilir (açılırken 5). Açıkken:
+
+<p align="center">
+  <img src="docs/ekran/sinir-ayar.png" width="100%" alt="Ayarlar: yanlış parola sınırı">
+</p>
+<p align="center">
+  <img src="docs/ekran/sinir-son-hak.png" width="49%" alt="Kilit ekranı: son deneme hakkı">
+  <img src="docs/ekran/sinir-silindi.png" width="49%" alt="Kasa kalıcı olarak silindi">
+</p>
 
 - Kilit ekranında her yanlış parola sayılır ve kalan deneme hakkı gösterilir. Doğru parolayla açılınca sayaç sıfırlanır.
 - Sınıra ulaşıldığında kasanın sarılmış ana anahtarını taşıyan `vault.json` (ve varsa `vault.json.bak`) rastgele baytlarla ezilip silinir. Ana anahtar başka hiçbir yerde olmadığından kasadaki dosyalar, notlar ve parolalar **doğru parolayla bile bir daha açılamaz; geri alınamaz.** Klasörde kalan şifreli dosyalar işe yaramaz hale gelir.
