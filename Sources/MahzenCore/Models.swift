@@ -133,8 +133,8 @@ public struct GeneratorOptions: Codable, Hashable, Sendable {
 
 public struct Preferences: Codable, Hashable, Sendable {
     public var displayName = "Mahzen"
-    public var accent = "indigo"
-    public var appearance = "system"
+    public var accent = "orange"
+    public var appearance = "dark"
     public var autoLockMinutes = 5
     public var clipboardClearSeconds = 30
     public var lockOnSleep = true

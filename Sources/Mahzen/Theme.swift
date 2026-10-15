@@ -3,7 +3,7 @@ import MahzenCore
 import SwiftUI
 
 enum AccentChoice: String, CaseIterable, Identifiable {
-    case indigo, blue, teal, green, orange, pink, red, purple, graphite
+    case orange, indigo, blue, teal, green, pink, red, purple, graphite
 
     var id: String { rawValue }
 
@@ -35,12 +35,12 @@ enum AccentChoice: String, CaseIterable, Identifiable {
         }
     }
 
-    init(_ raw: String?) { self = AccentChoice(rawValue: raw ?? "") ?? .indigo }
+    init(_ raw: String?) { self = AccentChoice(rawValue: raw ?? "") ?? .orange }
 }
 
 /// Ayarlarda seçilen vurgu rengi. `Color.accentColor` sistem rengini döndürdüğü için görünümler bunu kullanır.
 private struct VaultAccentKey: EnvironmentKey {
-    static let defaultValue = Color.indigo
+    static let defaultValue = Color.orange
 }
 
 extension EnvironmentValues {

@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 SECRET_CATEGORIES = ["login", "card", "wifi", "server", "note", "other"]
-ACCENTS = ["indigo", "blue", "teal", "green", "orange", "pink", "red", "purple", "graphite"]
+ACCENTS = ["orange", "indigo", "blue", "teal", "green", "pink", "red", "purple", "graphite"]
 
 DEFAULT_GENERATOR = {
     "length": 20, "uppercase": True, "lowercase": True, "digits": True, "symbols": True, "avoidAmbiguous": True,
@@ -21,8 +21,8 @@ DEFAULT_GENERATOR = {
 
 DEFAULT_PREFERENCES = {
     "displayName": "Mahzen",
-    "accent": "indigo",
-    "appearance": "system",
+    "accent": "orange",
+    "appearance": "dark",
     "autoLockMinutes": 5,
     "clipboardClearSeconds": 30,
     "lockOnSleep": True,

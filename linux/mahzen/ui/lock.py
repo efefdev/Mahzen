@@ -194,8 +194,7 @@ class LockPage(Gtk.Box):
         self.date = Gtk.Label(css_classes=["title-4", "dim-label"])
         box.append(self.clock)
         box.append(self.date)
-        lock_icon = Gtk.Image(icon_name="system-lock-screen-symbolic", pixel_size=40, margin_top=36,
-                              css_classes=["accent"])
+        lock_icon = Gtk.Image(icon_name="dev.efef.Mahzen", pixel_size=96, margin_top=28)
         box.append(lock_icon)
         self.name = Gtk.Label(css_classes=["title-2"])
         box.append(self.name)

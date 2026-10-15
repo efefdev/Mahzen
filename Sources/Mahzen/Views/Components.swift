@@ -12,6 +12,8 @@ struct AuraBackground: View {
 
     var body: some View {
         let accent = state.accent.color
+        // Turuncuda geniş renk kayması sarı-yeşile kaçar; marka rengi sıcak tonlarda kalsın.
+        let spread: Double = state.accent == .orange ? 12 : 45
         GeometryReader { geo in
             let w = geo.size.width, h = geo.size.height
             ZStack {
@@ -23,12 +25,12 @@ struct AuraBackground: View {
                         .offset(x: drift ? -w * 0.28 : -w * 0.12, y: drift ? -h * 0.30 : -h * 0.12)
                     Circle()
                         .fill(accent.opacity(scheme == .dark ? 0.40 : 0.25))
-                        .hueRotation(.degrees(45))
+                        .hueRotation(.degrees(spread))
                         .frame(width: w * 0.6)
                         .offset(x: drift ? w * 0.30 : w * 0.18, y: drift ? h * 0.22 : h * 0.34)
                     Circle()
                         .fill(accent.opacity(scheme == .dark ? 0.30 : 0.18))
-                        .hueRotation(.degrees(-40))
+                        .hueRotation(.degrees(-spread * 0.9))
                         .frame(width: w * 0.45)
                         .offset(x: drift ? w * 0.05 : -w * 0.08, y: drift ? h * 0.05 : -h * 0.02)
                 }
@@ -49,28 +51,17 @@ struct AuraBackground: View {
     }
 }
 
+/// Mahzen logosu, alttan turuncu bir ışıltıyla. Kilit açılırken anahtar deliği parlar.
 struct VaultBadge: View {
     var size: CGFloat = 76
     var open = false
-    @EnvironmentObject private var state: AppState
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
-                .fill(LinearGradient(colors: [state.accent.color.opacity(0.95), state.accent.color.opacity(0.55)], startPoint: .top, endPoint: .bottom))
-            RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
-                .strokeBorder(.white.opacity(0.25), lineWidth: max(1, size * 0.012))
-            Image(systemName: "shield.fill")
-                .font(.system(size: size * 0.52, weight: .semibold))
-                .foregroundStyle(.white)
-            Image(systemName: open ? "lock.open.fill" : "lock.fill")
-                .font(.system(size: size * 0.2, weight: .bold))
-                .foregroundStyle(state.accent.color)
-                .contentTransition(.symbolEffect(.replace))
-                .offset(x: open ? size * 0.015 : 0, y: size * 0.02)
-        }
-        .frame(width: size, height: size)
-        .shadow(color: state.accent.color.opacity(0.5), radius: size * 0.25, y: size * 0.1)
+        MahzenLogo(open: open)
+            .frame(width: size, height: size)
+            .scaleEffect(1.2) // logo kendi tuvalinde kenar boşluğu bırakır; rozet boyutunu korumak için
+            .frame(width: size, height: size)
+            .shadow(color: MahzenLogo.glowColor.opacity(0.35), radius: size * 0.2, y: size * 0.08)
     }
 }
 

@@ -409,8 +409,8 @@ class MahzenApp(Adw.Application):
         manager = Adw.StyleManager.get_default()
         manager.set_color_scheme({
             "light": Adw.ColorScheme.FORCE_LIGHT, "dark": Adw.ColorScheme.FORCE_DARK,
-        }.get(appearance or "system", Adw.ColorScheme.DEFAULT))
-        color = ACCENT_HEX.get(accent or "indigo", ACCENT_HEX["indigo"])
+        }.get(appearance or "dark", Adw.ColorScheme.DEFAULT))
+        color = ACCENT_HEX.get(accent or "orange", ACCENT_HEX["orange"])
         css = (f"@define-color accent_bg_color {color};\n@define-color accent_color {color};\n"
                f"@define-color accent_fg_color #ffffff;\n")
         if (Gtk.get_major_version(), Gtk.get_minor_version()) >= (4, 16):

@@ -5,6 +5,10 @@ Mahzen'in Linux uygulaması: GTK 4 + libadwaita arayüzü, Python ile yazılmı�
 iki uygulama da aynı kasaya dosya, not ve parola ekleyebilir.
 
 <p align="center">
+  <img src="../Resources/Logo/mahzen-logo.svg" width="128" alt="Mahzen logosu">
+</p>
+
+<p align="center">
   <img src="../docs/ekran/linux/kilit.png" width="49%" alt="Kilit ekranı">
   <img src="../docs/ekran/linux/dosyalar.png" width="49%" alt="Dosyalar">
 </p>
@@ -14,7 +18,7 @@ iki uygulama da aynı kasaya dosya, not ve parola ekleyebilir.
 </p>
 <p align="center">
   <img src="../docs/ekran/linux/ayarlar.png" width="49%" alt="Ayarlar: yanlış parola sınırı">
-  <img src="../docs/ekran/linux/koyu-dosyalar.png" width="49%" alt="Koyu tema">
+  <img src="../docs/ekran/linux/acik-dosyalar.png" width="49%" alt="Açık tema">
 </p>
 
 ## Kurulum
@@ -66,7 +70,7 @@ macOS sürümündeki özelliklerin çoğu Linux'ta da var:
   silinir; Ayarlar'dan açılıp kapatılır, sayı 3–99 arası; ayrıntılar ana [README](../README.md#yanlış-parola-sınırı)'de);
   eski (PBKDF2) kasaları açılışta Argon2id'ye yükseltme
 - **Bakım:** çöp kutusu (ayarlanabilir süre), artımlı yedek ve hatırlatma, bütünlük taraması ve yedekten geri yükleme
-- **Görünüm:** açık / koyu / sistem teması, 9 vurgu rengi (ayarlar kasada saklanır, iki sistemde ortaktır)
+- **Görünüm:** varsayılan olarak turuncu-siyah; açık / koyu / sistem teması, 9 vurgu rengi (ayarlar kasada saklanır, iki sistemde ortaktır)
 
 ### Linux'a özgü farklar
 

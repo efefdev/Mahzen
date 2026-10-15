@@ -75,10 +75,12 @@ PYTHONPATH="$APP_DIR\${PYTHONPATH:+:\$PYTHONPATH}" exec python3 -m mahzen cli "\
 SH
 chmod +x "$BIN_DIR/mahzen" "$BIN_DIR/mahzen-cli"
 
-for size in 128x128 256x256 512x512; do
+for size in 16x16 32x32 48x48 64x64 128x128 256x256 512x512; do
     mkdir -p "$PREFIX/icons/hicolor/$size/apps"
     cp "$DIR/data/icons/hicolor/$size/apps/dev.efef.Mahzen.png" "$PREFIX/icons/hicolor/$size/apps/"
 done
+mkdir -p "$PREFIX/icons/hicolor/scalable/apps"
+cp "$DIR/data/icons/hicolor/scalable/apps/dev.efef.Mahzen.svg" "$PREFIX/icons/hicolor/scalable/apps/"
 sed "s|^Exec=mahzen|Exec=$BIN_DIR/mahzen|" "$DIR/data/dev.efef.Mahzen.desktop" > "$PREFIX/applications/dev.efef.Mahzen.desktop"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$PREFIX/applications" || true
 command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -q -t "$PREFIX/icons/hicolor" || true
