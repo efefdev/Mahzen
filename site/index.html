@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mahzen — Sırların, kendi mahzeninde.</title>
+  <meta name="description" content="Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde saklayan, çevrimdışı çalışan bir kasa. AES-256-GCM ve Argon2id. macOS ve Linux.">
+  <meta name="theme-color" content="#000000">
+  <link rel="canonical" href="https://mahzen.efef.dev/">
+  <link rel="icon" href="img/mahzen-logo.svg" type="image/svg+xml">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mahzen.efef.dev/">
+  <meta property="og:title" content="Mahzen — Sırların, kendi mahzeninde.">
+  <meta property="og:description" content="Dosyalar, notlar ve parolalar için çevrimdışı, şifreli, taşınabilir kasa. macOS ve Linux.">
+  <meta property="og:image" content="https://mahzen.efef.dev/img/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="nav" id="nav">
+    <div class="nav-in">
+      <a class="brand" href="#ust" aria-label="Mahzen, başa dön"><img src="img/mahzen-logo.svg" alt="" width="22" height="22">Mahzen</a>
+      <nav aria-label="Bölümler">
+        <a href="#guvenlik">Güvenlik</a>
+        <a href="#ozellikler">Özellikler</a>
+        <a href="#sinir">Kendini silme</a>
+        <a href="#sistemler"><span lang="en">macOS</span> ve <span lang="en">Linux</span></a>
+      </nav>
+      <a class="nav-btn" href="#kurulum">Kur</a>
+    </div>
+  </header>
+
+  <main id="ust">
+    <!-- 1. GİRİŞ -->
+    <section class="hero">
+      <div class="hero-copy">
+        <img class="hero-icon" src="img/mahzen-logo.svg" alt="Mahzen logosu" width="112" height="112">
+        <h1>Sırların, <br class="br-m"><span class="glow-text nowrap">kendi mahzeninde.</span></h1>
+        <p class="hero-sub">Dosyaların, notların ve parolaların için şifreli, taşınabilir bir kasa.
+          <span class="nowrap">Hesap yok. Bulut yok.</span> <span class="nowrap">Yalnızca sen.</span></p>
+        <p class="links">
+          <a class="link-fire" href="#kurulum">Kur ve başla <span aria-hidden="true">›</span></a>
+          <a class="link" href="https://github.com/efefdev/Mahzen" rel="noopener">GitHub'da incele <span aria-hidden="true">›</span></a>
+        </p>
+      </div>
+      <div class="stage" id="heroStage">
+        <div class="stage-light" aria-hidden="true"></div>
+        <img class="shot shot-hero" src="img/mac-dosyalar.webp" alt="Mahzen'in macOS'taki dosyalar ekranı" width="2240" height="1440" fetchpriority="high">
+      </div>
+    </section>
+
+    <!-- 2. GÜVENLİK, RAKAMLARLA -->
+    <section class="statement" id="guvenlik">
+      <p class="eyebrow">Güvenlik</p>
+      <h2 class="big">Gördüğün her şey şifreli.<br><span class="dim">Görmediğin her şey de.</span></h2>
+      <p class="statement-sub">Dosya içerikleri, dosya adları, klasörler, notlar ve parolalar bu bilgisayardan çıkmadan şifrelenir.
+        Diskte geriye yalnızca rastgele adlı, rastgele görünen baytlar kalır.</p>
+
+      <dl class="numbers">
+        <div><dt><span class="count" data-to="256">256</span><small>bit</small></dt><dd>AES-GCM ile şifreleme; her dosyaya ayrı anahtar.</dd></div>
+        <div><dt><span class="count" data-to="1">1</span><small>GB</small></dt><dd>Argon2id'nin parola başına harcattığı bellek. Toplu tahmin pahalıdır.</dd></div>
+        <div><dt><span class="count" data-to="0">0</span><small>sunucu</small></dt><dd>Hesap yok, bulut yok, internete giden tek bir bayt yok.</dd></div>
+      </dl>
+
+      <div class="cipher-line" aria-hidden="true">
+        <span class="cl-plain" id="clText">pasaport-taramasi.pdf</span>
+        <span class="cl-arrow">→</span>
+        <span class="cl-hex" id="clHex">3f9a…</span>
+      </div>
+    </section>
+
+    <!-- 3. ÖZELLİKLER: sabit ekran, değişen içerik -->
+    <section class="tour" id="ozellikler">
+      <div class="tour-head">
+        <p class="eyebrow">İçeride</p>
+        <h2 class="big">Gizli olan her şey.<br><span class="dim">Tek bir yerde.</span></h2>
+      </div>
+      <div class="tour-grid">
+        <div class="tour-steps">
+          <article class="step" data-shot="0">
+            <h3>Dosyalar</h3>
+            <p>Sürükle, bırak. Klasör yapısı korunur, eklerken şifrelenir. Görseller ve metinler uygulama içinde
+              açılır; mükerrer dosya ikinci kez eklenmez.</p>
+          </article>
+          <article class="step" data-shot="1">
+            <h3>Notlar</h3>
+            <p>Kurtarma ifadeleri, pasaport numaraları, yarım kalmış planlar. Renklendir, sabitle, ara.</p>
+          </article>
+          <article class="step" data-shot="2">
+            <h3>Parolalar</h3>
+            <p>Hesap, kart, Wi-Fi, sunucu. Güçlü parola üretir, gücünü ölçer; kopyaladığın parolayı
+              30 saniye sonra panodan siler.</p>
+          </article>
+          <article class="step" data-shot="3">
+            <h3>Kendiliğinden kilit</h3>
+            <p>Hareketsiz kaldığında, uykuda, ekran kilitlendiğinde ve SSD çıkarıldığı an kilitlenir.
+              Anahtarlar bellekten silinir.</p>
+          </article>
+        </div>
+        <div class="tour-sticky">
+          <div class="tour-frame">
+            <div class="stage-light small" aria-hidden="true"></div>
+            <img class="shot tour-shot is-on" src="img/mac-dosyalar.webp" alt="Dosyalar ekranı" width="2240" height="1440" loading="lazy">
+            <img class="shot tour-shot" src="img/mac-notlar.webp" alt="Notlar ekranı" width="2240" height="1440" loading="lazy">
+            <img class="shot tour-shot" src="img/mac-parolalar.webp" alt="Parolalar ekranı" width="2240" height="1440" loading="lazy">
+            <img class="shot tour-shot" src="img/mac-kilit.webp" alt="Kilit ekranı" width="2240" height="1440" loading="lazy">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. KENDİNİ SİLME -->
+    <section class="wipe" id="sinir">
+      <div class="wipe-copy">
+        <p class="eyebrow ember">Yanlış parola sınırı</p>
+        <h2 class="big">Beş yanlış parola.<br><span class="ember-text">Sonra hiçbir şey.</span></h2>
+        <p class="statement-sub">Açarsan, art arda belirlediğin sayıda yanlış parola girildiğinde Mahzen kendi anahtarlarını
+          yok eder. Kasadaki her şey, doğru parolayla bile, bir daha açılamaz.</p>
+      </div>
+      <div class="wipe-stage">
+        <div class="stage-light ember" aria-hidden="true"></div>
+        <img class="shot" src="img/mac-son-hak.webp" alt="Kilit ekranı: Parola yanlış. Son deneme hakkı: bir yanlış daha kasayı siler." width="2240" height="1440" loading="lazy">
+      </div>
+      <ul class="facts">
+        <li><b>3–99</b><span>deneme arası, istediğin an aç ya da kapat</span></li>
+        <li><b>Kalan hak</b><span>kilit ekranında görünür, doğru parolada sıfırlanır</span></li>
+        <li><b>Tek sayaç</b><span>macOS, Linux ve komut satırı aynı sayacı paylaşır</span></li>
+      </ul>
+    </section>
+
+    <!-- 5. İKİ SİSTEM -->
+    <section class="systems" id="sistemler">
+      <p class="eyebrow"><span lang="en">macOS</span> ve <span lang="en">Linux</span></p>
+      <h2 class="big">Bir kasa. <span class="dim">İki dünya.</span></h2>
+      <p class="statement-sub center">Kasayı SSD'ye koy; Mac'te de Linux'ta da aç. Bir yerde eklediğin dosya,
+        öbüründe hemen orada.</p>
+      <div class="pair">
+        <img class="shot pair-back" src="img/linux-parolalar.webp" alt="Mahzen'in Linux'taki parolalar ekranı" width="1024" height="760" loading="lazy">
+        <img class="shot pair-front" src="img/mac-parolalar.webp" alt="Mahzen'in macOS'taki parolalar ekranı" width="2240" height="1440" loading="lazy">
+      </div>
+      <p class="caption"><span lang="en">macOS</span> · SwiftUI &nbsp;&nbsp;/&nbsp;&nbsp; <span lang="en">Linux</span> · GTK 4 + libadwaita</p>
+    </section>
+
+    <!-- 6. KURULUM -->
+    <section class="install" id="kurulum">
+      <h2 class="big">Mahzene in.</h2>
+      <div class="install-grid">
+        <div class="cmd">
+          <p class="cmd-os"><span lang="en">macOS</span> <small>14+ · Xcode 15.3+</small></p>
+          <pre><code>git clone https://github.com/efefdev/Mahzen.git
+cd Mahzen
+./scripts/build-app.sh</code></pre>
+          <button class="copy" data-copy="git clone https://github.com/efefdev/Mahzen.git && cd Mahzen && ./scripts/build-app.sh">Kopyala</button>
+        </div>
+        <div class="cmd">
+          <p class="cmd-os"><span lang="en">Linux</span> <small>GTK 4 · libadwaita 1.5+</small></p>
+          <pre><code>git clone https://github.com/efefdev/Mahzen.git
+cd Mahzen/linux
+./install.sh</code></pre>
+          <button class="copy" data-copy="git clone https://github.com/efefdev/Mahzen.git && cd Mahzen/linux && ./install.sh">Kopyala</button>
+        </div>
+      </div>
+      <p class="fine">Mahzen henüz bağımsız bir güvenlik denetiminden geçmedi. Yapı taşları denetlenmiş kütüphanelerdir; onları
+        birleştiren kod değildir. Bir açık bulursan <a href="https://github.com/efefdev/Mahzen/blob/main/SECURITY.md" rel="noopener">bildir</a>.
+        Parolanı unutursan verilerin kurtarılamaz; arka kapı yoktur.</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-in">
+      <a class="brand" href="#ust"><img src="img/mahzen-logo.svg" alt="" width="22" height="22">Mahzen</a>
+      <p>Kaynağı açık · <a href="https://github.com/efefdev/Mahzen/blob/main/LICENSE" rel="noopener">PolyForm Noncommercial 1.0.0</a> · ticari kullanıma kapalı</p>
+      <p class="footer-links"><a href="https://github.com/efefdev/Mahzen" rel="noopener">GitHub</a><a href="https://efef.dev" rel="noopener">efef.dev</a></p>
+    </div>
+  </footer>
+
+  <script src="main.js" defer></script>
+</body>
+</html>
