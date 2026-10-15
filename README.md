@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Resources/Logo/mahzen-logo.svg" width="160" alt="Mahzen logosu">
+</p>
+
 # Mahzen
 
 **Dosyaların, notların ve parolaların için şifreli, taşınabilir bir kasa.**
@@ -46,7 +50,7 @@ Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde 
 - Bütünlük taraması: her dosyayı çözerek doğrular, bozuk olanları yedekten geri yükler
 
 **Görünüm**
-- Açık / koyu / sistem teması, 9 vurgu rengi, ızgara veya liste görünümü
+- Varsayılan olarak logoyla uyumlu turuncu-siyah görünüm; açık / koyu / sistem teması ve 9 vurgu rengi (eski çivit dahil) seçilebilir; ızgara veya liste görünümü
 - Saatli kilit ekranı, Caps Lock uyarısı, Türkçe arayüz
 
 ## Şifreleme nasıl çalışıyor?

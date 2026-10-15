@@ -1151,7 +1151,8 @@ final class AppState: ObservableObject {
 
     func applyAppearance() {
         let raw = phase == .unlocked ? prefs.appearance : UserDefaults.standard.string(forKey: "lockAppearance")
-        NSApp?.appearance = AppearanceChoice(rawValue: raw ?? "")?.nsAppearance
+        // Henüz hiçbir kasa açılmadıysa marka görünümü: koyu zemin, turuncu vurgu.
+        NSApp?.appearance = AppearanceChoice(rawValue: raw ?? "dark")?.nsAppearance
     }
 
     /// Açıkken pencere ekran görüntüsü, kayıt ve ekran paylaşımında boş görünür.

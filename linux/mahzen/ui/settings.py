@@ -10,8 +10,8 @@ from ..core import vault as vaultmod
 from ..core.passwords import STRENGTH_LABELS, strength
 from .common import alert, ask_password, confirm, format_date, format_size
 
-ACCENT_TITLES = [("indigo", "Çivit"), ("blue", "Mavi"), ("teal", "Turkuaz"), ("green", "Yeşil"),
-                 ("orange", "Turuncu"), ("pink", "Pembe"), ("red", "Kırmızı"), ("purple", "Mor"),
+ACCENT_TITLES = [("orange", "Turuncu"), ("indigo", "Çivit"), ("blue", "Mavi"), ("teal", "Turkuaz"),
+                 ("green", "Yeşil"), ("pink", "Pembe"), ("red", "Kırmızı"), ("purple", "Mor"),
                  ("graphite", "Grafit")]
 APPEARANCES = [("system", "Sistem"), ("light", "Açık"), ("dark", "Koyu")]
 FONT_DESIGNS = [("default", "Sistem"), ("serif", "Serif"), ("rounded", "Yuvarlak"), ("monospaced", "Eş aralıklı")]

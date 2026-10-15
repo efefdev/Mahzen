@@ -97,7 +97,7 @@ enum DebugSnapshots {
         state.section = .settings
         await snap("07-ayarlar", outDir)
 
-        state.updatePreferences { $0.appearance = "dark"; $0.accent = "teal" }
+        state.updatePreferences { $0.appearance = "dark"; $0.accent = "orange" }
         state.section = .secrets
         await snap("08-koyu-parolalar", outDir)
         state.section = .files
@@ -105,7 +105,7 @@ enum DebugSnapshots {
         state.lock()
         await snap("10-koyu-kilitli", outDir)
         UserDefaults.standard.set("light", forKey: "lockAppearance")
-        UserDefaults.standard.set("indigo", forKey: "lockAccent")
+        UserDefaults.standard.set("orange", forKey: "lockAccent")
         state.applyAppearance()
         state.objectWillChange.send()
         await snap("11-acik-kilitli", outDir)
