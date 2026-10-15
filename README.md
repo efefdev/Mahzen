@@ -6,6 +6,21 @@
 
 **Dosyaların, notların ve parolaların için şifreli, taşınabilir bir kasa.**
 
+<p align="center">
+  <a href="https://mahzen.efef.dev"><b>🌐 mahzen.efef.dev</b></a>
+  &nbsp;·&nbsp; <a href="#kurulum">Kurulum</a>
+  &nbsp;·&nbsp; <a href="linux/README.md">Linux</a>
+  &nbsp;·&nbsp; <a href="SECURITY.md">Güvenlik</a>
+</p>
+
+<p align="center">
+  <a href="https://mahzen.efef.dev"><img src="site/img/og.png" width="720" alt="Mahzen tanıtım sitesi: Sırların, kendi mahzeninde."></a>
+</p>
+
+Mahzen'in nasıl çalıştığını görmenin en kısa yolu **[tanıtım sitesi](https://mahzen.efef.dev)**: şifrelemenin
+rakamlarla anlatımı, uygulamanın kısa bir turu, kendini silme özelliği ve macOS ile Linux'un aynı kasayı nasıl
+paylaştığı tek sayfada. Ayrıntılar, kurulum ve güvenlik sınırları bu README'de.
+
 Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde saklayan yerel bir macOS ve Linux uygulamasıdır. Uygulama ile kasa yan yana bir SSD'de durabilir; aynı kasa her Mac'te ve her Linux bilgisayarda açılabilir. İnternete hiçbir şey gönderilmez, hesap gerekmez.
 
 > 🐧 **Linux sürümü:** [`linux/`](linux/) klasöründe (GTK 4 + libadwaita). macOS ile aynı kasa biçimini kullanır; bir kasa iki sistemde de açılır ve düzenlenir. Kurulum: `cd linux && ./install.sh` — ayrıntılar [linux/README.md](linux/README.md)'de.
@@ -151,6 +166,7 @@ Sources/
 Tests/            Çekirdek testleri
 scripts/          Uygulama paketleme ve simge üretme
 linux/            Linux uygulaması (Python, GTK 4 + libadwaita) ve aynı kasa biçiminin Python çekirdeği
+site/             Tanıtım sitesi (mahzen.efef.dev); main'e girince GitHub Pages'e otomatik yayınlanır
 ```
 
 ## Yol haritası
