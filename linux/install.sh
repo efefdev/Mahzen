@@ -85,9 +85,24 @@ sed "s|^Exec=mahzen|Exec=$BIN_DIR/mahzen|" "$DIR/data/dev.efef.Mahzen.desktop" >
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$PREFIX/applications" || true
 command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -q -t "$PREFIX/icons/hicolor" || true
 
-echo
-echo "✓ Mahzen kuruldu. Uygulama menüsünden açın ya da terminalde: mahzen"
+# Uygulama menüsünü yenile (KDE menüsü yeni girdileri ancak önbellek yenilenince gösterir).
+command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 >/dev/null 2>&1 || true
+command -v kbuildsycoca5 >/dev/null 2>&1 && kbuildsycoca5 >/dev/null 2>&1 || true
+
+# ~/.local/bin PATH'te değilse kabuk ayarına ekle (oturum açılırken klasör yoksa sistem eklemiyor).
 case ":$PATH:" in
     *":$BIN_DIR:"*) ;;
-    *) echo "  Not: $BIN_DIR PATH içinde değil; terminalden çalıştırmak için PATH'e ekleyin." ;;
+    *)
+        for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+            [ -f "$rc" ] || continue
+            grep -qs 'mahzen: ~/.local/bin' "$rc" || printf '\n# mahzen: ~/.local/bin\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$rc"
+        done
+        PATH_NOTE=1 ;;
 esac
+
+echo
+echo "✓ Mahzen kuruldu. Uygulama menüsünden açın ya da terminalde: mahzen"
+if [ -n "${PATH_NOTE:-}" ]; then
+    echo "  Not: $BIN_DIR kabuk ayarına eklendi; yeni bir terminal açın ya da: source ~/.bashrc"
+fi
+echo "  Kurulumu sınamak için: $DIR/test.sh"
