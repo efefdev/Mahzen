@@ -114,6 +114,25 @@ bağlantılara izin verin; Fedora'nın varsayılan *FedoraWorkstation* bölgesi 
 | Ekran görüntüsünden gizleme | Wayland/X11'de uygulamalar bunu engelleyemez; bu ayar Linux'ta etkisizdir. |
 | Anahtar dosyaları | `~/.local/share/Mahzen/Anahtarlar` (izinler 700/600). Mac'teki anahtar dosyasını taşımak için Mac'te "Dışa aktar", Linux'ta kilit ekranındaki menüden "Anahtar Dosyası İçe Aktar". |
 
+### Masaüstü kabuğuyla bağlantı (D-Bus)
+
+Uygulama çalışırken oturum veriyolunda `dev.efef.Mahzen` adında, `/dev/efef/Mahzen1` nesnesinde
+`dev.efef.Mahzen1` arayüzünü sunar. Kasa açılmaz, içerik okunmaz; yalnızca kilit durumu ve kilitleme:
+
+| Üye | Tür | Anlamı |
+|---|---|---|
+| `Locked` | özellik `b` | Kasa kilitli mi (açık kasa yoksa da `true`) |
+| `Vaults` | özellik `as` | Seçili kasanın klasör adı (tam yol değil) |
+| `Lock()` | yöntem `→ b` | Hemen kilitler; kasa açıktı ve bu çağrıyla kilitlendiyse `true` |
+| `LockedChanged` | sinyal `b` | Kilit durumu değişti (`PropertiesChanged` de yayımlanır) |
+
+```sh
+gdbus call --session -d dev.efef.Mahzen -o /dev/efef/Mahzen1 -m dev.efef.Mahzen1.Lock
+```
+
+Uygulama çalışmıyorsa ad da yoktur; D-Bus ile kendiliğinden başlatılmaz. efefOS kilit ekranı ve panik
+düğmesi kasayı bu yolla kilitler.
+
 ## Test etme (ilk kurulumdan sonra)
 
 Gerçek kasanızla değil, **deneme amaçlı yeni bir kasayla** başlayın:
