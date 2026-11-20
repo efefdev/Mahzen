@@ -81,9 +81,7 @@ struct FilesView: View {
     @State private var renamingFolder: Folder?
     @State private var tagging: Set<UUID>?
     @State private var dropTargeted = false
-    @State private var tileFrames: [UUID: CGRect] = [:]
-    @State private var marquee: CGRect?
-    @State private var marqueeBase = Set<UUID>()
+    @StateObject private var marquee = MarqueeSelection()
 
     private var index: VaultIndex { state.index }
     private var current: UUID? { state.currentFolder }
@@ -309,8 +307,12 @@ struct FilesView: View {
                             .contextMenu { menu(for: selection.contains(item.id) ? selection : [item.id]) }
                             .onDrag { dragProvider(item) }
                             .background {
+                                // Izgara tembel çizildiği için her öğe konumunu ekrana geldiğinde kaydeder.
                                 GeometryReader { g in
-                                    Color.clear.preference(key: TileFramesKey.self, value: [item.id: g.frame(in: .named(Self.gridSpace))])
+                                    let frame = g.frame(in: .named(Self.gridSpace))
+                                    Color.clear
+                                        .onAppear { marquee.frames[item.id] = frame }
+                                        .onChange(of: frame) { _, new in marquee.frames[item.id] = new }
                                 }
                             }
                     }
@@ -321,10 +323,11 @@ struct FilesView: View {
                 .background {
                     Color.clear.contentShape(Rectangle())
                         .onTapGesture { selection.removeAll() }
-                        .simultaneousGesture(marqueeGesture)
+                        .simultaneousGesture(marqueeGesture(items))
+                        .background(EnclosingScrollViewReader { marquee.scrollView = $0 })
                 }
                 .overlay(alignment: .topLeading) {
-                    if let rect = marquee {
+                    if let rect = marquee.rect {
                         Rectangle()
                             .fill(accent.opacity(0.12))
                             .overlay(Rectangle().strokeBorder(accent.opacity(0.75), lineWidth: 1))
@@ -334,7 +337,6 @@ struct FilesView: View {
                     }
                 }
                 .coordinateSpace(name: Self.gridSpace)
-                .onPreferenceChange(TileFramesKey.self) { tileFrames = $0 }
             }
         }
     }
@@ -344,26 +346,19 @@ struct FilesView: View {
     private static let gridSpace = "files.grid"
 
     /// Boş alandan başlayan sürükleme: dikdörtgene değen öğeler seçilir. ⌘ ya da ⇧ basılıysa
-    /// mevcut seçim korunur ve dikdörtgendekiler tersine çevrilir (Finder gibi).
-    private var marqueeGesture: some Gesture {
+    /// mevcut seçim korunur ve dikdörtgendekiler tersine çevrilir (Finder gibi). Kenara gelince ızgara kayar.
+    private func marqueeGesture(_ items: [FileItem]) -> some Gesture {
         DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.gridSpace))
             .onChanged { value in
-                if marquee == nil {
+                if marquee.rect == nil {
                     let flags = NSEvent.modifierFlags
-                    marqueeBase = flags.contains(.command) || flags.contains(.shift) ? selection : []
+                    let base = flags.contains(.command) || flags.contains(.shift) ? selection : []
+                    let visible = Set(items.map(\.id))
+                    marquee.begin(at: value.startLocation, base: base) { selection = $0.intersection(visible.union(base)) }
                 }
-                let rect = CGRect(x: min(value.startLocation.x, value.location.x),
-                                  y: min(value.startLocation.y, value.location.y),
-                                  width: abs(value.location.x - value.startLocation.x),
-                                  height: abs(value.location.y - value.startLocation.y))
-                marquee = rect
-                let hit = Set(tileFrames.filter { $0.value.intersects(rect) }.keys)
-                selection = marqueeBase.symmetricDifference(hit)
+                marquee.update(to: value.location)
             }
-            .onEnded { _ in
-                marquee = nil
-                marqueeBase = []
-            }
+            .onEnded { _ in marquee.end() }
     }
 
     @ViewBuilder
@@ -1002,11 +997,109 @@ struct FilePreviewSheet: View {
     }
 }
 
-/// Izgaradaki öğelerin konumları (dikdörtgenle seçim için).
-private struct TileFramesKey: PreferenceKey {
-    static let defaultValue: [UUID: CGRect] = [:]
-    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
-        value.merge(nextValue()) { _, new in new }
+/// Dikdörtgenle seçim: öğe konumları, sürükleme dikdörtgeni ve kenarda otomatik kaydırma.
+/// Konumlar ızgaranın içerik koordinatlarındadır (yukarıdan aşağı), kaydırmadan etkilenmez.
+@MainActor
+final class MarqueeSelection: ObservableObject {
+    @Published private(set) var rect: CGRect?
+    var frames: [UUID: CGRect] = [:]
+    weak var scrollView: NSScrollView?
+    private var start = CGPoint.zero
+    private var current = CGPoint.zero
+    private var base = Set<UUID>()
+    private var apply: (Set<UUID>) -> Void = { _ in }
+    private var timer: Timer?
+    private var speed: CGFloat = 0
+
+    func begin(at point: CGPoint, base: Set<UUID>, apply: @escaping (Set<UUID>) -> Void) {
+        start = point
+        self.base = base
+        self.apply = apply
+    }
+
+    func update(to point: CGPoint) {
+        current = point
+        refresh()
+        // İmleç görünür alanın kenarına yaklaştıkça hızlanarak kaydır.
+        guard let visible = visibleRange() else { return }
+        let edge: CGFloat = 48
+        let y = point.y - visible.top
+        if y < edge { speed = -min(28, (edge - y) * 0.6) }
+        else if y > visible.height - edge { speed = min(28, (y - (visible.height - edge)) * 0.6) }
+        else { speed = 0 }
+        if speed != 0, timer == nil {
+            let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.tick() }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            self.timer = timer
+        } else if speed == 0 {
+            stopTimer()
+        }
+    }
+
+    func end() {
+        stopTimer()
+        rect = nil
+        base = []
+        apply = { _ in }
+    }
+
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+        speed = 0
+    }
+
+    private func refresh() {
+        let r = CGRect(x: min(start.x, current.x), y: min(start.y, current.y),
+                       width: abs(current.x - start.x), height: abs(current.y - start.y))
+        rect = r
+        let hit = base.symmetricDifference(frames.filter { $0.value.intersects(r) }.keys)
+        #if DEBUG
+        Self.debugLast = (frames.count, hit.count, r)
+        #endif
+        apply(hit)
+    }
+
+    #if DEBUG
+    /// Kendi kendini sınama için: (bilinen konum sayısı, seçilen sayısı, dikdörtgen).
+    static var debugLast: (known: Int, selected: Int, rect: CGRect)?
+    #endif
+
+    /// Görünür alanın içerik koordinatlarındaki üst kenarı ve yüksekliği.
+    private func visibleRange() -> (top: CGFloat, height: CGFloat, max: CGFloat)? {
+        guard let scrollView, let document = scrollView.documentView else { return nil }
+        let visible = scrollView.documentVisibleRect
+        let total = document.bounds.height
+        let top = document.isFlipped ? visible.minY : total - visible.maxY
+        return (top, visible.height, max(0, total - visible.height))
+    }
+
+    private func tick() {
+        guard speed != 0, let scrollView, let document = scrollView.documentView, let visible = visibleRange() else {
+            return stopTimer()
+        }
+        let newTop = min(visible.max, max(0, visible.top + speed))
+        let delta = newTop - visible.top
+        guard delta != 0 else { return }
+        let clip = scrollView.contentView
+        let y = document.isFlipped ? newTop : document.bounds.height - newTop - visible.height
+        clip.scroll(to: NSPoint(x: clip.bounds.origin.x, y: y))
+        scrollView.reflectScrolledClipView(clip)
+        current.y += delta
+        refresh()
+    }
+}
+
+/// İçinde bulunduğu kaydırma görünümünü (NSScrollView) bildirir.
+struct EnclosingScrollViewReader: NSViewRepresentable {
+    let onFind: (NSScrollView?) -> Void
+
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async { onFind(view.enclosingScrollView) }
     }
 }
 
