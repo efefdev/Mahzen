@@ -130,7 +130,12 @@ section h2 .path span { color: var(--dim); }
 .slide { position: relative; flex: 0 0 100%; height: 100%; display: grid; place-items: center; overflow: hidden; }
 .slide .media { max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; transform-origin: 0 0; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .slide img.ph { filter: blur(14px) brightness(.7); transform: scale(1.04); }
-.slide video { background: #000; }
+.slide video.media {
+  /* Videonun kendi kontrolleri (tam ekran, süre çubuğu) üst ve alt çubukların altında kalmasın. */
+  position: absolute; left: 0; width: 100%; top: calc(var(--top) + 58px);
+  height: calc(100% - var(--top) - var(--bottom) - 124px); max-height: none;
+  background: #000;
+}
 .ring { position: absolute; width: 64px; height: 64px; display: grid; place-items: center; }
 .ring svg { position: absolute; inset: 0; width: 64px; height: 64px; transform: rotate(-90deg); }
 .ring circle { fill: none; stroke-width: 4; }
@@ -141,13 +146,14 @@ section h2 .path span { color: var(--dim); }
   position: absolute; left: 50%; bottom: calc(var(--bottom) + 90px); transform: translateX(-50%); padding: 8px 14px;
   border-radius: 12px; background: rgba(40,40,46,.85); color: var(--text); font-size: 13px; text-align: center; max-width: 86%;
 }
-.chrome { position: absolute; left: 0; right: 0; z-index: 2; transition: opacity .2s; display: flex; align-items: center; gap: 10px; padding: 0 12px; }
+.chrome { position: absolute; left: 0; right: 0; z-index: 2; transition: opacity .2s; pointer-events: none; display: flex; align-items: center; gap: 10px; padding: 0 12px; }
 #viewer.bare .chrome { opacity: 0; pointer-events: none; }
 .chrome.top { top: 0; padding-top: calc(var(--top) + 8px); padding-bottom: 24px; background: linear-gradient(rgba(0,0,0,.6), transparent); }
 .chrome.bottom { bottom: 0; padding-bottom: calc(var(--bottom) + 12px); padding-top: 28px; background: linear-gradient(transparent, rgba(0,0,0,.6)); justify-content: center; }
 .chrome .titles { flex: 1; min-width: 0; text-align: center; }
 .chrome .name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chrome .meta { color: rgba(255,255,255,.65); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chrome .round, .chrome .counter { pointer-events: auto; }
 .round {
   flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
   background: rgba(60,60,66,.55); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
