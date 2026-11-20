@@ -68,6 +68,8 @@ final class AppState: ObservableObject {
     @Published var newSecretRequested = false
     @Published private(set) var kdfSummary = ""
     @Published var integrityReport: IntegrityReport?
+    /// Açık "Telefonda Göster" oturumu; kasa kilitlenince durdurulur.
+    @Published var phoneShare: PhoneShareSession?
     /// Açık kasa bu Mac'teki anahtar dosyasıyla mı korunuyor?
     @Published private(set) var keyfileEnabled = false
     /// Yanlış parola sınırı (kasa başlığında); `nil` = kapalı.
@@ -257,6 +259,7 @@ final class AppState: ObservableObject {
     /// sonucu kasaya yazılamaz, çöpe taşıma önerisi de gösterilemez.
     func lock() {
         guard phase == .unlocked else { return }
+        stopPhoneShare()
         cancelTask()
         task = nil
         flushSave()

@@ -81,6 +81,7 @@ struct FilesView: View {
     @State private var renamingFolder: Folder?
     @State private var tagging: Set<UUID>?
     @State private var dropTargeted = false
+    @StateObject private var marquee = MarqueeSelection()
 
     private var index: VaultIndex { state.index }
     private var current: UUID? { state.currentFolder }
@@ -116,7 +117,10 @@ struct FilesView: View {
         .overlay { if dropTargeted { dropOverlay } }
         .onDeleteCommand(perform: trashSelection)
         .onChange(of: state.currentFolder) { _, _ in selection.removeAll() }
-        .sheet(item: $previewing) { FilePreviewSheet(file: $0) }
+        .sheet(item: $previewing) { FilePreviewSheet(file: $0, siblings: items.compactMap(\.file)) }
+        .sheet(item: Binding(get: { state.phoneShare }, set: { if $0 == nil { state.stopPhoneShare() } })) {
+            PhoneShareSheet(session: $0)
+        }
         .sheet(item: $renamingFile) { file in
             RenameSheet(name: file.name) { state.renameFile(file.id, to: $0) }
         }
@@ -292,22 +296,69 @@ struct FilesView: View {
     }
 
     private func gridView(_ items: [FileItem]) -> some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 18)], spacing: 18) {
-                ForEach(items) { item in
-                    tile(item)
-                        .contentShape(Rectangle())
-                        .onTapGesture(count: 2) { open(item) }
-                        .simultaneousGesture(TapGesture().onEnded { select(item.id) })
-                        .contextMenu { menu(for: selection.contains(item.id) ? selection : [item.id]) }
-                        .onDrag { dragProvider(item) }
+        GeometryReader { geo in
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 18)], spacing: 18) {
+                    ForEach(items) { item in
+                        tile(item)
+                            .contentShape(Rectangle())
+                            .onTapGesture(count: 2) { open(item) }
+                            .simultaneousGesture(TapGesture().onEnded { select(item.id) })
+                            .contextMenu { menu(for: selection.contains(item.id) ? selection : [item.id]) }
+                            .onDrag { dragProvider(item) }
+                            .background {
+                                // Izgara tembel çizildiği için her öğe konumunu ekrana geldiğinde kaydeder.
+                                GeometryReader { g in
+                                    let frame = g.frame(in: .named(Self.gridSpace))
+                                    Color.clear
+                                        .onAppear { marquee.frames[item.id] = frame }
+                                        .onChange(of: frame) { _, new in marquee.frames[item.id] = new }
+                                }
+                            }
+                    }
                 }
+                .padding(22)
+                .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .top)
+                // Boş alana tıklamak seçimi temizler; sürüklemek Finder'daki gibi dikdörtgenle seçer.
+                .background {
+                    Color.clear.contentShape(Rectangle())
+                        .onTapGesture { selection.removeAll() }
+                        .simultaneousGesture(marqueeGesture(items))
+                        .background(EnclosingScrollViewReader { marquee.scrollView = $0 })
+                }
+                .overlay(alignment: .topLeading) {
+                    if let rect = marquee.rect {
+                        Rectangle()
+                            .fill(accent.opacity(0.12))
+                            .overlay(Rectangle().strokeBorder(accent.opacity(0.75), lineWidth: 1))
+                            .frame(width: rect.width, height: rect.height)
+                            .offset(x: rect.minX, y: rect.minY)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .coordinateSpace(name: Self.gridSpace)
             }
-            .padding(22)
         }
-        .background {
-            Color.clear.contentShape(Rectangle()).onTapGesture { selection.removeAll() }
-        }
+    }
+
+    // MARK: - Dikdörtgenle seçim
+
+    private static let gridSpace = "files.grid"
+
+    /// Boş alandan başlayan sürükleme: dikdörtgene değen öğeler seçilir. ⌘ ya da ⇧ basılıysa
+    /// mevcut seçim korunur ve dikdörtgendekiler tersine çevrilir (Finder gibi). Kenara gelince ızgara kayar.
+    private func marqueeGesture(_ items: [FileItem]) -> some Gesture {
+        DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.gridSpace))
+            .onChanged { value in
+                if marquee.rect == nil {
+                    let flags = NSEvent.modifierFlags
+                    let base = flags.contains(.command) || flags.contains(.shift) ? selection : []
+                    let visible = Set(items.map(\.id))
+                    marquee.begin(at: value.startLocation, base: base) { selection = $0.intersection(visible.union(base)) }
+                }
+                marquee.update(to: value.location)
+            }
+            .onEnded { _ in marquee.end() }
     }
 
     @ViewBuilder
@@ -408,6 +459,7 @@ struct FilesView: View {
                 ForEach(AccentChoice.allCases) { c in Button(c.title) { setFolderColor(folder.id, c.rawValue) } }
             }
             moveMenu(files: [], folder: folder)
+            Button("Telefonda Göster…") { state.showOnPhone(folder: folder) }
             Divider()
             Button("Çöp Kutusu'na Taşı", role: .destructive) { state.trashFolder(folder.id) }
         } else if !files.isEmpty {
@@ -427,6 +479,9 @@ struct FilesView: View {
             Button(files.allSatisfy(\.favorite) ? "Favorilerden Çıkar" : "Favorilere Ekle") { state.toggleFavorite(Set(files.map(\.id))) }
             moveMenu(files: Set(files.map(\.id)), folder: nil)
             Button(files.count == 1 ? "Dışa Aktar…" : "\(files.count) Dosyayı Dışa Aktar…") { state.exportFiles(files) }
+            if files.contains(where: PhoneShareSession.isShareable) {
+                Button("Telefonda Göster…") { state.showOnPhone(files: files) }
+            }
             Divider()
             Button(files.count == 1 ? "Çöp Kutusu'na Taşı" : "\(files.count) Dosyayı Çöp Kutusu'na Taşı", role: .destructive) {
                 state.trashFiles(Set(files.map(\.id)))
@@ -711,9 +766,19 @@ struct FileTile: View {
 // MARK: - Önizleme
 
 struct FilePreviewSheet: View {
-    let file: FileRecord
+    /// Önizlenen dosya; ok tuşları ya da izleme dörtgeninde kaydırma ile kardeşleri arasında gezilir.
+    @State private var file: FileRecord
+    /// Aynı ekranda görünen dosyalar, görünen sırayla.
+    let siblings: [FileRecord]
     @EnvironmentObject private var state: AppState
     @Environment(\.dismiss) private var dismiss
+
+    init(file: FileRecord, siblings: [FileRecord] = []) {
+        _file = State(initialValue: file)
+        self.siblings = siblings.contains(where: { $0.id == file.id }) ? siblings : [file]
+    }
+
+    private var position: Int? { siblings.firstIndex { $0.id == file.id } }
 
     private enum Content {
         case loading
@@ -738,6 +803,20 @@ struct FilePreviewSheet: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
+                if siblings.count > 1, let position {
+                    HStack(spacing: 2) {
+                        Button { step(-1) } label: { Image(systemName: "chevron.left") }
+                            .disabled(position == 0)
+                            .help("Önceki (←)")
+                        Text("\(position + 1) / \(siblings.count)")
+                            .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+                            .frame(minWidth: 56)
+                        Button { step(1) } label: { Image(systemName: "chevron.right") }
+                            .disabled(position == siblings.count - 1)
+                            .help("Sonraki (→)")
+                    }
+                    .buttonStyle(.borderless)
+                }
                 Button {
                     dismiss()
                     state.openTemporarily(file)
@@ -786,10 +865,20 @@ struct FilePreviewSheet: View {
                 }
             }
             .background(Color(nsColor: .textBackgroundColor).opacity(0.4))
+            .id(file.id)
+            .transition(.asymmetric(insertion: .move(edge: lastStep < 0 ? .leading : .trailing).combined(with: .opacity),
+                                    removal: .opacity))
+            .clipped()
         }
         .frame(minWidth: 720, idealWidth: 900, minHeight: 520, idealHeight: 680)
-        .task { await load() }
-        .onDisappear(perform: stopMedia)
+        .background(WindowReader { window = $0 })
+        .task(id: file.id) { await load() }
+        .onAppear(perform: installMonitor)
+        .onDisappear {
+            stopMedia()
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
         .onChange(of: state.phase) { _, phase in if phase != .unlocked { stopMedia(); dismiss() } }
     }
 
@@ -797,6 +886,65 @@ struct FilePreviewSheet: View {
         if case .media(let player) = content { player.pause(); player.replaceCurrentItem(with: nil) }
         loader?.invalidate()
         loader = nil
+    }
+
+    // MARK: Gezinme
+
+    @State private var window: NSWindow?
+    @State private var monitor: Any?
+    @State private var lastStep = 1
+    @State private var swipeX: CGFloat = 0
+    @State private var swipeUsed = false
+
+    private func step(_ delta: Int) {
+        guard let position, siblings.indices.contains(position + delta) else { return }
+        stopMedia()
+        lastStep = delta
+        withAnimation(.easeOut(duration: 0.22)) {
+            content = .loading
+            file = siblings[position + delta]
+        }
+    }
+
+    /// Belge ve metinde ok tuşları ile yatay kaydırma içeriğin kendisine kalır.
+    private var contentScrolls: Bool {
+        switch content {
+        case .pdf, .text: return true
+        default: return false
+        }
+    }
+
+    /// ← / → tuşları ve izleme dörtgeninde iki parmakla yatay kaydırma (her harekette bir dosya).
+    private func installMonitor() {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .scrollWheel, .swipe]) { event in
+            guard let window, event.window === window else { return event }
+            switch event.type {
+            case .keyDown:
+                guard !contentScrolls, event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty,
+                      !(window.firstResponder is NSText) else { return event }
+                if event.keyCode == 123 { step(-1); return nil }
+                if event.keyCode == 124 { step(1); return nil }
+            case .swipe:
+                if event.deltaX != 0 { step(event.deltaX > 0 ? -1 : 1); return nil }
+            case .scrollWheel:
+                guard !contentScrolls, event.hasPreciseScrollingDeltas else { return event }
+                if event.phase == .began { swipeX = 0; swipeUsed = false }
+                // Kaydırma hareketi bitince gelen ivme olayları yeni bir geçiş başlatmasın.
+                guard event.momentumPhase == [] else { return swipeUsed ? nil : event }
+                guard abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) || swipeX != 0 else { return event }
+                swipeX += event.scrollingDeltaX
+                if !swipeUsed, abs(swipeX) > 50 {
+                    swipeUsed = true
+                    step(swipeX > 0 ? -1 : 1)
+                }
+                if event.phase == .ended || event.phase == .cancelled { swipeX = 0 }
+                return nil
+            default:
+                break
+            }
+            return event
+        }
     }
 
     private func loadMedia() async {
@@ -846,6 +994,127 @@ struct FilePreviewSheet: View {
         } catch {
             content = .unsupported(error.localizedDescription)
         }
+    }
+}
+
+/// Dikdörtgenle seçim: öğe konumları, sürükleme dikdörtgeni ve kenarda otomatik kaydırma.
+/// Konumlar ızgaranın içerik koordinatlarındadır (yukarıdan aşağı), kaydırmadan etkilenmez.
+@MainActor
+final class MarqueeSelection: ObservableObject {
+    @Published private(set) var rect: CGRect?
+    var frames: [UUID: CGRect] = [:]
+    weak var scrollView: NSScrollView?
+    private var start = CGPoint.zero
+    private var current = CGPoint.zero
+    private var base = Set<UUID>()
+    private var apply: (Set<UUID>) -> Void = { _ in }
+    private var timer: Timer?
+    private var speed: CGFloat = 0
+
+    func begin(at point: CGPoint, base: Set<UUID>, apply: @escaping (Set<UUID>) -> Void) {
+        start = point
+        self.base = base
+        self.apply = apply
+    }
+
+    func update(to point: CGPoint) {
+        current = point
+        refresh()
+        // İmleç görünür alanın kenarına yaklaştıkça hızlanarak kaydır.
+        guard let visible = visibleRange() else { return }
+        let edge: CGFloat = 48
+        let y = point.y - visible.top
+        if y < edge { speed = -min(28, (edge - y) * 0.6) }
+        else if y > visible.height - edge { speed = min(28, (y - (visible.height - edge)) * 0.6) }
+        else { speed = 0 }
+        if speed != 0, timer == nil {
+            let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.tick() }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            self.timer = timer
+        } else if speed == 0 {
+            stopTimer()
+        }
+    }
+
+    func end() {
+        stopTimer()
+        rect = nil
+        base = []
+        apply = { _ in }
+    }
+
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+        speed = 0
+    }
+
+    private func refresh() {
+        let r = CGRect(x: min(start.x, current.x), y: min(start.y, current.y),
+                       width: abs(current.x - start.x), height: abs(current.y - start.y))
+        rect = r
+        let hit = base.symmetricDifference(frames.filter { $0.value.intersects(r) }.keys)
+        #if DEBUG
+        Self.debugLast = (frames.count, hit.count, r)
+        #endif
+        apply(hit)
+    }
+
+    #if DEBUG
+    /// Kendi kendini sınama için: (bilinen konum sayısı, seçilen sayısı, dikdörtgen).
+    static var debugLast: (known: Int, selected: Int, rect: CGRect)?
+    #endif
+
+    /// Görünür alanın içerik koordinatlarındaki üst kenarı ve yüksekliği.
+    private func visibleRange() -> (top: CGFloat, height: CGFloat, max: CGFloat)? {
+        guard let scrollView, let document = scrollView.documentView else { return nil }
+        let visible = scrollView.documentVisibleRect
+        let total = document.bounds.height
+        let top = document.isFlipped ? visible.minY : total - visible.maxY
+        return (top, visible.height, max(0, total - visible.height))
+    }
+
+    private func tick() {
+        guard speed != 0, let scrollView, let document = scrollView.documentView, let visible = visibleRange() else {
+            return stopTimer()
+        }
+        let newTop = min(visible.max, max(0, visible.top + speed))
+        let delta = newTop - visible.top
+        guard delta != 0 else { return }
+        let clip = scrollView.contentView
+        let y = document.isFlipped ? newTop : document.bounds.height - newTop - visible.height
+        clip.scroll(to: NSPoint(x: clip.bounds.origin.x, y: y))
+        scrollView.reflectScrolledClipView(clip)
+        current.y += delta
+        refresh()
+    }
+}
+
+/// İçinde bulunduğu kaydırma görünümünü (NSScrollView) bildirir.
+struct EnclosingScrollViewReader: NSViewRepresentable {
+    let onFind: (NSScrollView?) -> Void
+
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async { onFind(view.enclosingScrollView) }
+    }
+}
+
+/// Görünümün bulunduğu pencereyi bildirir.
+struct WindowReader: NSViewRepresentable {
+    let onChange: (NSWindow?) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { onChange(view.window) }
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async { if view.window != nil { onChange(view.window) } }
     }
 }
 

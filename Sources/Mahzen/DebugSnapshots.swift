@@ -1,5 +1,6 @@
 #if DEBUG
 import AVFoundation
+import CryptoKit
 import AppKit
 import MahzenCore
 import SwiftUI
@@ -10,6 +11,10 @@ import SwiftUI
 enum DebugSnapshots {
     static func runIfRequested(_ state: AppState) async {
         guard let out = ProcessInfo.processInfo.environment["MAHZEN_SNAPSHOTS"] else { return }
+        if ProcessInfo.processInfo.environment["MAHZEN_MARQUEE_TEST"] != nil {
+            await marqueeTest(state, out: URL(fileURLWithPath: out, isDirectory: true))
+            return
+        }
         let outDir = URL(fileURLWithPath: out, isDirectory: true)
         try? FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
         let work = FileManager.default.temporaryDirectory.appendingPathComponent("MahzenDemo-\(UUID().uuidString)")
@@ -84,6 +89,16 @@ enum DebugSnapshots {
         await snap("03-dosyalar", outDir)
         state.currentFolder = tripID
         await snap("03b-klasor-ici", outDir)
+        if let trip = state.index.folder(tripID), let yearID {
+            // Alt klasörü de kapsadığını görmek için bir fotoğrafı Tatil/2026 içine taşı.
+            if let photo = state.index.liveFiles.first(where: { $0.utType.conforms(to: .image) && $0.folderID == nil }) {
+                state.moveFiles([photo.id], to: yearID)
+            }
+            state.showOnPhone(folder: trip)
+            report += await phoneShareChecks(state)
+            await snap("03c-telefonda-goster", outDir)
+            state.stopPhoneShare()
+        }
         state.currentFolder = nil
         state.updatePreferences { $0.filesLayout = "list" }
         await snap("04-dosyalar-liste", outDir)
@@ -164,6 +179,136 @@ enum DebugSnapshots {
         try? await Task.sleep(for: .milliseconds(500))
         out.append("Klasöre sürükleme: \(state.index.files.first { $0.id == record.id }?.folderID == target ? "taşındı" : "TAŞINMADI")")
         return out
+    }
+
+    /// "Telefonda Göster": sunucu gerçekten açılıyor mu, içerik şifreli mi, telefonun anahtarıyla doğru çözülüyor mu?
+    private static func phoneShareChecks(_ state: AppState) async -> [String] {
+        guard let session = state.phoneShare else { return ["Telefon paylaşımı: oturum açılmadı"] }
+        for _ in 0..<50 where session.phase == .starting { try? await Task.sleep(for: .milliseconds(100)) }
+        guard case .running(let address) = session.phase, let hash = address.firstIndex(of: "#") else {
+            return ["Telefon paylaşımı: \(session.phase)"]
+        }
+        var b64 = String(address[address.index(after: hash)...]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while b64.count % 4 != 0 { b64 += "=" }
+        guard let keyData = Data(base64Encoded: b64) else { return ["Telefon paylaşımı: anahtar okunamadı"] }
+        let key = SymmetricKey(data: keyData)
+        let base = String(address[..<hash])
+        func get(_ path: String) async -> (Int, Data, [AnyHashable: Any]) {
+            guard let url = URL(string: base + path),
+                  let (data, response) = try? await URLSession.shared.data(from: url),
+                  let http = response as? HTTPURLResponse else { return (0, Data(), [:]) }
+            return (http.statusCode, data, http.allHeaderFields)
+        }
+        var lines: [String] = []
+        let (pageStatus, _, headers) = await get("")
+        lines.append("Telefon sayfası: \(pageStatus) · CSP \(headers["Content-Security-Policy"] != nil ? "var" : "YOK")")
+        let (_, manifestData, _) = await get("m")
+        let manifest = (try? PhoneShare.open(manifestData, key: key, streamID: PhoneShare.manifestStream))
+            .flatMap { try? JSONDecoder().decode(PhoneShareManifest.self, from: $0) }
+        lines.append("Telefon listesi: \(manifest.map { "\($0.items.count) öğe, yollar \(Set($0.items.map { $0.path.joined(separator: "/") }).sorted())" } ?? "ÇÖZÜLEMEDİ")")
+        if let first = manifest?.items.first,
+           let record = state.index.liveFiles.first(where: { $0.name == first.name }),
+           let original = try? await state.readFile(record) {
+            let (_, sealed, _) = await get("f/0")
+            let opened = try? PhoneShare.open(sealed, key: key, streamID: PhoneShare.fileStream(0))
+            let leaks = sealed.range(of: original.prefix(64)) != nil
+            lines.append("Telefon dosyası: \(opened == original ? "aynı" : "FARKLI") · ağda düz içerik \(leaks ? "VAR" : "yok")")
+        }
+        let (wrong, _, _) = await get("../yanlis-jeton/m")
+        lines.append("Yanlış jeton: \(wrong)")
+        return lines
+    }
+
+    /// Dikdörtgenle seçim: 60 fotoğraflık kasada pencereye gerçek fare olayları gönderip ekranın kenarına
+    /// kadar sürükler; ızgaranın kendiliğinden kayıp kaydığı yerdeki öğeleri de seçtiğini görüntüyle doğrular.
+    private static func marqueeTest(_ state: AppState, out: URL) async {
+        try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let work = FileManager.default.temporaryDirectory.appendingPathComponent("MahzenMarquee-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: work) }
+        let vaultURL = work.appendingPathComponent("Kasa")
+        let password = "demo-parola-uzun-123"
+        _ = try? Vault.create(at: vaultURL, password: password, kdf: .pbkdf2(iterations: 10_000))
+        state.selectVault(vaultURL)
+        _ = await state.unlock(password: password)
+        state.updatePreferences { $0.askToTrashOriginals = false; $0.hideFromScreenCapture = false; $0.filesLayout = "grid" }
+        let samples = work.appendingPathComponent("ornek")
+        try? FileManager.default.createDirectory(at: samples, withIntermediateDirectories: true)
+        var urls: [URL] = []
+        for i in 1...60 {
+            let image = NSImage(size: NSSize(width: 160, height: 120), flipped: false) { rect in
+                NSColor(hue: CGFloat(i) / 60, saturation: 0.6, brightness: 0.9, alpha: 1).setFill()
+                rect.fill()
+                ("\(i)" as NSString).draw(at: NSPoint(x: 60, y: 45), withAttributes: [.font: NSFont.boldSystemFont(ofSize: 28)])
+                return true
+            }
+            let url = samples.appendingPathComponent(String(format: "foto-%02d.png", i))
+            if let tiff = image.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+                try? png.write(to: url)
+                urls.append(url)
+            }
+        }
+        func log(_ text: String) {
+            let url = out.appendingPathComponent("marquee.log")
+            let old = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+            try? (old + text + "\n").write(to: url, atomically: true, encoding: .utf8)
+        }
+        log("örnek: \(urls.count) · faz \(state.phase)")
+        state.importFiles(urls, into: nil)
+        while state.task != nil { try? await Task.sleep(for: .milliseconds(100)) }
+        log("içe aktarıldı: \(state.index.liveFiles.count) · uyarı \(state.alert?.title ?? "-")")
+        state.alert = nil
+        state.section = .files
+        try? await Task.sleep(for: .seconds(2))
+
+        guard let window = NSApp.windows.first(where: { $0.isVisible && $0.contentView != nil }),
+              let scroll = allSubviews(window.contentView!).compactMap({ $0 as? NSScrollView })
+                .max(by: { ($0.documentView?.bounds.height ?? 0) < ($1.documentView?.bounds.height ?? 0) }) else {
+            log("pencere ya da kaydırma görünümü bulunamadı: \(NSApp.windows.map { "\($0.title) \($0.isVisible)" })")
+            return
+        }
+        log("kaydırma görünümü: \(scroll.frame) belge \(scroll.documentView?.bounds.height ?? 0)")
+        let frame = scroll.convert(scroll.bounds, to: nil)
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        try? await Task.sleep(for: .milliseconds(500))
+        let windowNumber = window.windowNumber
+        // Fare basılıyken AppKit kendi izleme döngüsüne girer ve ana iş parçacığını tutar; olaylar arka planda kuyruğa eklenir.
+        // Izgaranın sağ kenarındaki boş şeritten başla, sola ve aşağıya, pencerenin alt kenarına sürükle.
+        let startPoint = NSPoint(x: frame.maxX - 19, y: frame.midY)
+        let endPoint = NSPoint(x: frame.maxX - 420, y: frame.minY + 6)
+        let before = scroll.documentVisibleRect.origin.y
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            DispatchQueue.global().async {
+                func post(_ type: NSEvent.EventType, _ point: NSPoint) {
+                    guard let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                                         windowNumber: windowNumber, context: nil, eventNumber: Int.random(in: 1...1_000_000), clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1) else { return }
+                    NSApp.postEvent(event, atStart: false)
+                }
+                post(.leftMouseDown, startPoint)
+                usleep(50_000)
+                for step in 1...20 {
+                    let t = CGFloat(step) / 20
+                    post(.leftMouseDragged, NSPoint(x: startPoint.x + (endPoint.x - startPoint.x) * t, y: startPoint.y + (endPoint.y - startPoint.y) * t))
+                    usleep(16_000)
+                }
+                // Kenarda bekle: ızgara kendiliğinden kaymalı.
+                usleep(1_500_000)
+                post(.leftMouseDragged, endPoint)
+                usleep(50_000)
+                post(.leftMouseUp, endPoint)
+                usleep(200_000)
+                done.resume()
+            }
+        }
+        let after = scroll.documentVisibleRect.origin.y
+        log("kaydırma: \(before) → \(after) · seçim \(MarqueeSelection.debugLast.map { "\($0.selected) (bilinen konum \($0.known), dikdörtgen \($0.rect))" } ?? "hiç başlamadı")")
+        await snap("marquee-birakildi", out)
+        try? "kaydırma: \(before) → \(after) (belge \(scroll.documentView?.bounds.height ?? 0), görünür \(scroll.documentVisibleRect.height))\n"
+            .write(to: out.appendingPathComponent("marquee.txt"), atomically: true, encoding: .utf8)
+    }
+
+    private static func allSubviews(_ view: NSView) -> [NSView] {
+        [view] + view.subviews.flatMap(allSubviews)
     }
 
     private static func waitForTask(_ state: AppState) async {
