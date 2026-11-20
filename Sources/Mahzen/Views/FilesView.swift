@@ -81,6 +81,9 @@ struct FilesView: View {
     @State private var renamingFolder: Folder?
     @State private var tagging: Set<UUID>?
     @State private var dropTargeted = false
+    @State private var tileFrames: [UUID: CGRect] = [:]
+    @State private var marquee: CGRect?
+    @State private var marqueeBase = Set<UUID>()
 
     private var index: VaultIndex { state.index }
     private var current: UUID? { state.currentFolder }
@@ -116,7 +119,10 @@ struct FilesView: View {
         .overlay { if dropTargeted { dropOverlay } }
         .onDeleteCommand(perform: trashSelection)
         .onChange(of: state.currentFolder) { _, _ in selection.removeAll() }
-        .sheet(item: $previewing) { FilePreviewSheet(file: $0) }
+        .sheet(item: $previewing) { FilePreviewSheet(file: $0, siblings: items.compactMap(\.file)) }
+        .sheet(item: Binding(get: { state.phoneShare }, set: { if $0 == nil { state.stopPhoneShare() } })) {
+            PhoneShareSheet(session: $0)
+        }
         .sheet(item: $renamingFile) { file in
             RenameSheet(name: file.name) { state.renameFile(file.id, to: $0) }
         }
@@ -292,22 +298,72 @@ struct FilesView: View {
     }
 
     private func gridView(_ items: [FileItem]) -> some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 18)], spacing: 18) {
-                ForEach(items) { item in
-                    tile(item)
-                        .contentShape(Rectangle())
-                        .onTapGesture(count: 2) { open(item) }
-                        .simultaneousGesture(TapGesture().onEnded { select(item.id) })
-                        .contextMenu { menu(for: selection.contains(item.id) ? selection : [item.id]) }
-                        .onDrag { dragProvider(item) }
+        GeometryReader { geo in
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 18)], spacing: 18) {
+                    ForEach(items) { item in
+                        tile(item)
+                            .contentShape(Rectangle())
+                            .onTapGesture(count: 2) { open(item) }
+                            .simultaneousGesture(TapGesture().onEnded { select(item.id) })
+                            .contextMenu { menu(for: selection.contains(item.id) ? selection : [item.id]) }
+                            .onDrag { dragProvider(item) }
+                            .background {
+                                GeometryReader { g in
+                                    Color.clear.preference(key: TileFramesKey.self, value: [item.id: g.frame(in: .named(Self.gridSpace))])
+                                }
+                            }
+                    }
                 }
+                .padding(22)
+                .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .top)
+                // Boş alana tıklamak seçimi temizler; sürüklemek Finder'daki gibi dikdörtgenle seçer.
+                .background {
+                    Color.clear.contentShape(Rectangle())
+                        .onTapGesture { selection.removeAll() }
+                        .simultaneousGesture(marqueeGesture)
+                }
+                .overlay(alignment: .topLeading) {
+                    if let rect = marquee {
+                        Rectangle()
+                            .fill(accent.opacity(0.12))
+                            .overlay(Rectangle().strokeBorder(accent.opacity(0.75), lineWidth: 1))
+                            .frame(width: rect.width, height: rect.height)
+                            .offset(x: rect.minX, y: rect.minY)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .coordinateSpace(name: Self.gridSpace)
+                .onPreferenceChange(TileFramesKey.self) { tileFrames = $0 }
             }
-            .padding(22)
         }
-        .background {
-            Color.clear.contentShape(Rectangle()).onTapGesture { selection.removeAll() }
-        }
+    }
+
+    // MARK: - Dikdörtgenle seçim
+
+    private static let gridSpace = "files.grid"
+
+    /// Boş alandan başlayan sürükleme: dikdörtgene değen öğeler seçilir. ⌘ ya da ⇧ basılıysa
+    /// mevcut seçim korunur ve dikdörtgendekiler tersine çevrilir (Finder gibi).
+    private var marqueeGesture: some Gesture {
+        DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.gridSpace))
+            .onChanged { value in
+                if marquee == nil {
+                    let flags = NSEvent.modifierFlags
+                    marqueeBase = flags.contains(.command) || flags.contains(.shift) ? selection : []
+                }
+                let rect = CGRect(x: min(value.startLocation.x, value.location.x),
+                                  y: min(value.startLocation.y, value.location.y),
+                                  width: abs(value.location.x - value.startLocation.x),
+                                  height: abs(value.location.y - value.startLocation.y))
+                marquee = rect
+                let hit = Set(tileFrames.filter { $0.value.intersects(rect) }.keys)
+                selection = marqueeBase.symmetricDifference(hit)
+            }
+            .onEnded { _ in
+                marquee = nil
+                marqueeBase = []
+            }
     }
 
     @ViewBuilder
@@ -408,6 +464,7 @@ struct FilesView: View {
                 ForEach(AccentChoice.allCases) { c in Button(c.title) { setFolderColor(folder.id, c.rawValue) } }
             }
             moveMenu(files: [], folder: folder)
+            Button("Telefonda Göster…") { state.showOnPhone(folder: folder) }
             Divider()
             Button("Çöp Kutusu'na Taşı", role: .destructive) { state.trashFolder(folder.id) }
         } else if !files.isEmpty {
@@ -427,6 +484,9 @@ struct FilesView: View {
             Button(files.allSatisfy(\.favorite) ? "Favorilerden Çıkar" : "Favorilere Ekle") { state.toggleFavorite(Set(files.map(\.id))) }
             moveMenu(files: Set(files.map(\.id)), folder: nil)
             Button(files.count == 1 ? "Dışa Aktar…" : "\(files.count) Dosyayı Dışa Aktar…") { state.exportFiles(files) }
+            if files.contains(where: PhoneShareSession.isShareable) {
+                Button("Telefonda Göster…") { state.showOnPhone(files: files) }
+            }
             Divider()
             Button(files.count == 1 ? "Çöp Kutusu'na Taşı" : "\(files.count) Dosyayı Çöp Kutusu'na Taşı", role: .destructive) {
                 state.trashFiles(Set(files.map(\.id)))
@@ -711,9 +771,19 @@ struct FileTile: View {
 // MARK: - Önizleme
 
 struct FilePreviewSheet: View {
-    let file: FileRecord
+    /// Önizlenen dosya; ok tuşları ya da izleme dörtgeninde kaydırma ile kardeşleri arasında gezilir.
+    @State private var file: FileRecord
+    /// Aynı ekranda görünen dosyalar, görünen sırayla.
+    let siblings: [FileRecord]
     @EnvironmentObject private var state: AppState
     @Environment(\.dismiss) private var dismiss
+
+    init(file: FileRecord, siblings: [FileRecord] = []) {
+        _file = State(initialValue: file)
+        self.siblings = siblings.contains(where: { $0.id == file.id }) ? siblings : [file]
+    }
+
+    private var position: Int? { siblings.firstIndex { $0.id == file.id } }
 
     private enum Content {
         case loading
@@ -738,6 +808,20 @@ struct FilePreviewSheet: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
+                if siblings.count > 1, let position {
+                    HStack(spacing: 2) {
+                        Button { step(-1) } label: { Image(systemName: "chevron.left") }
+                            .disabled(position == 0)
+                            .help("Önceki (←)")
+                        Text("\(position + 1) / \(siblings.count)")
+                            .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+                            .frame(minWidth: 56)
+                        Button { step(1) } label: { Image(systemName: "chevron.right") }
+                            .disabled(position == siblings.count - 1)
+                            .help("Sonraki (→)")
+                    }
+                    .buttonStyle(.borderless)
+                }
                 Button {
                     dismiss()
                     state.openTemporarily(file)
@@ -786,10 +870,20 @@ struct FilePreviewSheet: View {
                 }
             }
             .background(Color(nsColor: .textBackgroundColor).opacity(0.4))
+            .id(file.id)
+            .transition(.asymmetric(insertion: .move(edge: lastStep < 0 ? .leading : .trailing).combined(with: .opacity),
+                                    removal: .opacity))
+            .clipped()
         }
         .frame(minWidth: 720, idealWidth: 900, minHeight: 520, idealHeight: 680)
-        .task { await load() }
-        .onDisappear(perform: stopMedia)
+        .background(WindowReader { window = $0 })
+        .task(id: file.id) { await load() }
+        .onAppear(perform: installMonitor)
+        .onDisappear {
+            stopMedia()
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
         .onChange(of: state.phase) { _, phase in if phase != .unlocked { stopMedia(); dismiss() } }
     }
 
@@ -797,6 +891,65 @@ struct FilePreviewSheet: View {
         if case .media(let player) = content { player.pause(); player.replaceCurrentItem(with: nil) }
         loader?.invalidate()
         loader = nil
+    }
+
+    // MARK: Gezinme
+
+    @State private var window: NSWindow?
+    @State private var monitor: Any?
+    @State private var lastStep = 1
+    @State private var swipeX: CGFloat = 0
+    @State private var swipeUsed = false
+
+    private func step(_ delta: Int) {
+        guard let position, siblings.indices.contains(position + delta) else { return }
+        stopMedia()
+        lastStep = delta
+        withAnimation(.easeOut(duration: 0.22)) {
+            content = .loading
+            file = siblings[position + delta]
+        }
+    }
+
+    /// Belge ve metinde ok tuşları ile yatay kaydırma içeriğin kendisine kalır.
+    private var contentScrolls: Bool {
+        switch content {
+        case .pdf, .text: return true
+        default: return false
+        }
+    }
+
+    /// ← / → tuşları ve izleme dörtgeninde iki parmakla yatay kaydırma (her harekette bir dosya).
+    private func installMonitor() {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .scrollWheel, .swipe]) { event in
+            guard let window, event.window === window else { return event }
+            switch event.type {
+            case .keyDown:
+                guard !contentScrolls, event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty,
+                      !(window.firstResponder is NSText) else { return event }
+                if event.keyCode == 123 { step(-1); return nil }
+                if event.keyCode == 124 { step(1); return nil }
+            case .swipe:
+                if event.deltaX != 0 { step(event.deltaX > 0 ? -1 : 1); return nil }
+            case .scrollWheel:
+                guard !contentScrolls, event.hasPreciseScrollingDeltas else { return event }
+                if event.phase == .began { swipeX = 0; swipeUsed = false }
+                // Kaydırma hareketi bitince gelen ivme olayları yeni bir geçiş başlatmasın.
+                guard event.momentumPhase == [] else { return swipeUsed ? nil : event }
+                guard abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) || swipeX != 0 else { return event }
+                swipeX += event.scrollingDeltaX
+                if !swipeUsed, abs(swipeX) > 50 {
+                    swipeUsed = true
+                    step(swipeX > 0 ? -1 : 1)
+                }
+                if event.phase == .ended || event.phase == .cancelled { swipeX = 0 }
+                return nil
+            default:
+                break
+            }
+            return event
+        }
     }
 
     private func loadMedia() async {
@@ -846,6 +999,29 @@ struct FilePreviewSheet: View {
         } catch {
             content = .unsupported(error.localizedDescription)
         }
+    }
+}
+
+/// Izgaradaki öğelerin konumları (dikdörtgenle seçim için).
+private struct TileFramesKey: PreferenceKey {
+    static let defaultValue: [UUID: CGRect] = [:]
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue()) { _, new in new }
+    }
+}
+
+/// Görünümün bulunduğu pencereyi bildirir.
+struct WindowReader: NSViewRepresentable {
+    let onChange: (NSWindow?) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { onChange(view.window) }
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async { if view.window != nil { onChange(view.window) } }
     }
 }
 

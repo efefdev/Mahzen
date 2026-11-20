@@ -15,3 +15,6 @@ yedek.bin
 # Linux sürümünün uyumluluk testlerinde kullanılan, test parolasıyla oluşturulmuş örnek kasalar
 !linux/tests/fixtures/**
 __pycache__/
+
+# exFAT/USB disklerde macOS'un oluşturduğu yan dosyalar
+._*

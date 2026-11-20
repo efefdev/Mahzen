@@ -30,6 +30,8 @@
     <true/>
     <key>NSHumanReadableCopyright</key>
     <string>© 2026 efefdev · PolyForm Noncommercial 1.0.0</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Seçtiğiniz fotoğraf ve videoları aynı Wi-Fi ağındaki telefonunuzda şifreli olarak göstermek için.</string>
     <key>NSRemovableVolumesUsageDescription</key>
     <string>Mahzen, şifreli kasanı harici diskte saklamak için bu diske erişir.</string>
 </dict>

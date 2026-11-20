@@ -1,5 +1,6 @@
 #if DEBUG
 import AVFoundation
+import CryptoKit
 import AppKit
 import MahzenCore
 import SwiftUI
@@ -84,6 +85,16 @@ enum DebugSnapshots {
         await snap("03-dosyalar", outDir)
         state.currentFolder = tripID
         await snap("03b-klasor-ici", outDir)
+        if let trip = state.index.folder(tripID), let yearID {
+            // Alt klasörü de kapsadığını görmek için bir fotoğrafı Tatil/2026 içine taşı.
+            if let photo = state.index.liveFiles.first(where: { $0.utType.conforms(to: .image) && $0.folderID == nil }) {
+                state.moveFiles([photo.id], to: yearID)
+            }
+            state.showOnPhone(folder: trip)
+            report += await phoneShareChecks(state)
+            await snap("03c-telefonda-goster", outDir)
+            state.stopPhoneShare()
+        }
         state.currentFolder = nil
         state.updatePreferences { $0.filesLayout = "list" }
         await snap("04-dosyalar-liste", outDir)
@@ -164,6 +175,44 @@ enum DebugSnapshots {
         try? await Task.sleep(for: .milliseconds(500))
         out.append("Klasöre sürükleme: \(state.index.files.first { $0.id == record.id }?.folderID == target ? "taşındı" : "TAŞINMADI")")
         return out
+    }
+
+    /// "Telefonda Göster": sunucu gerçekten açılıyor mu, içerik şifreli mi, telefonun anahtarıyla doğru çözülüyor mu?
+    private static func phoneShareChecks(_ state: AppState) async -> [String] {
+        guard let session = state.phoneShare else { return ["Telefon paylaşımı: oturum açılmadı"] }
+        for _ in 0..<50 where session.phase == .starting { try? await Task.sleep(for: .milliseconds(100)) }
+        guard case .running(let address) = session.phase, let hash = address.firstIndex(of: "#") else {
+            return ["Telefon paylaşımı: \(session.phase)"]
+        }
+        var b64 = String(address[address.index(after: hash)...]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while b64.count % 4 != 0 { b64 += "=" }
+        guard let keyData = Data(base64Encoded: b64) else { return ["Telefon paylaşımı: anahtar okunamadı"] }
+        let key = SymmetricKey(data: keyData)
+        let base = String(address[..<hash])
+        func get(_ path: String) async -> (Int, Data, [AnyHashable: Any]) {
+            guard let url = URL(string: base + path),
+                  let (data, response) = try? await URLSession.shared.data(from: url),
+                  let http = response as? HTTPURLResponse else { return (0, Data(), [:]) }
+            return (http.statusCode, data, http.allHeaderFields)
+        }
+        var lines: [String] = []
+        let (pageStatus, _, headers) = await get("")
+        lines.append("Telefon sayfası: \(pageStatus) · CSP \(headers["Content-Security-Policy"] != nil ? "var" : "YOK")")
+        let (_, manifestData, _) = await get("m")
+        let manifest = (try? PhoneShare.open(manifestData, key: key, streamID: PhoneShare.manifestStream))
+            .flatMap { try? JSONDecoder().decode(PhoneShareManifest.self, from: $0) }
+        lines.append("Telefon listesi: \(manifest.map { "\($0.items.count) öğe, yollar \(Set($0.items.map { $0.path.joined(separator: "/") }).sorted())" } ?? "ÇÖZÜLEMEDİ")")
+        if let first = manifest?.items.first,
+           let record = state.index.liveFiles.first(where: { $0.name == first.name }),
+           let original = try? await state.readFile(record) {
+            let (_, sealed, _) = await get("f/0")
+            let opened = try? PhoneShare.open(sealed, key: key, streamID: PhoneShare.fileStream(0))
+            let leaks = sealed.range(of: original.prefix(64)) != nil
+            lines.append("Telefon dosyası: \(opened == original ? "aynı" : "FARKLI") · ağda düz içerik \(leaks ? "VAR" : "yok")")
+        }
+        let (wrong, _, _) = await get("../yanlis-jeton/m")
+        lines.append("Yanlış jeton: \(wrong)")
+        return lines
     }
 
     private static func waitForTask(_ state: AppState) async {
