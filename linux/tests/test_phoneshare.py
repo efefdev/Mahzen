@@ -24,7 +24,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from mahzen.core import crypto, phoneshare as ps, qr, selection as sel  # noqa: E402
+from mahzen.core import crypto, phoneshare as ps, qr, selection as sel, virt  # noqa: E402
 from mahzen.core.errors import Corrupted  # noqa: E402
 from mahzen.core.index import VaultIndex, new_file_record  # noqa: E402
 from mahzen.core.vault import Vault  # noqa: E402
@@ -400,6 +400,29 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(sel.step_position(0, 1, 3), 1)
         self.assertIsNone(sel.step_position(0, -1, 3))
         self.assertIsNone(sel.step_position(2, 1, 3))
+
+
+class NetworkWarningTests(unittest.TestCase):
+    """Sanal makinenin NAT ağındaki adres için uyarı; gerçek ağlarda yanlış uyarı yok."""
+
+    def test_vm_nat_addresses_warn(self):
+        for address in ("192.168.64.7", "10.0.2.15", "192.168.122.40", "10.211.55.3"):
+            self.assertTrue(virt.unreachable_from_phone(address, vm=True, wsl=False), address)
+
+    def test_same_addresses_on_real_machine_do_not_warn(self):
+        for address in ("192.168.64.7", "10.0.2.15", "172.20.5.9"):
+            self.assertFalse(virt.unreachable_from_phone(address, vm=False, wsl=False), address)
+
+    def test_bridged_vm_does_not_warn(self):
+        for address in ("192.168.1.42", "10.0.0.17", "172.20.5.9"):
+            self.assertFalse(virt.unreachable_from_phone(address, vm=True, wsl=False), address)
+
+    def test_wsl_nat_warns_but_mirrored_does_not(self):
+        self.assertTrue(virt.unreachable_from_phone("172.27.144.10", vm=True, wsl=True))
+        self.assertFalse(virt.unreachable_from_phone("192.168.1.42", vm=True, wsl=True))
+
+    def test_invalid_address(self):
+        self.assertFalse(virt.unreachable_from_phone("yerel", vm=True, wsl=True))
 
 
 class TranslationTests(unittest.TestCase):

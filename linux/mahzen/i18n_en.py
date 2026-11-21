@@ -573,6 +573,13 @@ ENGLISH = {
     "Telefonda yalnızca fotoğraflar ve videolar gösterilebilir.": "Only photos and videos can be shown on the phone.",
     "Başlatılıyor…": "Starting…",
     "Paylaşım QR kodu": "Sharing QR code",
+    "Telefon bağlanamayabilir": "Your phone may not be able to connect",
+    "Bu bilgisayar bir sanal makine gibi görünüyor ve paylaşım adresi ({address}) sanal makinenin kendi özel "
+    "ağında. Wi-Fi'deki telefon bu adrese büyük olasılıkla ulaşamaz. Sanal makinenin ağ ayarını köprü (bridged) "
+    "moduna alıp paylaşımı yeniden başlatın.":
+        "This computer looks like a virtual machine, and the sharing address ({address}) is on the virtual "
+        "machine's own private network. A phone on Wi-Fi most likely can't reach it. Switch the virtual "
+        "machine's network to bridged mode and start sharing again.",
     "Telefonun kamerasıyla okutun": "Scan with your phone's camera",
     "Telefon bu bilgisayarla aynı Wi-Fi ağında olmalı. Dosyalar şifreli gelir, anahtar yalnızca bu QR kodda bulunur.":
         "The phone must be on the same Wi-Fi network as this computer. Files arrive encrypted; the key exists only "

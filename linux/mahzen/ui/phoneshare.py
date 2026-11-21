@@ -6,6 +6,7 @@ from gi.repository import Adw, GLib, Gtk
 
 from ..core import qr
 from ..core.phoneshare import PhoneShareSession, primary_ipv4
+from ..core.virt import phone_network_warning
 from ..i18n import tr
 from .common import fill_rect, rgba
 
@@ -54,6 +55,22 @@ class QRCodeView(Gtk.Widget):
                 while x < len(row) and row[x]:
                     x += 1
                 fill_rect(snapshot, ox + start * scale, oy + y * scale, (x - start) * scale, scale, black)
+
+
+def _network_warning(host: str) -> Gtk.Widget:
+    """Sanal makinenin NAT ağındaki adres için uyarı: telefon büyük olasılıkla bağlanamaz."""
+    box = Gtk.Box(spacing=12, css_classes=["card", "network-warning"])
+    box.append(Gtk.Image(icon_name="dialog-warning-symbolic", pixel_size=24, valign=Gtk.Align.START,
+                         margin_start=12, margin_top=12, css_classes=["warning"]))
+    texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, margin_top=10, margin_bottom=10, margin_end=12)
+    texts.append(Gtk.Label(label=tr("Telefon bağlanamayabilir"), xalign=0, css_classes=["heading", "warning"]))
+    texts.append(Gtk.Label(
+        label=tr("Bu bilgisayar bir sanal makine gibi görünüyor ve paylaşım adresi ({address}) sanal makinenin "
+                 "kendi özel ağında. Wi-Fi'deki telefon bu adrese büyük olasılıkla ulaşamaz. Sanal makinenin ağ "
+                 "ayarını köprü (bridged) moduna alıp paylaşımı yeniden başlatın.", address=host),
+        xalign=0, wrap=True, max_width_chars=48, css_classes=["caption"]))
+    box.append(texts)
+    return box
 
 
 class PhoneShareDialog(Adw.Dialog):
@@ -115,9 +132,9 @@ class PhoneShareDialog(Adw.Dialog):
             if not host:
                 raise ConnectionError(tr("Bu bilgisayar bir Wi-Fi ya da yerel ağa bağlı görünmüyor. "
                                          "Telefonla aynı ağa bağlanıp yeniden deneyin."))
-            return session.start(host)
+            return session.start(host), phone_network_warning(host), host
 
-        def finished(url, error):
+        def finished(result, error):
             if self.phase != "starting":
                 session.stop()
                 return
@@ -127,12 +144,15 @@ class PhoneShareDialog(Adw.Dialog):
                     tr("Paylaşım başlatılamadı: {error}", error=str(error) or error.__class__.__name__)
                 self._set_failed(message)
                 return
-            self._show_running(url)
+            url, warn, host = result
+            self._show_running(url, host if warn else None)
 
         self.state.run_background(work, finished)
 
-    def _show_running(self, url: str) -> None:
+    def _show_running(self, url: str, unreachable_host: str | None = None) -> None:
         self.phase = "running"
+        if unreachable_host:
+            self.running_box.append(_network_warning(unreachable_host))
         frame = Gtk.Box(halign=Gtk.Align.CENTER, css_classes=["qr-frame"])
         frame.append(QRCodeView(url))
         self.running_box.append(frame)
