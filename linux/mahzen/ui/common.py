@@ -9,11 +9,13 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, GLib, Gtk  # noqa: E402
+gi.require_version("Graphene", "1.0")
+from gi.repository import Adw, Gdk, GLib, Graphene, Gtk  # noqa: E402
 
 from ..core.filetypes import (ICONS, IMAGE_PREVIEWABLE, content_type_for, extension,  # noqa: E402,F401
                               icon_for, kind_of)
 from ..core.index import parse_date  # noqa: E402
+from ..core.selection import point_from_result, rect_from_result  # noqa: E402
 from ..i18n import decimal, tr  # noqa: E402
 
 
@@ -57,6 +59,41 @@ def relative_date(value: str | None) -> str:
     if delta.days < 7:
         return tr("{n} gün önce", n=delta.days)
     return format_date(value, with_time=False)
+
+
+# MARK: - Çizim ve konum (cairo köprüsü gerektirmez)
+
+def rgba(red: float, green: float, blue: float, alpha: float = 1.0) -> Gdk.RGBA:
+    color = Gdk.RGBA()
+    color.red, color.green, color.blue, color.alpha = red, green, blue, alpha
+    return color
+
+
+def fill_rect(snapshot: Gtk.Snapshot, x: float, y: float, width: float, height: float, color: Gdk.RGBA) -> None:
+    snapshot.append_color(color, Graphene.Rect().init(x, y, width, height))
+
+
+def widget_point(source: Gtk.Widget, target: Gtk.Widget, x: float, y: float) -> tuple[float, float] | None:
+    """Bir noktayı `source` koordinatlarından `target` koordinatlarına çevirir."""
+    if hasattr(source, "compute_point"):
+        try:
+            found = point_from_result(source.compute_point(target, Graphene.Point().init(x, y)))
+        except (TypeError, ValueError):
+            found = None
+        if found is not None:
+            return found
+    try:
+        return point_from_result(source.translate_coordinates(target, x, y))
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
+def widget_bounds(widget: Gtk.Widget, target: Gtk.Widget) -> tuple[float, float, float, float] | None:
+    """Öğenin `target` koordinatlarındaki dikdörtgeni."""
+    try:
+        return rect_from_result(widget.compute_bounds(target))
+    except (TypeError, ValueError):
+        return None
 
 
 # MARK: - İletişim kutuları

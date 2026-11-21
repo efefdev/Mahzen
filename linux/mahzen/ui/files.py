@@ -8,7 +8,8 @@ from ..core import selection as sel
 from ..core.index import sort_key
 from ..core.phoneshare import is_shareable
 from ..i18n import tr
-from .common import alert, ask_text, clear_box, format_date, format_size, icon_for, kind_of
+from .common import (alert, ask_text, clear_box, fill_rect, format_date, format_size, icon_for, kind_of, rgba,
+                     widget_bounds, widget_point)
 from .phoneshare import PhoneShareDialog
 
 TEXT_PREVIEW_LIMIT = 4 * 1024 * 1024
@@ -91,8 +92,7 @@ class FilesPage(Adw.Bin):
         # Boş alandan sürükleyerek dikdörtgenle seçim: ızgaranın üstünde, tıklamaları geçiren bir çizim katmanı.
         self.grid_overlay = Gtk.Overlay(vexpand=True)
         self.grid_overlay.set_child(self.flow)
-        self.band = Gtk.DrawingArea(can_target=False, hexpand=True, vexpand=True)
-        self.band.set_draw_func(self._draw_band)
+        self.band = MarqueeBand(self)
         self.grid_overlay.add_overlay(self.band)
         self.grid_scroller.set_child(self.grid_overlay)
         self.stack.add_named(self.grid_scroller, "grid")
@@ -711,17 +711,17 @@ class FilesPage(Adw.Bin):
     # MARK: - Dikdörtgenle seçim
 
     def _flow_point(self, x: float, y: float) -> tuple[int, int]:
-        ok, fx, fy = self.grid_overlay.translate_coordinates(self.flow, x, y)
-        return (int(fx), int(fy)) if ok else (int(x), int(y))
+        point = widget_point(self.grid_overlay, self.flow, x, y) or (x, y)
+        return int(point[0]), int(point[1])
 
     def _tile_frames(self) -> dict:
         frames = {}
         child = self.flow.get_first_child()
         while child is not None:
             if isinstance(child, Gtk.FlowBoxChild) and child.get_visible():
-                ok, bounds = child.compute_bounds(self.grid_overlay)
-                if ok:
-                    frames[child] = (bounds.get_x(), bounds.get_y(), bounds.get_width(), bounds.get_height())
+                bounds = widget_bounds(child, self.grid_overlay)
+                if bounds is not None:
+                    frames[child] = bounds
             child = child.get_next_sibling()
         return frames
 
@@ -816,18 +816,32 @@ class FilesPage(Adw.Bin):
             color.parse("#3584e4")
             return color
 
-    def _draw_band(self, _area, cr, _width: int, _height: int) -> None:
+    def snapshot_band(self, snapshot) -> None:
         m = self._marquee
         if m is None or not m["active"] or not m["rect"]:
             return
         x, y, w, h = m["rect"]
         c = self._accent_rgba()
-        cr.rectangle(x, y, w, h)
-        cr.set_source_rgba(c.red, c.green, c.blue, 0.12)
-        cr.fill_preserve()
-        cr.set_source_rgba(c.red, c.green, c.blue, 0.75)
-        cr.set_line_width(1)
-        cr.stroke()
+        fill_rect(snapshot, x, y, w, h, rgba(c.red, c.green, c.blue, 0.12))
+        edge = rgba(c.red, c.green, c.blue, 0.75)
+        for rect in ((x, y, w, 1), (x, y + h - 1, w, 1), (x, y, 1, h), (x + w - 1, y, 1, h)):
+            fill_rect(snapshot, *rect, edge)
+
+
+class MarqueeBand(Gtk.Widget):
+    """Izgaranın üstündeki seçim dikdörtgeni katmanı. Tıklamaları geçirir; cairo köprüsü gerektirmez."""
+
+    __gtype_name__ = "MahzenMarqueeBand"
+
+    def __init__(self, page: "FilesPage"):
+        super().__init__(can_target=False, hexpand=True, vexpand=True)
+        self.page = page
+
+    def do_measure(self, _orientation, _for_size):
+        return 0, 0, -1, -1
+
+    def do_snapshot(self, snapshot) -> None:
+        self.page.snapshot_band(snapshot)
 
 
 class PreviewDialog(Adw.Dialog):

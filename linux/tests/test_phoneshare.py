@@ -370,6 +370,32 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(sel.autoscroll_speed(-500, 400), -sel.AUTOSCROLL_MAX)
         self.assertEqual(sel.autoscroll_speed(5000, 400), sel.AUTOSCROLL_MAX)
 
+    def test_gtk_result_shapes(self):
+        """GTK sürümlerine göre değişen dönüş biçimleri (ör. GTK 4.24'te translate_coordinates iki değer döner)."""
+        from types import SimpleNamespace as NS
+        point = NS(x=3.5, y=4)
+        self.assertEqual(sel.point_from_result((True, point)), (3.5, 4.0))
+        self.assertEqual(sel.point_from_result(point), (3.5, 4.0))
+        self.assertIsNone(sel.point_from_result((False, point)))
+        self.assertEqual(sel.point_from_result((True, 1.0, 2.0)), (1.0, 2.0))
+        self.assertEqual(sel.point_from_result((1.0, 2.0)), (1.0, 2.0))
+        self.assertIsNone(sel.point_from_result((False, 0.0, 0.0)))
+        self.assertIsNone(sel.point_from_result(None))
+        rect = NS(get_x=lambda: 1, get_y=lambda: 2, get_width=lambda: 30, get_height=lambda: 40)
+        self.assertEqual(sel.rect_from_result((True, rect)), (1.0, 2.0, 30.0, 40.0))
+        self.assertEqual(sel.rect_from_result(rect), (1.0, 2.0, 30.0, 40.0))
+        self.assertIsNone(sel.rect_from_result((False, rect)))
+
+    def test_ui_needs_no_cairo_bridge(self):
+        """Arayüz cairo köprüsü (python3-gi-cairo) olmadan da çizebilmeli: draw_func ve translate_coordinates yok."""
+        ui = os.path.join(os.path.dirname(__file__), "..", "mahzen", "ui")
+        for name in os.listdir(ui):
+            if name.endswith(".py"):
+                with open(os.path.join(ui, name), encoding="utf-8") as f:
+                    code = f.read()
+                self.assertNotIn("set_draw_func", code, name)
+                self.assertNotIn(".translate_coordinates(self", code, name)
+
     def test_step_position(self):
         self.assertEqual(sel.step_position(0, 1, 3), 1)
         self.assertIsNone(sel.step_position(0, -1, 3))

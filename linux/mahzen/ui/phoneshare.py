@@ -7,6 +7,7 @@ from gi.repository import Adw, GLib, Gtk
 from ..core import qr
 from ..core.phoneshare import PhoneShareSession, primary_ipv4
 from ..i18n import tr
+from .common import fill_rect, rgba
 
 QUIET_ZONE = 4
 
@@ -20,28 +21,39 @@ def _summary(session: PhoneShareSession) -> str:
     return f"{session.title} · " + ", ".join(parts)
 
 
-class QRCodeView(Gtk.DrawingArea):
-    """QR kodunu her boyutta keskin çizer (modüller tam piksele yuvarlanır)."""
+class QRCodeView(Gtk.Widget):
+    """QR kodunu her boyutta keskin çizer (modüller tam piksele yuvarlanır). GTK'nin kendi çizim düğümleriyle
+    çizilir; cairo köprüsü (python3-gi-cairo) gerektirmez."""
+
+    __gtype_name__ = "MahzenQRCodeView"
 
     def __init__(self, text: str, size: int = 264):
-        super().__init__(content_width=size, content_height=size, halign=Gtk.Align.CENTER)
+        super().__init__(halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER)
         self.matrix = qr.encode(text)
+        self.size = size
         self.update_property([Gtk.AccessibleProperty.LABEL], [tr("Paylaşım QR kodu")])
-        self.set_draw_func(self._draw)
 
-    def _draw(self, _area, cr, width: int, height: int) -> None:
+    def do_measure(self, _orientation, _for_size):
+        return self.size, self.size, -1, -1
+
+    def do_snapshot(self, snapshot) -> None:
+        width, height = self.get_width(), self.get_height()
         count = len(self.matrix) + 2 * QUIET_ZONE
         scale = max(1, min(width, height) // count)
         ox = (width - scale * count) // 2 + QUIET_ZONE * scale
         oy = (height - scale * count) // 2 + QUIET_ZONE * scale
-        cr.set_source_rgb(1, 1, 1)
-        cr.paint()
-        cr.set_source_rgb(0, 0, 0)
+        fill_rect(snapshot, 0, 0, width, height, rgba(1, 1, 1))
+        black = rgba(0, 0, 0)
         for y, row in enumerate(self.matrix):
-            for x, dark in enumerate(row):
-                if dark:
-                    cr.rectangle(ox + x * scale, oy + y * scale, scale, scale)
-        cr.fill()
+            x = 0
+            while x < len(row):  # yan yana koyu modüller tek dikdörtgen
+                if not row[x]:
+                    x += 1
+                    continue
+                start = x
+                while x < len(row) and row[x]:
+                    x += 1
+                fill_rect(snapshot, ox + start * scale, oy + y * scale, (x - start) * scale, scale, black)
 
 
 class PhoneShareDialog(Adw.Dialog):

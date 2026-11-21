@@ -33,6 +33,38 @@ def autoscroll_speed(y: float, height: float) -> float:
     return 0.0
 
 
+def point_from_result(result) -> tuple[float, float] | None:
+    """GTK'nin nokta dönüşümü sonucunu (x, y) yapar. Sürüme göre `compute_point` (ok, Graphene.Point) ya da
+    Graphene.Point, kullanımdan kalkan `translate_coordinates` ise (ok, x, y) ya da (x, y) döndürür."""
+    if result is None or result is False:
+        return None
+    parts = result if isinstance(result, tuple) else (result,)
+    if parts and isinstance(parts[0], bool):
+        if not parts[0]:
+            return None
+        parts = parts[1:]
+    if len(parts) == 1 and hasattr(parts[0], "x") and hasattr(parts[0], "y"):
+        return float(parts[0].x), float(parts[0].y)
+    if len(parts) == 2 and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in parts):
+        return float(parts[0]), float(parts[1])
+    return None
+
+
+def rect_from_result(result) -> Rect | None:
+    """`compute_bounds` sonucunu (x, y, genişlik, yükseklik) yapar: (ok, Graphene.Rect) ya da Graphene.Rect."""
+    if result is None or result is False:
+        return None
+    parts = result if isinstance(result, tuple) else (result,)
+    if parts and isinstance(parts[0], bool):
+        if not parts[0]:
+            return None
+        parts = parts[1:]
+    if len(parts) == 1 and hasattr(parts[0], "get_x"):
+        r = parts[0]
+        return float(r.get_x()), float(r.get_y()), float(r.get_width()), float(r.get_height())
+    return None
+
+
 def step_position(position: int, delta: int, count: int) -> int | None:
     """Önizlemede önceki/sonraki dosyanın sırası; uçlarda döngü yapmaz (None)."""
     target = position + delta
