@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango
 
+from ..core import selection as sel
 from ..core.index import sort_key
+from ..core.phoneshare import is_shareable
 from ..i18n import tr
 from .common import alert, ask_text, clear_box, format_date, format_size, icon_for, kind_of
+from .phoneshare import PhoneShareDialog
 
 TEXT_PREVIEW_LIMIT = 4 * 1024 * 1024
 IMAGE_PREVIEW_LIMIT = 80 * 1024 * 1024
@@ -84,9 +87,21 @@ class FilesPage(Adw.Bin):
                                 margin_start=12, margin_end=12, margin_top=6, margin_bottom=12)
         self.flow.connect("child-activated", lambda _f, child: self._activate(child.item))
         self.flow.connect("selected-children-changed", lambda *_: self._update_selection_bar())
-        grid_scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
-        grid_scroller.set_child(self.flow)
-        self.stack.add_named(grid_scroller, "grid")
+        self.grid_scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
+        # Boş alandan sürükleyerek dikdörtgenle seçim: ızgaranın üstünde, tıklamaları geçiren bir çizim katmanı.
+        self.grid_overlay = Gtk.Overlay(vexpand=True)
+        self.grid_overlay.set_child(self.flow)
+        self.band = Gtk.DrawingArea(can_target=False, hexpand=True, vexpand=True)
+        self.band.set_draw_func(self._draw_band)
+        self.grid_overlay.add_overlay(self.band)
+        self.grid_scroller.set_child(self.grid_overlay)
+        self.stack.add_named(self.grid_scroller, "grid")
+        self._marquee = None
+        drag = Gtk.GestureDrag(propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        drag.connect("drag-begin", self._marquee_begin)
+        drag.connect("drag-update", self._marquee_update)
+        drag.connect("drag-end", self._marquee_end)
+        self.grid_overlay.add_controller(drag)
 
         self.list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.MULTIPLE, activate_on_single_click=False,
                                 css_classes=["boxed-list"], valign=Gtk.Align.START)
@@ -119,6 +134,9 @@ class FilesPage(Adw.Bin):
             b = Gtk.Button(icon_name=icon, tooltip_text=tip)
             b.connect("clicked", lambda *_, c=cb: c())
             self.action_bar.pack_end(b)
+        self.phone_btn = Gtk.Button(icon_name="phone-symbolic", tooltip_text=tr("Telefonda göster"))
+        self.phone_btn.connect("clicked", lambda *_: self.show_on_phone())
+        self.action_bar.pack_end(self.phone_btn)
         toolbar.add_bottom_bar(self.action_bar)
         self.set_child(toolbar)
 
@@ -372,6 +390,8 @@ class FilesPage(Adw.Bin):
         if folders:
             parts.append(tr("{n} klasör", n=folders))
         self.selection_label.set_text(tr("{items} seçili", items=", ".join(parts)) if parts else "")
+        self.phone_btn.set_visible(any(k == "file" and is_shareable(r) for k, r in items)
+                                   or (not files and folders == 1))
 
     def _select_only(self, widget) -> None:
         if isinstance(widget, Gtk.FlowBoxChild):
@@ -392,6 +412,7 @@ class FilesPage(Adw.Bin):
             menu.append(tr("Aç"), "item.open")
             menu.append(tr("Yeniden Adlandır…"), "item.rename")
             menu.append(tr("Taşı…"), "item.move")
+            menu.append(tr("Telefonda Göster…"), "item.phone")
             section = Gio.Menu()
             section.append(tr("Çöp Kutusuna Taşı"), "item.trash")
             menu.append_section(None, section)
@@ -399,6 +420,8 @@ class FilesPage(Adw.Bin):
             menu.append(tr("Önizle"), "item.open")
             menu.append(tr("Geçici Olarak Aç"), "item.open-temp")
             menu.append(tr("Dışa Aktar…"), "item.export")
+            if is_shareable(record):
+                menu.append(tr("Telefonda Göster…"), "item.phone")
             section = Gio.Menu()
             section.append(tr("Yeniden Adlandır…"), "item.rename")
             section.append(tr("Favori"), "item.favorite")
@@ -419,6 +442,7 @@ class FilesPage(Adw.Bin):
             "tags": self.tag_selected,
             "move": self.move_selected,
             "trash": self.trash_selected,
+            "phone": lambda: self.show_on_phone(item),
         }
         for name, cb in actions.items():
             action = Gio.SimpleAction.new(name, None)
@@ -637,6 +661,22 @@ class FilesPage(Adw.Bin):
 
         dialog.select_folder(self.get_root(), None, done)
 
+    def show_on_phone(self, item=None) -> None:
+        """Seçili fotoğraf/videoları ya da tek bir klasörü (alt klasörleriyle) telefonda gösterir."""
+        items = self.selected() or ([item] if item else [])
+        if item and (item not in items or item[0] == "folder"):
+            items = [item]  # bir klasörün menüsünden: o klasör
+        files = [r for k, r in items if k == "file"]
+        folders = [r for k, r in items if k == "folder"]
+        if files:
+            session = self.state.show_files_on_phone(files)
+        elif len(folders) == 1:
+            session = self.state.show_folder_on_phone(folders[0])
+        else:
+            return
+        if session is not None:
+            PhoneShareDialog(self.state, session).present(self)
+
     def open_temporarily(self, record: dict) -> None:
         if self.state.settings.get("tempOpenWarned"):
             self.state.open_temporarily(record)
@@ -665,51 +705,291 @@ class FilesPage(Adw.Bin):
     # MARK: - Önizleme
 
     def preview(self, record: dict) -> None:
-        PreviewDialog(self, record).present(self)
+        siblings = [r for k, r in self._items if k == "file"]
+        PreviewDialog(self, record, siblings).present(self)
+
+    # MARK: - Dikdörtgenle seçim
+
+    def _flow_point(self, x: float, y: float) -> tuple[int, int]:
+        ok, fx, fy = self.grid_overlay.translate_coordinates(self.flow, x, y)
+        return (int(fx), int(fy)) if ok else (int(x), int(y))
+
+    def _tile_frames(self) -> dict:
+        frames = {}
+        child = self.flow.get_first_child()
+        while child is not None:
+            if isinstance(child, Gtk.FlowBoxChild) and child.get_visible():
+                ok, bounds = child.compute_bounds(self.grid_overlay)
+                if ok:
+                    frames[child] = (bounds.get_x(), bounds.get_y(), bounds.get_width(), bounds.get_height())
+            child = child.get_next_sibling()
+        return frames
+
+    def _marquee_begin(self, gesture, x: float, y: float) -> None:
+        """Boş alandan başlayan sürükleme. Bir öğenin üstünden başlarsa öğeye bırakılır (taşıma, seçim)."""
+        event = gesture.get_current_event()
+        device = event.get_device() if event else None
+        touch = device is not None and device.get_source() == Gdk.InputSource.TOUCHSCREEN
+        if touch or self.flow.get_child_at_pos(*self._flow_point(x, y)) is not None:
+            gesture.set_state(Gtk.EventSequenceState.DENIED)
+            self._marquee = None
+            return
+        mods = gesture.get_current_event_state()
+        additive = bool(mods & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK))
+        self._marquee = {
+            "start": (x, y), "current": (x, y), "active": False, "additive": additive,
+            "base": set(self.flow.get_selected_children()) if additive else set(),
+            "pointer_y": y - self.grid_scroller.get_vadjustment().get_value(), "timer": 0, "speed": 0.0,
+            "rect": None,
+        }
+
+    def _marquee_update(self, gesture, dx: float, dy: float) -> None:
+        m = self._marquee
+        if m is None:
+            return
+        if not m["active"]:
+            if (dx * dx + dy * dy) ** 0.5 < sel.MARQUEE_THRESHOLD:
+                return
+            m["active"] = True
+            gesture.set_state(Gtk.EventSequenceState.CLAIMED)
+            self.flow.grab_focus()
+        vadj = self.grid_scroller.get_vadjustment()
+        m["current"] = (m["start"][0] + dx, m["start"][1] + dy)
+        m["pointer_y"] = m["current"][1] - vadj.get_value()
+        self._marquee_refresh()
+        # İmleç görünür alanın kenarına yaklaştıkça hızlanarak kaydır.
+        m["speed"] = sel.autoscroll_speed(m["pointer_y"], vadj.get_page_size())
+        if m["speed"] and not m["timer"]:
+            m["timer"] = GLib.timeout_add(16, self._marquee_tick)
+
+    def _marquee_tick(self) -> bool:
+        m = self._marquee
+        if m is None or not m["speed"]:
+            if m is not None:
+                m["timer"] = 0
+            return False
+        vadj = self.grid_scroller.get_vadjustment()
+        old = vadj.get_value()
+        new = min(vadj.get_upper() - vadj.get_page_size(), max(vadj.get_lower(), old + m["speed"]))
+        if new != old:
+            vadj.set_value(new)
+            m["current"] = (m["current"][0], m["pointer_y"] + new)
+            self._marquee_refresh()
+        return True
+
+    def _marquee_refresh(self) -> None:
+        m = self._marquee
+        rect = sel.rect_from_points(m["start"], m["current"])
+        m["rect"] = rect
+        target = sel.marquee_selection(m["base"], self._tile_frames(), rect)
+        child = self.flow.get_first_child()
+        while child is not None:
+            if isinstance(child, Gtk.FlowBoxChild):
+                wanted = child in target
+                if wanted != child.is_selected():
+                    (self.flow.select_child if wanted else self.flow.unselect_child)(child)
+            child = child.get_next_sibling()
+        self.band.queue_draw()
+
+    def _marquee_end(self, _gesture, _dx: float, _dy: float) -> None:
+        m, self._marquee = self._marquee, None
+        if m is None:
+            return
+        if m["timer"]:
+            GLib.source_remove(m["timer"])
+        if not m["active"] and not m["additive"]:
+            # Boş alana tıklamak seçimi temizler.
+            self.flow.unselect_all()
+        self.band.queue_draw()
+
+    def _accent_rgba(self) -> Gdk.RGBA:
+        try:
+            ok, color = self.band.get_style_context().lookup_color("accent_bg_color")
+            if ok:
+                return color
+        except (AttributeError, TypeError):
+            pass
+        try:
+            return Adw.StyleManager.get_default().get_accent_color_rgba()
+        except AttributeError:
+            color = Gdk.RGBA()
+            color.parse("#3584e4")
+            return color
+
+    def _draw_band(self, _area, cr, _width: int, _height: int) -> None:
+        m = self._marquee
+        if m is None or not m["active"] or not m["rect"]:
+            return
+        x, y, w, h = m["rect"]
+        c = self._accent_rgba()
+        cr.rectangle(x, y, w, h)
+        cr.set_source_rgba(c.red, c.green, c.blue, 0.12)
+        cr.fill_preserve()
+        cr.set_source_rgba(c.red, c.green, c.blue, 0.75)
+        cr.set_line_width(1)
+        cr.stroke()
 
 
 class PreviewDialog(Adw.Dialog):
-    def __init__(self, page: FilesPage, record: dict):
+    """Dosya önizlemesi. Aynı ekrandaki dosyalar arasında ← / → tuşları, yatay kaydırma (dokunmatik yüzey,
+    yatay tekerlek) ve dokunmatik ekranda kaydırma hareketiyle gezilir."""
+
+    SWIPE_SURFACE = 50  # dokunmatik yüzeyde bir geçiş için gereken yatay kaydırma (piksel)
+
+    def __init__(self, page: FilesPage, record: dict, siblings: list[dict] | None = None):
         super().__init__(title=record["name"], content_width=820, content_height=620)
         self.page = page
         self.state = page.state
         self.record = record
+        self.siblings = siblings if siblings and any(s["id"] == record["id"] for s in siblings) else [record]
+        self._generation = 0
+        self._kind = ""
+        self._content: Gtk.Widget | None = None
+        self._swipe_x = 0.0
+        self._swipe_used = False
+        self._swipe_time = 0
 
         toolbar = Adw.ToolbarView()
         header = Adw.HeaderBar()
         open_btn = Gtk.Button(icon_name="document-open-symbolic", tooltip_text=tr("Geçici olarak aç"))
-        open_btn.connect("clicked", lambda *_: (self.close(), page.open_temporarily(record)))
+        open_btn.connect("clicked", lambda *_: (self.close(), page.open_temporarily(self.record)))
         header.pack_start(open_btn)
         export_btn = Gtk.Button(icon_name="document-save-symbolic", tooltip_text=tr("Dışa aktar"))
         export_btn.connect("clicked", lambda *_: self._export())
         header.pack_start(export_btn)
+
+        nav = Gtk.Box(spacing=2, visible=len(self.siblings) > 1)
+        self.prev_btn = Gtk.Button(icon_name="go-previous-symbolic", tooltip_text=tr("Önceki (←)"),
+                                   css_classes=["flat"])
+        self.prev_btn.connect("clicked", lambda *_: self.step(-1))
+        self.counter = Gtk.Label(css_classes=["dim-label", "numeric"], width_chars=7)
+        self.next_btn = Gtk.Button(icon_name="go-next-symbolic", tooltip_text=tr("Sonraki (→)"),
+                                   css_classes=["flat"])
+        self.next_btn.connect("clicked", lambda *_: self.step(1))
+        for w in (self.prev_btn, self.counter, self.next_btn):
+            nav.append(w)
+        header.pack_end(nav)
         toolbar.add_top_bar(header)
 
-        self.stack = Gtk.Stack()
+        self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, transition_duration=150)
         spinner = Gtk.Spinner(spinning=True, width_request=32, height_request=32,
                               halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER)
         self.stack.add_named(spinner, "loading")
         toolbar.set_content(self.stack)
 
-        info = " · ".join(x for x in [format_size(int(record.get("size", 0))),
-                                      tr("Eklendi: {date}", date=format_date(record.get("addedAt"))),
-                                      " ".join(f"#{t}" for t in record.get("tags", []))] if x)
-        footer = Gtk.Label(label=info, css_classes=["caption", "dim-label"], margin_top=6, margin_bottom=6,
-                           ellipsize=Pango.EllipsizeMode.END)
-        toolbar.add_bottom_bar(footer)
+        self.footer = Gtk.Label(css_classes=["caption", "dim-label"], margin_top=6, margin_bottom=6,
+                                ellipsize=Pango.EllipsizeMode.END)
+        toolbar.add_bottom_bar(self.footer)
         self.set_child(toolbar)
+
+        keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        keys.connect("key-pressed", self._on_key)
+        self.add_controller(keys)
+        scroll = Gtk.EventControllerScroll(flags=Gtk.EventControllerScrollFlags.BOTH_AXES,
+                                        propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        scroll.connect("scroll-begin", lambda *_: self._reset_swipe())
+        scroll.connect("scroll-end", lambda *_: self._reset_swipe())
+        scroll.connect("scroll", self._on_scroll)
+        self.stack.add_controller(scroll)
+        swipe = Gtk.GestureSwipe(touch_only=True)
+        swipe.connect("swipe", self._on_swipe)
+        self.stack.add_controller(swipe)
+
         # Kilitte çözülmüş içerik ekranda kalmasın.
         handler = self.state.connect("phase-changed", lambda *_: self.force_close())
         self.connect("closed", lambda *_: self.state.disconnect(handler))
+        self._load(record)
+
+    # MARK: Gezinme
+
+    @property
+    def position(self) -> int:
+        return next((i for i, s in enumerate(self.siblings) if s["id"] == self.record["id"]), 0)
+
+    def step(self, delta: int) -> None:
+        target = sel.step_position(self.position, delta, len(self.siblings))
+        if target is not None:
+            self._load(self.siblings[target])
+
+    def _on_key(self, _ctrl, keyval, _code, mods) -> bool:
+        # Metinde ok tuşları imlece kalır.
+        if self._kind == "text" or mods & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK |
+                                           Gdk.ModifierType.SHIFT_MASK | Gdk.ModifierType.SUPER_MASK):
+            return False
+        if keyval in (Gdk.KEY_Left, Gdk.KEY_KP_Left):
+            self.step(-1)
+            return True
+        if keyval in (Gdk.KEY_Right, Gdk.KEY_KP_Right):
+            self.step(1)
+            return True
+        return False
+
+    def _reset_swipe(self) -> None:
+        self._swipe_x = 0.0
+        self._swipe_used = False
+
+    def _on_scroll(self, controller, dx: float, dy: float) -> bool:
+        """Her yatay kaydırma hareketinde bir dosya. Metinde yatay kaydırma içeriğe kalır."""
+        if self._kind == "text":
+            return False
+        now = GLib.get_monotonic_time()
+        if now - self._swipe_time > 300_000:  # olay vermeyen sürücüler için: kısa bir duraklama yeni hareket sayılır
+            self._reset_swipe()
+        self._swipe_time = now
+        if abs(dx) <= abs(dy) and self._swipe_x == 0:
+            return False
+        wheel = hasattr(controller, "get_unit") and controller.get_unit() == Gdk.ScrollUnit.WHEEL
+        self._swipe_x += dx
+        if not self._swipe_used and abs(self._swipe_x) >= (1 if wheel else self.SWIPE_SURFACE):
+            self.step(1 if self._swipe_x > 0 else -1)
+            if wheel:
+                self._reset_swipe()
+            else:
+                self._swipe_used = True
+        return True
+
+    def _on_swipe(self, _gesture, vx: float, vy: float) -> None:
+        if abs(vx) > abs(vy) and abs(vx) > 300:
+            self.step(-1 if vx > 0 else 1)
+
+    # MARK: İçerik
+
+    def _load(self, record: dict) -> None:
+        self.record = record
+        self._generation += 1
+        generation = self._generation
+        self.set_title(record["name"])
+        position, count = self.position, len(self.siblings)
+        self.counter.set_label(f"{position + 1} / {count}")
+        self.prev_btn.set_sensitive(position > 0)
+        self.next_btn.set_sensitive(position < count - 1)
+        self.footer.set_label(" · ".join(x for x in [
+            format_size(int(record.get("size", 0))), tr("Eklendi: {date}", date=format_date(record.get("addedAt"))),
+            " ".join(f"#{t}" for t in record.get("tags", []))] if x))
+        self.stack.set_visible_child_name("loading")
+        if self._content is not None:
+            self.stack.remove(self._content)
+            self._content = None
+
+        def current(fn):
+            return lambda data, error: fn(data, error) if generation == self._generation else None
 
         kind = kind_of(record)
         size = int(record.get("size", 0))
+        self._kind = kind
         if kind == "image" and size <= IMAGE_PREVIEW_LIMIT:
-            self.state.read_file(record, self._show_image)
+            self.state.read_file(record, current(self._show_image))
         elif kind == "text" and size <= TEXT_PREVIEW_LIMIT:
-            self.state.read_file(record, self._show_text)
+            self.state.read_file(record, current(self._show_text))
         else:
             self._show_fallback()
+
+    def _set_content(self, widget: Gtk.Widget) -> None:
+        if self._content is not None:
+            self.stack.remove(self._content)
+        self._content = widget
+        self.stack.add_named(widget, "content")
+        self.stack.set_visible_child_name("content")
 
     def _show_image(self, data, error) -> None:
         if error or data is None:
@@ -720,9 +1000,7 @@ class PreviewDialog(Adw.Dialog):
         except GLib.Error:
             self._show_fallback(tr("Bu görsel biçimi önizlenemiyor."))
             return
-        picture = Gtk.Picture(paintable=texture, content_fit=Gtk.ContentFit.CONTAIN, can_shrink=True)
-        self.stack.add_named(picture, "content")
-        self.stack.set_visible_child_name("content")
+        self._set_content(Gtk.Picture(paintable=texture, content_fit=Gtk.ContentFit.CONTAIN, can_shrink=True))
 
     def _show_text(self, data, error) -> None:
         if error or data is None:
@@ -732,29 +1010,26 @@ class PreviewDialog(Adw.Dialog):
         view = Gtk.TextView(editable=False, monospace=True, wrap_mode=Gtk.WrapMode.WORD_CHAR,
                             top_margin=12, bottom_margin=12, left_margin=12, right_margin=12, cursor_visible=False)
         view.get_buffer().set_text(text)
-        scroller = Gtk.ScrolledWindow(child=view)
-        self.stack.add_named(scroller, "content")
-        self.stack.set_visible_child_name("content")
+        self._set_content(Gtk.ScrolledWindow(child=view))
 
     def _show_fallback(self, message: str | None = None) -> None:
+        record = self.record
         status = Adw.StatusPage(
-            icon_name=icon_for(self.record), title=self.record["name"],
+            icon_name=icon_for(record), title=record["name"],
             description=message or tr("Bu dosya türü uygulama içinde önizlenemiyor.\n"
                                       "Geçici olarak açabilir ya da dışa aktarabilirsiniz."))
         button = Gtk.Button(label=tr("Geçici Olarak Aç"), css_classes=["pill", "suggested-action"],
                             halign=Gtk.Align.CENTER)
-        button.connect("clicked", lambda *_: (self.close(), self.page.open_temporarily(self.record)))
+        button.connect("clicked", lambda *_: (self.close(), self.page.open_temporarily(record)))
         status.set_child(button)
-        self.stack.add_named(status, "content")
-        self.stack.set_visible_child_name("content")
+        self._set_content(status)
 
     def _show_error(self, error) -> None:
-        status = Adw.StatusPage(icon_name="dialog-error-symbolic", title=tr("Dosya çözülemedi"),
-                                description=str(error) if error else "")
-        self.stack.add_named(status, "content")
-        self.stack.set_visible_child_name("content")
+        self._set_content(Adw.StatusPage(icon_name="dialog-error-symbolic", title=tr("Dosya çözülemedi"),
+                                         description=str(error) if error else ""))
 
     def _export(self) -> None:
+        record = self.record
         self.close()
         dialog = Gtk.FileDialog(title=tr("Şifresi çözülmüş kopyanın kaydedileceği klasör"),
                                 accept_label=tr("Dışa Aktar"), modal=True)
@@ -765,7 +1040,6 @@ class PreviewDialog(Adw.Dialog):
             except GLib.Error:
                 return
             if folder and folder.get_path():
-                self.state.export_files([self.record], folder.get_path())
+                self.state.export_files([record], folder.get_path())
 
         dialog.select_folder(self.page.get_root(), None, done)
-

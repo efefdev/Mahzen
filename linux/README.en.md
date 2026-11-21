@@ -62,8 +62,12 @@ The Linux computer only needs the dependencies installed (the distribution's pac
 Most of the features of the macOS version are available on Linux too:
 
 - **Files:** add by drag and drop or with the file chooser (folder structure is preserved), nested folders, tags,
-  favorites, search, grid/list view, move by dragging inside the vault, image and text preview,
-  temporary opening, export, duplicate detection, an offer to move the originals to the trash after adding
+  favorites, search, grid/list view, move by dragging inside the vault, image and text preview
+  (previous/next file with ← / → or a horizontal scroll, with an "n / total" counter), rubber-band selection by
+  dragging from an empty spot in the grid (Ctrl/Shift adds to the current selection; the grid scrolls by itself at
+  the edge), temporary opening, export, duplicate detection, an offer to move the originals to the trash after adding
+- **Show on Phone:** shows the selected photos and videos, or a folder, on a phone on the same Wi-Fi through a QR
+  code, end-to-end encrypted (see below)
 - **Notes:** colored, pinnable notes; adjustable font and size
 - **Passwords:** account, card, Wi-Fi and server entries; password generator and strength meter; a copied password is
   cleared from the clipboard after the time you choose
@@ -74,6 +78,29 @@ Most of the features of the macOS version are available on Linux too:
 - **Maintenance:** trash (adjustable retention), incremental backup and reminder, integrity check and restore from backup
 - **Appearance:** orange-and-black by default; light / dark / system theme, 9 accent colors (settings are stored in the vault and shared by both systems)
 - **Language:** System / Türkçe / English, chosen in Settings (if the system language isn't Turkish, the app opens in English)
+
+### Show on Phone
+
+Select photos/videos and right-click (or use the phone button in the selection bar) → **Show on Phone…**; on a folder
+the same command shows the folder together with its subfolders. Scan the QR code in the window with the phone's
+camera. A page opens on the phone with a grid, full screen, swiping, zooming and video playback; nothing needs to be
+installed.
+
+- **End-to-end encrypted:** files travel encrypted with a 256-bit key created for each share (ChaCha20-Poly1305).
+  The key is only in the `#` part of the address in the QR code; the browser never sends that part to the server, so
+  only encrypted bytes cross the network. File names travel in the encrypted list too. Decryption happens in the
+  phone's browser.
+- **Local network only:** the computer listens on a random port of its Wi-Fi (or wired) local address; nothing goes
+  to the internet. The address contains an unguessable token; every other request is refused.
+- **Time-limited:** sharing ends after 10 minutes, as soon as you press **Stop**, close the window or the vault
+  locks. The page on the phone deletes the decrypted content when sharing ends. The window shows the time left and
+  how many devices have connected.
+- The stream format and the phone page are the same as in the macOS version.
+
+If the phone can't open the page: check that both devices are on the same network, whether the network uses
+"guest/client isolation", and whether the computer's firewall blocks incoming connections (e.g. if `ufw` is enabled,
+temporarily allow incoming connections from the local network; Fedora's default *FedoraWorkstation* zone already
+allows high ports).
 
 ### Linux-specific differences
 
@@ -104,6 +131,13 @@ Start with **a new vault made for testing**, not your real one:
    **Open Another Vault…** from the menu on the lock screen; the files, notes and passwords from the Mac should
    show up. A file you add on Linux should show up on the Mac too.
 7. **Backup and maintenance:** choose a backup location in Settings and click **Back Up Now**, then run the **Integrity check**.
+8. **Preview navigation and rubber-band selection:** preview an image and move to the other files with ← / → (or a
+   two-finger horizontal swipe on the touchpad); the counter in the header should show "n / total". In the grid, drag
+   from an empty spot to select a few items with a rectangle, then hold Ctrl and draw another one to add to the
+   selection; while dragging toward the bottom of the window the grid should scroll by itself.
+9. **Show on Phone:** select a few images, right-click → **Show on Phone…** and scan the QR code with a phone on the
+   same Wi-Fi. The images should open on the phone and the device count in the window should go up; within half a
+   minute of **Stop** the page on the phone should show that sharing has ended and clear its content.
 
 If you run into a problem, start the app from a terminal with `mahzen` and
 [open an issue](https://github.com/efefdev/Mahzen/issues) with the output attached.
@@ -145,6 +179,14 @@ The vaults under `tests/fixtures/` were created with the macOS version (Argon2id
 vaults); the tests verify that the Linux version can open them. In the other direction, `tests/fixtures/python-vault`
 is created with this version, and `swift test` on the macOS side (LinuxCompatibilityTests) opens it. If the format changes:
 `python3 linux/tests/make_python_fixture.py`.
+
+`tests/test_phoneshare.py` tests Show on Phone: that the encrypted stream is byte-for-byte identical to the macOS
+version's (a fixed-key cross-check), an end-to-end transfer from a real vault to the local server over HTTP, the
+security headers, the token and time-limit checks, the QR encoder and, if Node.js is installed, that the JavaScript
+decoder in the phone page opens the Python stream. The stream written by the macOS test can be passed in as well:
+`MAHZEN_PHONE_FIXTURE=/path/prefix swift test --filter PhoneShareTests`, then the Python tests with the same variable.
+The phone page (`mahzen/core/phone_viewer.html`) is carried over from the macOS source; if the page changes on macOS:
+`python3 linux/tests/sync_phone_viewer.py`.
 
 ## Project layout
 

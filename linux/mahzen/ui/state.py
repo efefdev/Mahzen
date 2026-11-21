@@ -24,6 +24,7 @@ from ..core.index import VaultIndex, new_file_record, new_id, new_note, now  # n
 from ..core.keyfiles import KeyfileStore  # noqa: E402
 from ..core.vault import Vault  # noqa: E402
 from ..core.filetypes import IMAGE_PREVIEWABLE, content_type_for, extension  # noqa: E402
+from ..core.phoneshare import PhoneShareSession, folder_files  # noqa: E402
 from ..i18n import tr  # noqa: E402
 
 
@@ -72,6 +73,8 @@ class AppState(GObject.Object):
         self.thumbnails: dict[str, Gdk.Texture | None] = {}
         self._thumb_waiters: dict[str, list] = {}
         self.integrity_report = None
+        # Açık "Telefonda Göster" oturumu; kasa kilitlenince durdurulur.
+        self.phone_share: PhoneShareSession | None = None
         self._session = uuid.uuid4()
         self._cancel = CancelFlag()
         self._save_source = 0
@@ -280,6 +283,7 @@ class AppState(GObject.Object):
         """Her zaman anında kilitler. Çalışan bir işlem varsa durdurulur."""
         if self.phase != "unlocked":
             return
+        self.stop_phone_share()
         self._cancel.value = True
         self.set_task(None)
         self.flush_save()
@@ -606,6 +610,43 @@ class AppState(GObject.Object):
                 self.alert(tr("Açılamadı"), e.message)
 
         self.run_background(work, finished)
+
+    # MARK: - Telefonda Göster
+
+    def start_phone_share(self, title: str, files: list[tuple[dict, list[str]]]) -> PhoneShareSession | None:
+        """Fotoğraf ve videolar için yeni bir paylaşım oturumu kurar (sunucuyu pencere başlatır).
+        Önceki oturum durdurulur; gösterilecek bir şey yoksa uyarı verilir ve None döner."""
+        if not self.vault:
+            return None
+        self.stop_phone_share()
+        try:
+            session = PhoneShareSession(self.vault, title, files)
+        except ValueError:
+            self.alert(tr("Gösterilecek fotoğraf ya da video yok"),
+                       tr("Telefonda yalnızca fotoğraflar ve videolar gösterilebilir."))
+            return None
+        self.phone_share = session
+        return session
+
+    def show_files_on_phone(self, records: list[dict]) -> PhoneShareSession | None:
+        """Seçili dosyalardaki fotoğraf ve videolar."""
+        if not records:
+            return None
+        title = records[0]["name"] if len(records) == 1 else tr("{n} öğe", n=len(records))
+        return self.start_phone_share(title, [(r, []) for r in records])
+
+    def show_folder_on_phone(self, folder: dict) -> PhoneShareSession | None:
+        """Klasör, alt klasörleriyle birlikte."""
+        return self.start_phone_share(folder["name"], folder_files(self.index, folder["id"]))
+
+    def stop_phone_share(self, session: PhoneShareSession | None = None) -> None:
+        """Açık oturumu (ya da verilen oturumu) durdurur."""
+        if session is not None and session is not self.phone_share:
+            session.stop()
+            return
+        if self.phone_share is not None:
+            self.phone_share.stop()
+            self.phone_share = None
 
     def wipe_temporary_files(self) -> None:
         shutil.rmtree(self.temp_root, ignore_errors=True)

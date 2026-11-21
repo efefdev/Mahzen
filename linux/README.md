@@ -62,8 +62,12 @@ Linux bilgisayarda yalnızca bağımlılıkların kurulu olması gerekir (`./ins
 macOS sürümündeki özelliklerin çoğu Linux'ta da var:
 
 - **Dosyalar:** sürükle-bırak veya dosya seçiciyle ekleme (klasör yapısı korunur), iç içe klasörler, etiketler,
-  favoriler, arama, ızgara/liste görünümü, kasa içinde sürükleyerek taşıma, görsel ve metin önizleme,
-  geçici açma, dışa aktarma, mükerrer dosya tespiti, ekledikten sonra orijinalleri çöpe taşıma önerisi
+  favoriler, arama, ızgara/liste görünümü, kasa içinde sürükleyerek taşıma, görsel ve metin önizleme
+  (← / → tuşları ya da yatay kaydırmayla önceki/sonraki dosya, "n / toplam" sayacı), ızgarada boş alandan
+  sürükleyerek dikdörtgenle toplu seçim (Ctrl/Shift ile mevcut seçime ekler; kenara gelince ızgara kendiliğinden
+  kayar), geçici açma, dışa aktarma, mükerrer dosya tespiti, ekledikten sonra orijinalleri çöpe taşıma önerisi
+- **Telefonda Göster:** seçili fotoğraf ve videoları ya da bir klasörü aynı Wi-Fi'deki telefonda QR kodla,
+  uçtan uca şifreli gösterir (aşağıda)
 - **Notlar:** renkli, sabitlenebilir notlar; yazı tipi ve boyutu ayarlanabilir
 - **Parolalar:** hesap, kart, Wi-Fi, sunucu kayıtları; parola üretici ve güç ölçer; kopyalanan parola seçilen süre
   sonunda panodan silinir
@@ -74,6 +78,25 @@ macOS sürümündeki özelliklerin çoğu Linux'ta da var:
 - **Bakım:** çöp kutusu (ayarlanabilir süre), artımlı yedek ve hatırlatma, bütünlük taraması ve yedekten geri yükleme
 - **Görünüm:** varsayılan olarak turuncu-siyah; açık / koyu / sistem teması, 9 vurgu rengi (ayarlar kasada saklanır, iki sistemde ortaktır)
 - **Dil:** Sistem / Türkçe / English, Ayarlar'dan seçilir (sistem dili Türkçe değilse uygulama İngilizce açılır)
+
+### Telefonda Göster
+
+Fotoğraf/video seçip sağ tıklayın (ya da seçim çubuğundaki telefon düğmesi) → **Telefonda Göster…**; bir klasörde
+aynı komut klasörü alt klasörleriyle birlikte gösterir. Açılan penceredeki QR kodu telefonun kamerasıyla okutun.
+Telefonda ızgara, tam ekran, kaydırma, yakınlaştırma ve video oynatma sunan bir sayfa açılır; uygulama kurmak gerekmez.
+
+- **Uçtan uca şifreli:** dosyalar her paylaşım için üretilen 256 bitlik bir anahtarla (ChaCha20-Poly1305) şifreli
+  gider. Anahtar yalnızca QR koddaki adresin `#` kısmındadır; tarayıcı bu kısmı sunucuya göndermez, ağda yalnızca
+  şifreli bayt dolaşır. Dosya adları da şifreli listeyle gider. Şifre çözme telefondaki tarayıcıda yapılır.
+- **Yalnızca yerel ağ:** bilgisayar, Wi-Fi (ya da kablolu) yerel adresinde rastgele bir portta dinler; internete
+  çıkmaz. Adres tahmin edilemeyen bir jeton içerir, başka her istek reddedilir.
+- **Süreli:** paylaşım 10 dakika sonra, **Durdur**'a basınca, pencere kapanınca ya da kasa kilitlenince hemen kapanır.
+  Telefondaki sayfa paylaşım bitince çözülmüş içeriği siler. Pencerede kalan süre ve bağlanan cihaz sayısı görünür.
+- Akış biçimi ve telefon sayfası macOS sürümüyle aynıdır.
+
+Telefon sayfayı açamıyorsa: iki cihaz aynı ağda mı, ağ "misafir/istemci yalıtımı" kullanıyor mu, bilgisayarın
+güvenlik duvarı gelen bağlantıları engelliyor mu bakın (ör. `ufw` açıksa geçici olarak yerel ağdan gelen
+bağlantılara izin verin; Fedora'nın varsayılan *FedoraWorkstation* bölgesi yüksek portlara zaten izin verir).
 
 ### Linux'a özgü farklar
 
@@ -104,6 +127,13 @@ Gerçek kasanızla değil, **deneme amaçlı yeni bir kasayla** başlayın:
    kilit ekranındaki menüden **Başka Kasa Aç…** ile seçin; Mac'teki dosya, not ve parolalar görünmeli.
    Linux'ta eklediğiniz bir dosya da Mac'te görünmeli.
 7. **Yedek ve bakım:** Ayarlar'dan bir yedek konumu seçip **Şimdi Yedekle**, ardından **Bütünlük taraması**.
+8. **Önizlemede gezinme ve toplu seçim:** bir görseli önizleyip ← / → ile (ya da dokunmatik yüzeyde iki parmakla
+   yatay kaydırarak) diğer dosyalara geçin; başlıktaki sayaç "n / toplam" göstermeli. Izgarada boş bir yerden
+   sürükleyerek birkaç öğeyi dikdörtgenle seçin, Ctrl basılıyken bir dikdörtgen daha çizip seçime ekleyin;
+   pencerenin altına doğru sürüklerken ızgara kendiliğinden kaymalı.
+9. **Telefonda Göster:** birkaç görsel seçip sağ tık → **Telefonda Göster…**; QR kodu aynı Wi-Fi'deki telefonla
+   okutun. Görseller telefonda açılmalı, penceredeki cihaz sayısı artmalı; **Durdur**'dan sonra en geç yarım
+   dakika içinde telefondaki sayfa paylaşımın kapandığını göstermeli ve içeriği silmeli.
 
 Bir sorun görürseniz terminalden `mahzen` ile başlatıp çıktıyı da ekleyerek
 [bir konu açın](https://github.com/efefdev/Mahzen/issues).
@@ -143,6 +173,14 @@ python3 -m unittest discover -s linux/tests
 kasalar); testler Linux sürümünün bunları açabildiğini doğrular. Ters yönde, `tests/fixtures/python-vault` bu
 sürümle oluşturulur ve macOS tarafındaki `swift test` (LinuxCompatibilityTests) onu açar. Biçim değişirse:
 `python3 linux/tests/make_python_fixture.py`.
+
+`tests/test_phoneshare.py` Telefonda Göster'i sınar: şifreli akışın macOS sürümüyle bayt bayt aynı olduğunu
+(sabit anahtarlı çapraz denetim), gerçek bir kasadan yerel sunucuya HTTP istekleriyle uçtan uca aktarımı, güvenlik
+başlıklarını, jeton ve süre denetimini, QR üreticisini ve Node.js kuruluysa telefon sayfasındaki JavaScript
+çözücünün Python akışını açtığını. macOS testinin yazdığı akış da verilebilir:
+`MAHZEN_PHONE_FIXTURE=/yol/onek swift test --filter PhoneShareTests` sonra aynı değişkenle Python testleri.
+Telefon sayfası (`mahzen/core/phone_viewer.html`) macOS kaynağından aktarılır; macOS'ta sayfa değişirse:
+`python3 linux/tests/sync_phone_viewer.py`.
 
 ## Proje yapısı
 
