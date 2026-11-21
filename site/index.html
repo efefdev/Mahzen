@@ -7,8 +7,33 @@
   <meta name="description" content="Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde saklayan, çevrimdışı çalışan bir kasa. AES-256-GCM ve Argon2id. macOS ve Linux.">
   <meta name="theme-color" content="#000000">
   <link rel="canonical" href="https://mahzen.efef.dev/">
+  <link rel="alternate" hreflang="tr" href="https://mahzen.efef.dev/">
+  <link rel="alternate" hreflang="en" href="https://mahzen.efef.dev/en/">
+  <link rel="alternate" hreflang="x-default" href="https://mahzen.efef.dev/">
+  <script>
+    // Dil seçimi (yalnızca bu kök sayfada): kayıtlı tercih varsa ona, yoksa tarayıcı diline uyar.
+    (function () {
+      try {
+        if (/bot|crawl|spider|slurp|preview|facebookexternalhit|lighthouse/i.test(navigator.userAgent)) return;
+        var en = new URL("en/", location.href).href, dil = null;
+        if (document.referrer.indexOf(en) === 0) return; // İngilizce sayfadan bilerek gelindi
+        try { dil = localStorage.getItem("mahzen-dil"); } catch (e) {}
+        if (dil !== "tr" && dil !== "en") {
+          var diller = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
+          var bilinen = [].filter.call(diller, Boolean);
+          if (!bilinen.length) return;
+          dil = bilinen.some(function (d) { return /^tr(-|$)/i.test(d); }) ? "tr" : "en";
+        }
+        if (dil !== "en") return;
+        var bolum = { "#guvenlik": "#security", "#ozellikler": "#features", "#sinir": "#wipe", "#sistemler": "#systems", "#kurulum": "#install" };
+        location.replace(en + (bolum[location.hash] || ""));
+      } catch (e) {}
+    })();
+  </script>
   <link rel="icon" href="img/mahzen-logo.svg" type="image/svg+xml">
   <meta property="og:type" content="website">
+  <meta property="og:locale" content="tr_TR">
+  <meta property="og:locale:alternate" content="en_US">
   <meta property="og:url" content="https://mahzen.efef.dev/">
   <meta property="og:title" content="Mahzen — Sırların, kendi mahzeninde.">
   <meta property="og:description" content="Dosyalar, notlar ve parolalar için çevrimdışı, şifreli, taşınabilir kasa. macOS ve Linux.">
@@ -29,6 +54,7 @@
         <a href="#sinir">Kendini silme</a>
         <a href="#sistemler"><span lang="en">macOS</span> ve <span lang="en">Linux</span></a>
       </nav>
+      <a class="nav-dil" href="en/" lang="en" hreflang="en" data-dil="en">English</a>
       <a class="nav-btn" href="#kurulum">Kur</a>
     </div>
   </header>
@@ -173,7 +199,7 @@ cd Mahzen/linux
     <div class="footer-in">
       <a class="brand" href="#ust"><img src="img/mahzen-logo.svg" alt="" width="22" height="22">Mahzen</a>
       <p>Kaynağı açık · <a href="https://github.com/efefdev/Mahzen/blob/main/LICENSE" rel="noopener">PolyForm Noncommercial 1.0.0</a> · ticari kullanıma kapalı</p>
-      <p class="footer-links"><a href="https://github.com/efefdev/Mahzen" rel="noopener">GitHub</a><a href="https://efef.dev" rel="noopener">efef.dev</a></p>
+      <p class="footer-links"><a href="en/" lang="en" hreflang="en" data-dil="en">English</a><a href="https://github.com/efefdev/Mahzen" rel="noopener">GitHub</a><a href="https://efef.dev" rel="noopener">efef.dev</a></p>
     </div>
   </footer>
 

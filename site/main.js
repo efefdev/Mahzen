@@ -5,6 +5,10 @@
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const HEX = "0123456789abcdef";
+  // Betikteki görünen metinler sayfanın diline göre seçilir.
+  const T = document.documentElement.lang === "en"
+    ? { copy: "Copy", copied: "Copied", names: ["passport-scan.pdf", "recovery-phrase.txt", "bank@example.com", "Holiday/2026/plan.md"] }
+    : { copy: "Kopyala", copied: "Kopyalandı", names: ["pasaport-taramasi.pdf", "kurtarma-ifadesi.txt", "banka@ornek.com", "Tatil/2026/plan.md"] };
   const randHex = (n) => Array.from({ length: n }, () => HEX[(Math.random() * 16) | 0]).join("");
 
   // Üst çubuk çizgisi ve giriş görselinin düzleşmesi.
@@ -55,7 +59,7 @@
 
   // Dosya adı → şifreli bayt dönüşümü.
   const clText = $("#clText"), clHex = $("#clHex");
-  const names = ["pasaport-taramasi.pdf", "kurtarma-ifadesi.txt", "banka@ornek.com", "Tatil/2026/plan.md"];
+  const names = T.names;
   let cipherRunning = false;
   const cipherIO = new IntersectionObserver(async ([e]) => {
     if (!e.isIntersecting || cipherRunning || reduce) {
@@ -87,12 +91,17 @@
   steps.forEach((s) => stepIO.observe(s));
   setStep(0);
 
+  // Dil bağlantısı: seçilen dil hatırlanır (kök sayfadaki yönlendirme buna uyar).
+  $$("a[data-dil]").forEach((a) => a.addEventListener("click", () => {
+    try { localStorage.setItem("mahzen-dil", a.dataset.dil); } catch { /* depolama kapalıysa sessiz geç */ }
+  }));
+
   // Kopyala.
   $$(".copy").forEach((b) => b.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(b.dataset.copy);
-      b.textContent = "Kopyalandı"; b.classList.add("ok");
-      setTimeout(() => { b.textContent = "Kopyala"; b.classList.remove("ok"); }, 1600);
+      b.textContent = T.copied; b.classList.add("ok");
+      setTimeout(() => { b.textContent = T.copy; b.classList.remove("ok"); }, 1600);
     } catch { /* pano izni yoksa sessiz geç */ }
   }));
 })();
