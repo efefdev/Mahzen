@@ -30,12 +30,12 @@ Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde 
 > 🐧 **Linux sürümü:** [`linux/`](linux/) klasöründe (GTK 4 + libadwaita). macOS ile aynı kasa biçimini kullanır; bir kasa iki sistemde de açılır ve düzenlenir. Kurulum: `cd linux && ./install.sh` — ayrıntılar [linux/README.tr.md](linux/README.tr.md)'de.
 
 <p align="center">
-  <img src="docs/ekran/kilit.png" width="49%" alt="Kilit ekranı">
-  <img src="docs/ekran/dosyalar.png" width="49%" alt="Dosyalar">
+  <img src="docs/ekran/kilit.webp" width="49%" alt="Kilit ekranı">
+  <img src="docs/ekran/dosyalar.webp" width="49%" alt="Dosyalar">
 </p>
 <p align="center">
-  <img src="docs/ekran/parolalar.png" width="49%" alt="Parolalar">
-  <img src="docs/ekran/notlar.png" width="49%" alt="Notlar">
+  <img src="docs/ekran/parolalar.webp" width="49%" alt="Parolalar">
+  <img src="docs/ekran/notlar.webp" width="49%" alt="Notlar">
 </p>
 
 **Linux sürümü** (GTK 4 + libadwaita):
@@ -107,11 +107,11 @@ Uygulamada açık anahtarlı şifreleme (RSA/ECC) bulunmaz; bu yüzden kuantum b
 **Ayarlar → Yanlış parola sınırı** bölümünden açılıp kapatılır; deneme sayısı 3 ile 99 arasında seçilir (açılırken 5). Açıkken:
 
 <p align="center">
-  <img src="docs/ekran/sinir-ayar.png" width="100%" alt="Ayarlar: yanlış parola sınırı">
+  <img src="docs/ekran/sinir-ayar.webp" width="100%" alt="Ayarlar: yanlış parola sınırı">
 </p>
 <p align="center">
-  <img src="docs/ekran/sinir-son-hak.png" width="49%" alt="Kilit ekranı: son deneme hakkı">
-  <img src="docs/ekran/sinir-silindi.png" width="49%" alt="Kasa kalıcı olarak silindi">
+  <img src="docs/ekran/sinir-son-hak.webp" width="49%" alt="Kilit ekranı: son deneme hakkı">
+  <img src="docs/ekran/sinir-silindi.webp" width="49%" alt="Kasa kalıcı olarak silindi">
 </p>
 
 - Kilit ekranında her yanlış parola sayılır ve kalan deneme hakkı gösterilir. Doğru parolayla açılınca sayaç sıfırlanır.

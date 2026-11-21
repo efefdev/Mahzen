@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://mahzen.efef.dev/en/"><img src="site/img/og.png" width="720" alt="Mahzen website: Your secrets, in your own vault."></a>
+  <a href="https://mahzen.efef.dev/en/"><img src="site/img/og-en.png" width="720" alt="Mahzen website: Your secrets, in your own vault."></a>
 </p>
 
 The quickest way to see how Mahzen works is the **[website](https://mahzen.efef.dev/en/)**: the encryption explained
@@ -30,12 +30,12 @@ Mahzen (Turkish for "cellar") is a local macOS and Linux app that keeps your fil
 > 🐧 **Linux version:** in the [`linux/`](linux/) folder (GTK 4 + libadwaita). It uses the same vault format as macOS; one vault can be opened and edited on both systems. Install: `cd linux && ./install.sh` — details in [linux/README.md](linux/README.md).
 
 <p align="center">
-  <img src="docs/ekran/kilit.png" width="49%" alt="Lock screen">
-  <img src="docs/ekran/dosyalar.png" width="49%" alt="Files">
+  <img src="docs/ekran/en/kilit.webp" width="49%" alt="Lock screen">
+  <img src="docs/ekran/en/dosyalar.webp" width="49%" alt="Files">
 </p>
 <p align="center">
-  <img src="docs/ekran/parolalar.png" width="49%" alt="Passwords">
-  <img src="docs/ekran/notlar.png" width="49%" alt="Notes">
+  <img src="docs/ekran/en/parolalar.webp" width="49%" alt="Passwords">
+  <img src="docs/ekran/en/notlar.webp" width="49%" alt="Notes">
 </p>
 
 **Linux version** (GTK 4 + libadwaita):
@@ -107,11 +107,11 @@ The app uses no public-key cryptography (RSA/ECC), so it has no component of the
 Turned on and off under **Settings → Wrong-password limit**; the number of attempts can be set between 3 and 99 (5 when first enabled). While it is on:
 
 <p align="center">
-  <img src="docs/ekran/sinir-ayar.png" width="100%" alt="Settings: wrong-password limit">
+  <img src="docs/ekran/en/sinir-ayar.webp" width="100%" alt="Settings: wrong-password limit">
 </p>
 <p align="center">
-  <img src="docs/ekran/sinir-son-hak.png" width="49%" alt="Lock screen: last attempt">
-  <img src="docs/ekran/sinir-silindi.png" width="49%" alt="The vault has been permanently erased">
+  <img src="docs/ekran/en/sinir-son-hak.webp" width="49%" alt="Lock screen: last attempt">
+  <img src="docs/ekran/en/sinir-silindi.webp" width="49%" alt="The vault has been permanently erased">
 </p>
 
 - Every wrong password on the lock screen is counted, and the number of attempts left is shown. Unlocking with the right password resets the counter.

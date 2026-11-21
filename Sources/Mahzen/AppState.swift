@@ -64,6 +64,10 @@ final class AppState: ObservableObject {
     @Published var task: TaskProgress?
     @Published var alert: AlertItem?
     @Published var toast: String?
+    #if DEBUG
+    /// Ekran görüntüsü aracının kilit ekranında bir hata mesajı göstermesi için.
+    @Published var debugUnlockError: String?
+    #endif
     @Published var recoveredFromBackup = false
     @Published var newSecretRequested = false
     @Published private(set) var kdfSummary = ""

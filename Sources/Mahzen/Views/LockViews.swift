@@ -136,6 +136,9 @@ struct UnlockView: View {
         .animation(.smooth(duration: 0.35), value: opened)
         .animation(.smooth(duration: 0.2), value: error)
         .animation(.smooth(duration: 0.2), value: capsLock.isOn)
+        #if DEBUG
+        .onChange(of: state.debugUnlockError) { _, message in if let message { error = message } }
+        #endif
     }
 
     @ViewBuilder
