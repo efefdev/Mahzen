@@ -12,6 +12,8 @@ import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from ..i18n import tr
+
 SECRET_CATEGORIES = ["login", "card", "wifi", "server", "note", "other"]
 ACCENTS = ["orange", "indigo", "blue", "teal", "green", "pink", "red", "purple", "graphite"]
 
@@ -195,7 +197,7 @@ class VaultIndex:
         return folder["id"]
 
     def create_folder(self, name: str, parent: str | None) -> str:
-        base = name.strip() or "Yeni Klasör"
+        base = name.strip() or tr("Yeni Klasör")
         candidate, n = base, 2
         while any(same_id(f.get("parentID"), parent) and not f.get("deletedAt") and f["name"] == candidate
                   for f in self.folders):

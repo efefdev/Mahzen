@@ -7,11 +7,12 @@ import copy
 from gi.repository import Adw, GLib, Gtk, Pango
 
 from ..core.index import SECRET_CATEGORIES, new_secret, sort_key
-from ..core.passwords import STRENGTH_LABELS, generate, strength
+from ..core.passwords import generate, strength, strength_label
+from ..i18n import tr
 from .common import clear_box, format_date, icon_button
 
-CATEGORY_TITLES = {"login": "Hesap", "card": "Kart", "wifi": "Wi-Fi", "server": "Sunucu", "note": "Gizli not",
-                   "other": "Diğer"}
+CATEGORY_TITLES = {"login": tr("Hesap"), "card": tr("Kart"), "wifi": "Wi-Fi", "server": tr("Sunucu"),
+                   "note": tr("Gizli not"), "other": tr("Diğer")}
 CATEGORY_ICONS = {"login": "avatar-default-symbolic", "card": "mahzen-card-symbolic",
                   "wifi": "network-wireless-symbolic", "server": "network-server-symbolic",
                   "note": "document-edit-symbolic", "other": "dialog-password-symbolic"}
@@ -31,17 +32,17 @@ class SecretsPage(Adw.Bin):
         self.split = split
 
         list_toolbar = Adw.ToolbarView()
-        header = make_header("Parolalar", lock=False)
-        add = Gtk.Button(icon_name="list-add-symbolic", tooltip_text="Yeni kayıt (Ctrl+N)")
+        header = make_header(tr("Parolalar"), lock=False)
+        add = Gtk.Button(icon_name="list-add-symbolic", tooltip_text=tr("Yeni kayıt (Ctrl+N)"))
         add.connect("clicked", lambda *_: self.new_secret())
         header.pack_start(add)
         list_toolbar.add_top_bar(header)
         search = Gtk.SearchEntry(margin_start=8, margin_end=8, margin_bottom=6)
-        search.set_property("placeholder-text", "Parolalarda ara")
+        search.set_property("placeholder-text", tr("Parolalarda ara"))
         search.connect("search-changed", lambda e: self._set_search(e.get_text()))
         list_toolbar.add_top_bar(search)
         self.category_dropdown = Gtk.DropDown.new_from_strings(
-            ["Tümü", "Favoriler"] + [CATEGORY_TITLES[c] for c in SECRET_CATEGORIES])
+            [tr("Tümü"), tr("Favoriler")] + [CATEGORY_TITLES[c] for c in SECRET_CATEGORIES])
         self.category_dropdown.set_margin_start(8)
         self.category_dropdown.set_margin_end(8)
         self.category_dropdown.set_margin_bottom(6)
@@ -52,26 +53,26 @@ class SecretsPage(Adw.Bin):
         scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True)
         scroller.set_child(self.listbox)
         list_toolbar.set_content(scroller)
-        split.set_sidebar(Adw.NavigationPage(title="Parolalar", child=list_toolbar))
+        split.set_sidebar(Adw.NavigationPage(title=tr("Parolalar"), child=list_toolbar))
 
         detail_toolbar = Adw.ToolbarView()
         detail_header = make_header("")
-        self.fav_btn = Gtk.ToggleButton(icon_name="starred-symbolic", tooltip_text="Favori")
+        self.fav_btn = Gtk.ToggleButton(icon_name="starred-symbolic", tooltip_text=tr("Favori"))
         self.fav_btn.connect("toggled", lambda b: self._set("favorite", b.get_active()))
         detail_header.pack_start(self.fav_btn)
-        delete = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text="Çöp kutusuna taşı")
+        delete = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=tr("Çöp kutusuna taşı"))
         delete.connect("clicked", lambda *_: self.delete_secret())
         detail_header.pack_start(delete)
         detail_toolbar.add_top_bar(detail_header)
 
         self.detail_stack = Gtk.Stack()
-        self.empty = Adw.StatusPage(icon_name="dialog-password-symbolic", title="Bir kayıt seç",
-                                    description="Hesap, kart, Wi-Fi ve sunucu bilgilerini şifreli saklayın.")
+        self.empty = Adw.StatusPage(icon_name="dialog-password-symbolic", title=tr("Bir kayıt seç"),
+                                    description=tr("Hesap, kart, Wi-Fi ve sunucu bilgilerini şifreli saklayın."))
         self.detail_stack.add_named(self.empty, "empty")
         self.form = self._build_form()
         self.detail_stack.add_named(self.form, "form")
         detail_toolbar.set_content(self.detail_stack)
-        split.set_content(Adw.NavigationPage(title="Kayıt", child=detail_toolbar))
+        split.set_content(Adw.NavigationPage(title=tr("Kayıt"), child=detail_toolbar))
         self.set_child(split)
 
         state.connect("index-changed", lambda *_: self.refresh_list())
@@ -93,26 +94,27 @@ class SecretsPage(Adw.Bin):
     def _build_form(self) -> Gtk.Widget:
         page = Adw.PreferencesPage()
         group = Adw.PreferencesGroup()
-        self.category_row = Adw.ComboRow(title="Tür", model=Gtk.StringList.new(
+        self.category_row = Adw.ComboRow(title=tr("Tür"), model=Gtk.StringList.new(
             [CATEGORY_TITLES[c] for c in SECRET_CATEGORIES]))
         self.category_row.connect("notify::selected", self._on_category)
         group.add(self.category_row)
-        self.title_row = Adw.EntryRow(title="Başlık")
+        self.title_row = Adw.EntryRow(title=tr("Başlık"))
         self.title_row.connect("changed", lambda r: self._set("title", r.get_text()))
         group.add(self.title_row)
         page.add(group)
 
         creds = Adw.PreferencesGroup()
-        self.username_row = Adw.EntryRow(title="Kullanıcı adı / e-posta")
+        self.username_row = Adw.EntryRow(title=tr("Kullanıcı adı / e-posta"))
         self.username_row.connect("changed", lambda r: self._set("username", r.get_text()))
-        self.username_row.add_suffix(icon_button("edit-copy-symbolic", "Kopyala",
+        self.username_row.add_suffix(icon_button("edit-copy-symbolic", tr("Kopyala"),
                                                  lambda: self._copy("username", False)))
         creds.add(self.username_row)
 
-        self.password_row = Adw.PasswordEntryRow(title="Parola")
+        self.password_row = Adw.PasswordEntryRow(title=tr("Parola"))
         self.password_row.connect("changed", self._on_password)
-        self.password_row.add_suffix(icon_button("view-refresh-symbolic", "Güçlü parola üret", self._generate))
-        self.password_row.add_suffix(icon_button("edit-copy-symbolic", "Kopyala", lambda: self._copy("password", True)))
+        self.password_row.add_suffix(icon_button("view-refresh-symbolic", tr("Güçlü parola üret"), self._generate))
+        self.password_row.add_suffix(icon_button("edit-copy-symbolic", tr("Kopyala"),
+                                                 lambda: self._copy("password", True)))
         creds.add(self.password_row)
 
         meter_row = Adw.ActionRow(activatable=False)
@@ -123,21 +125,22 @@ class SecretsPage(Adw.Bin):
         meter_row.add_suffix(self.meter_label)
         creds.add(meter_row)
 
-        self.url_row = Adw.EntryRow(title="Adres (URL)")
+        self.url_row = Adw.EntryRow(title=tr("Adres (URL)"))
         self.url_row.connect("changed", lambda r: self._set("url", r.get_text()))
-        self.url_row.add_suffix(icon_button("web-browser-symbolic", "Tarayıcıda aç", self._open_url))
+        self.url_row.add_suffix(icon_button("web-browser-symbolic", tr("Tarayıcıda aç"), self._open_url))
         creds.add(self.url_row)
         page.add(creds)
 
         gen_group = Adw.PreferencesGroup()
-        expander = Adw.ExpanderRow(title="Parola üretici ayarları")
+        expander = Adw.ExpanderRow(title=tr("Parola üretici ayarları"))
         self.length_row = Adw.SpinRow.new_with_range(8, 64, 1)
-        self.length_row.set_title("Uzunluk")
+        self.length_row.set_title(tr("Uzunluk"))
         self.length_row.connect("notify::value", lambda *_: self._gen_pref("length", int(self.length_row.get_value())))
         expander.add_row(self.length_row)
         self.gen_switches = {}
-        for key, title in [("uppercase", "Büyük harf"), ("lowercase", "Küçük harf"), ("digits", "Rakam"),
-                           ("symbols", "Simge"), ("avoidAmbiguous", "Karışabilen karakterleri kullanma (O0Il1)")]:
+        for key, title in [("uppercase", tr("Büyük harf")), ("lowercase", tr("Küçük harf")), ("digits", tr("Rakam")),
+                           ("symbols", tr("Simge")),
+                           ("avoidAmbiguous", tr("Karışabilen karakterleri kullanma (O0Il1)"))]:
             row = Adw.SwitchRow(title=title)
             row.connect("notify::active", lambda r, _p, k=key: self._gen_pref(k, r.get_active()))
             expander.add_row(row)
@@ -145,7 +148,7 @@ class SecretsPage(Adw.Bin):
         gen_group.add(expander)
         page.add(gen_group)
 
-        notes_group = Adw.PreferencesGroup(title="Notlar")
+        notes_group = Adw.PreferencesGroup(title=tr("Notlar"))
         self.notes_view = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, top_margin=10, bottom_margin=10,
                                        left_margin=10, right_margin=10, height_request=120,
                                        css_classes=["card", "secret-notes"])
@@ -176,7 +179,7 @@ class SecretsPage(Adw.Bin):
     def _copy(self, field: str, sensitive: bool) -> None:
         if self.draft and self.draft.get(field):
             self.state.copy(self.draft[field], sensitive=sensitive,
-                            label="Parola kopyalandı" if sensitive else "Kopyalandı")
+                            label=tr("Parola kopyalandı") if sensitive else tr("Kopyalandı"))
 
     def _open_url(self) -> None:
         url = (self.draft or {}).get("url", "").strip()
@@ -190,7 +193,7 @@ class SecretsPage(Adw.Bin):
         pw = row.get_text()
         score, bits = strength(pw)
         self.meter.set_value(score + 1 if pw else 0)
-        self.meter_label.set_text(f"{STRENGTH_LABELS[score]} · {bits:.0f} bit" if pw else "")
+        self.meter_label.set_text(f"{strength_label(score)} · {bits:.0f} bit" if pw else "")
         self._set("password", pw)
 
     def _on_category(self, row, _pspec) -> None:
@@ -210,7 +213,7 @@ class SecretsPage(Adw.Bin):
         if secret is None:
             self.detail_stack.set_visible_child_name("empty")
             has_any = any(not s.get("deletedAt") for s in self.state.index.secrets)
-            self.empty.set_title("Bir kayıt seç" if has_any else "Henüz parola kaydı yok")
+            self.empty.set_title(tr("Bir kayıt seç") if has_any else tr("Henüz parola kaydı yok"))
         else:
             self.detail_stack.set_visible_child_name("form")
             cat = secret.get("category", "login")
@@ -221,8 +224,9 @@ class SecretsPage(Adw.Bin):
             self.url_row.set_text(secret.get("url", ""))
             self.notes_view.get_buffer().set_text(secret.get("notes", ""))
             self.fav_btn.set_active(bool(secret.get("favorite")))
-            self.dates_label.set_text(f"Oluşturuldu: {format_date(secret.get('createdAt'))} · "
-                                      f"Düzenlendi: {format_date(secret.get('updatedAt'))}")
+            self.dates_label.set_text(" · ".join([
+                tr("Oluşturuldu: {date}", date=format_date(secret.get("createdAt"))),
+                tr("Düzenlendi: {date}", date=format_date(secret.get("updatedAt")))]))
         gen = self.state.prefs.get("generator", {})
         self.length_row.set_value(int(gen.get("length", 20)))
         for key, row in self.gen_switches.items():
@@ -235,7 +239,7 @@ class SecretsPage(Adw.Bin):
         pw = self.password_row.get_text()
         score, bits = strength(pw)
         self.meter.set_value(score + 1 if pw else 0)
-        self.meter_label.set_text(f"{STRENGTH_LABELS[score]} · {bits:.0f} bit" if pw else "")
+        self.meter_label.set_text(f"{strength_label(score)} · {bits:.0f} bit" if pw else "")
 
     # MARK: - Liste
 
@@ -270,7 +274,7 @@ class SecretsPage(Adw.Bin):
             box.append(Gtk.Image(icon_name=CATEGORY_ICONS.get(s.get("category"), "dialog-password-symbolic"),
                                  pixel_size=24, css_classes=["accent"]))
             texts = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
-            texts.append(Gtk.Label(label=s.get("title") or "Adsız", xalign=0, ellipsize=Pango.EllipsizeMode.END,
+            texts.append(Gtk.Label(label=s.get("title") or tr("Adsız"), xalign=0, ellipsize=Pango.EllipsizeMode.END,
                                    css_classes=["heading"]))
             texts.append(Gtk.Label(label=s.get("username") or CATEGORY_TITLES.get(s.get("category"), ""), xalign=0,
                                    ellipsize=Pango.EllipsizeMode.END, css_classes=["caption", "dim-label"]))
@@ -319,4 +323,4 @@ class SecretsPage(Adw.Bin):
         self.selected_id = None
         self.state.mutate(lambda idx: idx.trash_secret(sid))
         self._load(None)
-        self.state.toast("Kayıt çöp kutusuna taşındı")
+        self.state.toast(tr("Kayıt çöp kutusuna taşındı"))

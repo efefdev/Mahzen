@@ -37,8 +37,9 @@ def run() -> int:
     try:
         from .ui.app import main
     except (ImportError, ValueError) as e:
-        print(f"Arayüz başlatılamadı: {e}\n"
-              "GTK4, libadwaita (1.5+) ve PyGObject kurulu olmalı. Kurulum için: linux/install.sh",
+        from .i18n import tr
+        print(tr("Arayüz başlatılamadı: {error}\n"
+                 "GTK4, libadwaita (1.5+) ve PyGObject kurulu olmalı. Kurulum için: linux/install.sh", error=e),
               file=sys.stderr)
         return 1
     return main(sys.argv)

@@ -20,6 +20,7 @@ from typing import Callable
 
 from cryptography.exceptions import InvalidTag
 
+from ..i18n import grouped, tr
 from . import blob, crypto
 from .errors import (AlreadyExists, Cancelled, Corrupted, KDFFailed, NotAVault, PasswordTooShort,
                      UnsupportedVersion, WrongPassword)
@@ -108,9 +109,9 @@ class Header:
     def kdf_summary(self) -> str:
         k = self.raw["kdf"]
         if k.get("algorithm") == crypto.ARGON2ID and k.get("memoryKiB") and k.get("parallelism"):
-            return (f"Argon2id · {k['memoryKiB'] // 1024} MB · {k['iterations']} geçiş · "
-                    f"{k['parallelism']} iş parçacığı")
-        return f"PBKDF2-HMAC-SHA512 · {k['iterations']:,} tur".replace(",", ".")
+            return tr("Argon2id · {memory} MB · {n} geçiş · {threads} iş parçacığı",
+                      memory=k["memoryKiB"] // 1024, n=k["iterations"], threads=k["parallelism"])
+        return tr("PBKDF2-HMAC-SHA512 · {rounds} tur", rounds=grouped(k["iterations"]))
 
 
 def _encode_kdf(params: dict) -> dict:
@@ -131,7 +132,7 @@ def read_header(folder: str) -> Header:
         header = Header(raw)
         _ = header.vault_id, header.kdf, header.wrapped_master_key
     except Exception:
-        raise Corrupted("vault.json okunamadı") from None
+        raise Corrupted(tr("vault.json okunamadı")) from None
     if raw.get("format") != "mahzen-vault":
         raise NotAVault()
     if header.version > CURRENT_VERSION:
@@ -317,7 +318,7 @@ class Vault:
                     kdf: crypto.KDFSettings = crypto.RECOMMENDED) -> None:
         """Anahtar dosyası zorunluluğunu açar (`new_keyfile` dolu) veya kapatır (None). Parola doğrulanır."""
         if new_keyfile is not None and len(new_keyfile) < 32:
-            raise Corrupted("anahtar dosyası çok kısa")
+            raise Corrupted(tr("anahtar dosyası çok kısa"))
         Vault.unlock(self.folder, password, self._keyfile)
         self._rewrap(password, kdf, new_keyfile)
         self._keyfile = new_keyfile
@@ -346,7 +347,8 @@ class Vault:
     def set_auto_wipe(self, attempts: int | None) -> None:
         """Yanlış parola sınırını açar (`attempts` dolu) veya kapatır (None). Sayaç sıfırlanır."""
         if attempts is not None and not AUTO_WIPE_MIN <= attempts <= AUTO_WIPE_MAX:
-            raise Corrupted(f"deneme sınırı {AUTO_WIPE_MIN}–{AUTO_WIPE_MAX} arasında olmalı")
+            raise Corrupted(tr("deneme sınırı {low}–{high} arasında olmalı",
+                               low=AUTO_WIPE_MIN, high=AUTO_WIPE_MAX))
         raw = dict(self.header.raw)
         raw.pop("failedAttempts", None)
         if attempts is None:
@@ -414,11 +416,11 @@ class Vault:
             with open(path, "rb") as f:
                 data = f.read()
         except OSError:
-            raise Corrupted("dizin dosyası bulunamadı") from None
+            raise Corrupted(tr("dizin dosyası bulunamadı")) from None
         try:
             plain = crypto.open_sealed(data, self.index_key, self._index_aad)
         except InvalidTag:
-            raise Corrupted("dizin doğrulanamadı") from None
+            raise Corrupted(tr("dizin doğrulanamadı")) from None
         return VaultIndex(json.loads(plain))
 
     # MARK: Dosyalar
@@ -475,10 +477,10 @@ class Vault:
         source = os.path.realpath(self.folder)
         target = os.path.realpath(destination)
         if target == source or target.startswith(source + os.sep) or source.startswith(target + os.sep):
-            raise Corrupted("yedek konumu kasanın kendisi veya içi olamaz")
+            raise Corrupted(tr("yedek konumu kasanın kendisi veya içi olamaz"))
         if exists(destination):
             if read_header(destination).vault_id != self.vault_id:
-                raise Corrupted("seçilen klasörde başka bir kasa var")
+                raise Corrupted(tr("seçilen klasörde başka bir kasa var"))
 
         # Tutarlı bir anlık görüntü: dizin ve başlık baştan belleğe alınır.
         header_data = _read(os.path.join(self.folder, HEADER_NAME))
@@ -617,7 +619,7 @@ class Vault:
     def restore_file_from_backup(self, fid: str, backup_folder: str) -> None:
         """Yedekteki kopyayı önce doğrular, sağlamsa kasadaki bozuk/eksik dosyanın yerine koyar."""
         if not exists(backup_folder) or read_header(backup_folder).vault_id != self.vault_id:
-            raise Corrupted("yedek bu kasaya ait değil")
+            raise Corrupted(tr("yedek bu kasaya ait değil"))
         backup_blob = os.path.join(backup_folder, self._relative(self.blob_path(fid)))
         with open(backup_blob, "rb") as f:
             blob.decrypt_stream(lambda n: blob.read_fully(f, n), lambda _: None, self.file_key(fid))

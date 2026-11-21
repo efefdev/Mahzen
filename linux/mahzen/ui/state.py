@@ -24,6 +24,7 @@ from ..core.index import VaultIndex, new_file_record, new_id, new_note, now  # n
 from ..core.keyfiles import KeyfileStore  # noqa: E402
 from ..core.vault import Vault  # noqa: E402
 from ..core.filetypes import IMAGE_PREVIEWABLE, content_type_for, extension  # noqa: E402
+from ..i18n import tr  # noqa: E402
 
 
 @dataclass
@@ -116,6 +117,10 @@ class AppState(GObject.Object):
         self.settings.update(values)
         paths.save_settings(self.settings)
 
+    def set_language(self, code: str) -> None:
+        """Dil tercihini ("system" | "tr" | "en") kaydeder; yeniden başlatınca uygulanır."""
+        self._remember(language=code)
+
     @staticmethod
     def _remove_stale_temporary_folders(root: str) -> None:
         """Önceki bir çalışmadan (ör. çökme) kalan, 1 saatten eski şifresiz geçici klasörleri siler."""
@@ -148,7 +153,7 @@ class AppState(GObject.Object):
 
     def select_vault(self, path: str) -> None:
         if not vaultmod.exists(path):
-            self.alert("Kasa bulunamadı", "Bu klasör bir Mahzen kasası değil.")
+            self.alert(tr("Kasa bulunamadı"), tr("Bu klasör bir Mahzen kasası değil."))
             return
         self.vault_path = path
         self.phase = "locked"
@@ -159,7 +164,7 @@ class AppState(GObject.Object):
         self.emit("phase-changed")
 
     def create_vault(self, folder: str, password: str, done: Callable[[str | None], None]) -> None:
-        self.set_task(TaskProgress("Kasa oluşturuluyor", "Anahtar türetiliyor…"))
+        self.set_task(TaskProgress(tr("Kasa oluşturuluyor"), tr("Anahtar türetiliyor…")))
 
         def finished(vault, error):
             self.set_task(None)
@@ -174,7 +179,7 @@ class AppState(GObject.Object):
     def unlock(self, password: str, done: Callable[[str | None], None]) -> None:
         path = self.vault_path
         if not path:
-            done("Kasa seçilmedi.")
+            done(tr("Kasa seçilmedi."))
             return
 
         def work():
@@ -196,13 +201,13 @@ class AppState(GObject.Object):
                     except Exception:  # noqa: BLE001
                         wiped, remaining = False, None
                     if wiped:
-                        done("Kasa silindi.")
+                        done(tr("Kasa silindi."))
                         self._vault_wiped(path)
                         return
                     if remaining == 1:
-                        message = "Parola yanlış. Son deneme hakkı: bir yanlış daha kasayı siler."
+                        message = tr("Parola yanlış. Son deneme hakkı: bir yanlış daha kasayı siler.")
                     elif remaining is not None:
-                        message = f"Parola yanlış. Kalan deneme: {remaining}"
+                        message = tr("Parola yanlış. Kalan deneme: {remaining}", remaining=remaining)
                 # Arayüzde deneme hızını yavaşlatır; asıl koruma anahtar türetmenin maliyetidir.
                 self._failed_attempts += 1
                 delay = min(self._failed_attempts, 5)
@@ -223,9 +228,9 @@ class AppState(GObject.Object):
             paths.save_settings(self.settings)
         self.phase = "welcome"
         self.emit("phase-changed")
-        self.alert("Kasa kalıcı olarak silindi",
-                   "Yanlış parola sınırı aşıldığı için kasanın anahtarları yok edildi. Kasadaki veriler artık hiçbir "
-                   "parolayla açılamaz. Klasörde kalan şifreli dosyalar işe yaramaz; silebilirsiniz.")
+        self.alert(tr("Kasa kalıcı olarak silindi"),
+                   tr("Yanlış parola sınırı aşıldığı için kasanın anahtarları yok edildi. Kasadaki veriler artık "
+                      "hiçbir parolayla açılamaz. Klasörde kalan şifreli dosyalar işe yaramaz; silebilirsiniz."))
 
     def set_auto_wipe(self, attempts: int | None) -> None:
         """Yanlış parola sınırını açar (`attempts` dolu) veya kapatır (None)."""
@@ -234,7 +239,7 @@ class AppState(GObject.Object):
         try:
             self.vault.set_auto_wipe(attempts)
         except Exception as e:  # noqa: BLE001
-            self.alert("Ayar kaydedilemedi", _error_text(e))
+            self.alert(tr("Ayar kaydedilemedi"), _error_text(e))
         self.emit("prefs-changed")
 
     def _unlock_with_keyfiles(self, path: str, password: str) -> Vault:
@@ -267,9 +272,9 @@ class AppState(GObject.Object):
         self.emit("phase-changed")
         self.emit("prefs-changed")
         if recovered:
-            self.alert("Dizin yedekten kurtarıldı",
-                       "Kasanın dizin dosyası okunamadı; bir önceki sürümü (index.enc.bak) kullanıldı. "
-                       "Son değişikliklerden bazıları eksik olabilir.")
+            self.alert(tr("Dizin yedekten kurtarıldı"),
+                       tr("Kasanın dizin dosyası okunamadı; bir önceki sürümü (index.enc.bak) kullanıldı. "
+                          "Son değişikliklerden bazıları eksik olabilir."))
 
     def lock(self) -> None:
         """Her zaman anında kilitler. Çalışan bir işlem varsa durdurulur."""
@@ -343,7 +348,7 @@ class AppState(GObject.Object):
             self.vault.save_index(self.index)
             return True
         except Exception as e:  # noqa: BLE001
-            self.alert("Kasa kaydedilemedi", _error_text(e))
+            self.alert(tr("Kasa kaydedilemedi"), _error_text(e))
             return False
 
     # MARK: - Dosya ekleme
@@ -355,14 +360,15 @@ class AppState(GObject.Object):
         plan = ImportPlan.build(sources)
         if not plan.items:
             if plan.skipped_count:
-                self.alert("Eklenecek dosya yok",
-                           "Gizli dosyalar, kısayollar (sembolik bağlantılar) ve okunamayan öğeler kasaya eklenmez.")
+                self.alert(tr("Eklenecek dosya yok"),
+                           tr("Gizli dosyalar, kısayollar (sembolik bağlantılar) ve okunamayan öğeler "
+                              "kasaya eklenmez."))
             return
         token = self._session
         flag = CancelFlag()
         self._cancel = flag
         total = max(sum(i.size for i in plan.items), 1)
-        self.set_task(TaskProgress("Şifreleniyor", fraction=0, cancellable=True))
+        self.set_task(TaskProgress(tr("Şifreleniyor"), fraction=0, cancellable=True))
         existing_hashes = {f.get("sha256") for f in self.index.live_files if f.get("sha256")}
 
         def work():
@@ -374,7 +380,8 @@ class AppState(GObject.Object):
                 if flag.value:
                     break
                 name = os.path.basename(item.path)
-                GLib.idle_add(self._update_task, token, f"Şifreleniyor ({i + 1}/{len(plan.items)})", name, None)
+                title = tr("Şifreleniyor ({done}/{total})", done=i + 1, total=len(plan.items))
+                GLib.idle_add(self._update_task, token, title, name, None)
                 fid = new_id()
 
                 def progress(n: int) -> None:
@@ -424,7 +431,7 @@ class AppState(GObject.Object):
                 return
             self.set_task(None)
             if error:
-                self.alert("Dosyalar eklenemedi", _error_text(error))
+                self.alert(tr("Dosyalar eklenemedi"), _error_text(error))
                 return
             results, failures, duplicates, safely_stored = result
 
@@ -439,17 +446,19 @@ class AppState(GObject.Object):
             saved = self.flush_save()
             notes = []
             if failures:
-                notes.append("Eklenemeyenler:\n" + "\n".join(failures[:8]))
+                notes.append(tr("Eklenemeyenler:") + "\n" + "\n".join(failures[:8]))
             if plan.skipped_count:
-                notes.append(f"{plan.skipped_count} öğe eklenmedi (gizli dosya, kısayol veya okunamayan öğe).")
+                notes.append(tr("{n} öğe eklenmedi (gizli dosya, kısayol veya okunamayan öğe).",
+                                n=plan.skipped_count))
             if duplicates:
                 more = " …" if len(duplicates) > 6 else ""
-                notes.append(f"{len(duplicates)} dosya kasada zaten vardı: " + ", ".join(duplicates[:6]) + more)
+                notes.append(tr("{n} dosya kasada zaten vardı: {names}", n=len(duplicates),
+                                names=", ".join(duplicates[:6]) + more))
             if notes:
-                self.alert(f"{len(results)} dosya şifrelendi", "\n\n".join(notes))
+                self.alert(tr("{n} dosya şifrelendi", n=len(results)), "\n\n".join(notes))
             else:
-                self.toast(f"Durduruldu · {len(results)} dosya eklendi" if flag.value
-                           else f"{len(results)} dosya şifrelendi")
+                self.toast(tr("Durduruldu · {n} dosya eklendi", n=len(results)) if flag.value
+                           else tr("{n} dosya şifrelendi", n=len(results)))
             removable = plan.removable_sources(safely_stored)
             if saved and removable and self.prefs.get("askToTrashOriginals", True) and not flag.value:
                 self.emit("offer-trash-originals", removable)
@@ -479,9 +488,9 @@ class AppState(GObject.Object):
             except GLib.Error:
                 failed.append(os.path.basename(s))
         if failed:
-            self.alert("Bazı orijinaller çöpe taşınamadı", "\n".join(failed[:8]))
+            self.alert(tr("Bazı orijinaller çöpe taşınamadı"), "\n".join(failed[:8]))
         else:
-            self.toast("Orijinaller çöp kutusuna taşındı")
+            self.toast(tr("Orijinaller çöp kutusuna taşındı"))
 
     # MARK: - Dosya okuma ve dışa aktarma
 
@@ -530,7 +539,7 @@ class AppState(GObject.Object):
         flag = CancelFlag()
         self._cancel = flag
         total = max(sum(int(r.get("size", 0)) for r in records), 1)
-        self.set_task(TaskProgress("Dışa aktarılıyor", fraction=0, cancellable=True))
+        self.set_task(TaskProgress(tr("Dışa aktarılıyor"), fraction=0, cancellable=True))
 
         def work():
             done_bytes = 0
@@ -561,9 +570,9 @@ class AppState(GObject.Object):
                 return
             self.set_task(None)
             if error or failures:
-                self.alert("Bazı dosyalar aktarılamadı", _error_text(error) if error else "\n".join(failures[:8]))
+                self.alert(tr("Bazı dosyalar aktarılamadı"), _error_text(error) if error else "\n".join(failures[:8]))
             else:
-                self.toast(f"{len(records)} dosya dışa aktarıldı")
+                self.toast(tr("{n} dosya dışa aktarıldı", n=len(records)))
 
         self.run_background(work, finished)
 
@@ -575,7 +584,7 @@ class AppState(GObject.Object):
             return
         directory = os.path.join(self.temp_root, str(uuid.uuid4()))
         dest = os.path.join(directory, os.path.basename(record["name"]) or "dosya")
-        self.set_task(TaskProgress("Açılıyor", record["name"]))
+        self.set_task(TaskProgress(tr("Açılıyor"), record["name"]))
 
         def work():
             os.makedirs(directory, mode=0o700, exist_ok=True)
@@ -589,12 +598,12 @@ class AppState(GObject.Object):
             self.set_task(None)
             if error:
                 shutil.rmtree(directory, ignore_errors=True)
-                self.alert("Açılamadı", _error_text(error))
+                self.alert(tr("Açılamadı"), _error_text(error))
                 return
             try:
                 Gio.AppInfo.launch_default_for_uri(Gio.File.new_for_path(dest).get_uri(), None)
             except GLib.Error as e:
-                self.alert("Açılamadı", e.message)
+                self.alert(tr("Açılamadı"), e.message)
 
         self.run_background(work, finished)
 
@@ -605,7 +614,8 @@ class AppState(GObject.Object):
 
     def trash_files(self, ids: set[str]) -> None:
         self.mutate(lambda idx: idx.trash_files(ids))
-        self.toast("Çöp kutusuna taşındı" if len(ids) == 1 else f"{len(ids)} dosya çöp kutusuna taşındı")
+        self.toast(tr("Çöp kutusuna taşındı") if len(ids) == 1
+                   else tr("{n} dosya çöp kutusuna taşındı", n=len(ids)))
 
     def trash_folder(self, fid: str) -> None:
         self.mutate(lambda idx: idx.trash_folder(fid))
@@ -613,7 +623,7 @@ class AppState(GObject.Object):
             f = self.index.folder(self.current_folder)
             if f is None or f.get("deletedAt"):
                 self.current_folder = None
-        self.toast("Klasör çöp kutusuna taşındı")
+        self.toast(tr("Klasör çöp kutusuna taşındı"))
 
     def discard_blobs(self, ids: list[str]) -> None:
         """Dizinden kalıcı olarak çıkarılan dosyaların şifreli içeriklerini siler (dizin önce kaydedilir)."""
@@ -640,7 +650,7 @@ class AppState(GObject.Object):
         self.mutate(lambda idx: removed.extend(idx.empty_trash()))
         self.discard_blobs(removed)
         self.flush_save()
-        self.toast("Çöp kutusu boşaltıldı")
+        self.toast(tr("Çöp kutusu boşaltıldı"))
 
     def rename_file(self, fid: str, name: str) -> None:
         name = name.strip()
@@ -680,7 +690,7 @@ class AppState(GObject.Object):
 
     # MARK: - Pano
 
-    def copy(self, text: str, sensitive: bool = True, label: str = "Kopyalandı") -> None:
+    def copy(self, text: str, sensitive: bool = True, label: str = tr("Kopyalandı")) -> None:
         clipboard = Gdk.Display.get_default().get_clipboard()
         clipboard.set(text)
         seconds = int(self.prefs.get("clipboardClearSeconds", 30))
@@ -689,7 +699,7 @@ class AppState(GObject.Object):
             if self._clip_source:
                 GLib.source_remove(self._clip_source)
             self._clip_source = GLib.timeout_add_seconds(seconds, self._clear_clip_timer)
-            self.toast(f"{label} · {seconds} sn sonra panodan silinecek")
+            self.toast(tr("{label} · {seconds} sn sonra panodan silinecek", label=label, seconds=seconds))
         else:
             self.toast(label)
 
@@ -731,7 +741,7 @@ class AppState(GObject.Object):
         vault = self.vault
         if not vault:
             return
-        self.set_task(TaskProgress("Parola değiştiriliyor", "Anahtar türetiliyor…"))
+        self.set_task(TaskProgress(tr("Parola değiştiriliyor"), tr("Anahtar türetiliyor…")))
 
         def finished(_r, error):
             self.set_task(None)
@@ -750,16 +760,16 @@ class AppState(GObject.Object):
         # dosyası eklenmeden önce alınmış bir yedektir. Bağlamak asıl kasanın anahtarını değiştirirdi.
         # (Yalnızca arşivde anahtar varsa kullanıcı anahtar dosyasını kapatmıştır; yeniden açabilir.)
         if not vault.requires_keyfile and self.keyfiles.load(vid) is not None:
-            done("Bu bilgisayarda bu kasa için zaten bir anahtar dosyası var. Bu kopya büyük olasılıkla anahtar "
-                 "dosyası eklenmeden önce alınmış bir yedek; asıl kasayı açıp oradan yönetin.")
+            done(tr("Bu bilgisayarda bu kasa için zaten bir anahtar dosyası var. Bu kopya büyük olasılıkla anahtar "
+                    "dosyası eklenmeden önce alınmış bir yedek; asıl kasayı açıp oradan yönetin."))
             return
         keyfile = Vault.generate_keyfile()
         try:
             self.keyfiles.save(keyfile, vid)
         except OSError as e:
-            done(f"Anahtar dosyası kaydedilemedi: {_error_text(e)}")
+            done(tr("Anahtar dosyası kaydedilemedi: {error}", error=_error_text(e)))
             return
-        self.set_task(TaskProgress("Anahtar dosyası ekleniyor", "Anahtar türetiliyor…"))
+        self.set_task(TaskProgress(tr("Anahtar dosyası ekleniyor"), tr("Anahtar türetiliyor…")))
 
         def finished(_r, error):
             self.set_task(None)
@@ -781,7 +791,7 @@ class AppState(GObject.Object):
             return
         used = vault.keyfile_data
         vid = vault.vault_id
-        self.set_task(TaskProgress("Anahtar dosyası kaldırılıyor", "Anahtar türetiliyor…"))
+        self.set_task(TaskProgress(tr("Anahtar dosyası kaldırılıyor"), tr("Anahtar türetiliyor…")))
 
         def finished(_r, error):
             self.set_task(None)
@@ -805,9 +815,9 @@ class AppState(GObject.Object):
             fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
             with os.fdopen(fd, "wb") as f:
                 f.write(self.vault.keyfile_data)
-            self.toast("Anahtar dosyası dışa aktarıldı")
+            self.toast(tr("Anahtar dosyası dışa aktarıldı"))
         except OSError as e:
-            self.alert("Dışa aktarılamadı", _error_text(e))
+            self.alert(tr("Dışa aktarılamadı"), _error_text(e))
 
     def import_keyfile(self, path: str) -> None:
         """Başka bilgisayardan getirilen anahtar dosyasını bu kasa için bu bilgisayara kaydeder."""
@@ -817,13 +827,13 @@ class AppState(GObject.Object):
             with open(path, "rb") as f:
                 data = f.read(vaultmod.KEYFILE_LENGTH + 1)
             if len(data) != vaultmod.KEYFILE_LENGTH:
-                self.alert("Geçersiz anahtar dosyası", "Mahzen anahtar dosyaları tam 64 bayttır.")
+                self.alert(tr("Geçersiz anahtar dosyası"), tr("Mahzen anahtar dosyaları tam 64 bayttır."))
                 return
             header = vaultmod.read_header(self.vault_path)
             self.keyfiles.save(data, header.vault_id)
-            self.toast("Anahtar dosyası bu bilgisayara kaydedildi")
+            self.toast(tr("Anahtar dosyası bu bilgisayara kaydedildi"))
         except Exception as e:  # noqa: BLE001
-            self.alert("Anahtar dosyası alınamadı", _error_text(e))
+            self.alert(tr("Anahtar dosyası alınamadı"), _error_text(e))
 
     # MARK: - Yedekleme ve bakım
 
@@ -834,8 +844,9 @@ class AppState(GObject.Object):
             return
         # Yedek diski bağlı değilse klasörü iç diske oluşturma: kullanıcı yedeği başka diskte sanır.
         if not os.path.isdir(os.path.dirname(dest.rstrip(os.sep)) or os.sep):
-            self.alert("Yedek diski bağlı değil", f"Yedek konumu bulunamadı:\n{dest}\n\n"
-                       "Yedek diskini bağlayın ya da Ayarlar'dan yeni bir konum seçin.")
+            self.alert(tr("Yedek diski bağlı değil"),
+                       tr("Yedek konumu bulunamadı:\n{path}\n\n"
+                          "Yedek diskini bağlayın ya da Ayarlar'dan yeni bir konum seçin.", path=dest))
             return
         if not self.flush_save():
             return
@@ -843,7 +854,7 @@ class AppState(GObject.Object):
         self._cancel = flag
         file_ids = {f["id"] for f in self.index.files}
         thumb_ids = {f["id"] for f in self.index.files if f.get("hasThumbnail")}
-        self.set_task(TaskProgress("Yedekleniyor", dest, 0, True))
+        self.set_task(TaskProgress(tr("Yedekleniyor"), dest, 0, True))
 
         def progress(done_bytes: int, total: int) -> bool:
             GLib.idle_add(self._update_task, token, None, None, done_bytes / total if total else 1.0)
@@ -858,16 +869,18 @@ class AppState(GObject.Object):
                 return
             self.set_task(None)
             if isinstance(error, Cancelled):
-                self.toast("Yedekleme durduruldu")
+                self.toast(tr("Yedekleme durduruldu"))
             elif error:
-                self.alert("Yedeklenemedi", _error_text(error))
+                self.alert(tr("Yedeklenemedi"), _error_text(error))
             else:
                 self.update_prefs(lastBackupAt=now())
-                msg = f"Yedeklendi · {report.copied_files} yeni, {report.unchanged_files} değişmemiş"
+                msg = tr("Yedeklendi · {copied} yeni, {unchanged} değişmemiş", copied=report.copied_files,
+                         unchanged=report.unchanged_files)
                 if report.missing_in_source:
-                    self.alert("Yedeklendi, ama eksik dosyalar var",
-                               f"{len(report.missing_in_source)} dosyanın şifreli içeriği kasada bulunamadı; "
-                               "yedekteki kopyaları korundu. Bütünlük taraması yapın.")
+                    self.alert(tr("Yedeklendi, ama eksik dosyalar var"),
+                               tr("{n} dosyanın şifreli içeriği kasada bulunamadı; "
+                                  "yedekteki kopyaları korundu. Bütünlük taraması yapın.",
+                                  n=len(report.missing_in_source)))
                 else:
                     self.toast(msg)
             if done:
@@ -882,7 +895,7 @@ class AppState(GObject.Object):
         flag = CancelFlag()
         self._cancel = flag
         files = [dict(f) for f in self.index.files]
-        self.set_task(TaskProgress("Bütünlük taraması", "Her dosya çözülerek doğrulanıyor…", 0, True))
+        self.set_task(TaskProgress(tr("Bütünlük taraması"), tr("Her dosya çözülerek doğrulanıyor…"), 0, True))
 
         def progress(done_bytes: int, total: int) -> bool:
             GLib.idle_add(self._update_task, token, None, None, done_bytes / total if total else 1.0)
@@ -893,10 +906,10 @@ class AppState(GObject.Object):
                 return
             self.set_task(None)
             if isinstance(error, Cancelled):
-                self.toast("Tarama durduruldu")
+                self.toast(tr("Tarama durduruldu"))
                 return
             if error:
-                self.alert("Tarama yapılamadı", _error_text(error))
+                self.alert(tr("Tarama yapılamadı"), _error_text(error))
                 return
 
             def fill(idx: VaultIndex) -> None:
@@ -916,7 +929,7 @@ class AppState(GObject.Object):
         vault, token = self.vault, self._session
         backup = self.prefs.get("backupPath")
         if not vault or not backup:
-            done(["Yedek konumu seçilmedi."])
+            done([tr("Yedek konumu seçilmedi.")])
             return
         names = {f["id"]: f["name"] for f in self.index.files}
 
@@ -938,7 +951,7 @@ class AppState(GObject.Object):
     def remove_orphans(self, orphan_paths: list[str]) -> None:
         if self.vault:
             self.vault.remove_orphans(orphan_paths)
-            self.toast(f"{len(orphan_paths)} sahipsiz dosya silindi")
+            self.toast(tr("{n} sahipsiz dosya silindi", n=len(orphan_paths)))
 
 
 def _unique_path(directory: str, name: str) -> str:
