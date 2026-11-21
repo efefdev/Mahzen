@@ -5,6 +5,7 @@ from __future__ import annotations
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango
 
 from ..core.index import sort_key
+from ..i18n import tr
 from .common import alert, ask_text, clear_box, format_date, format_size, icon_for, kind_of
 
 TEXT_PREVIEW_LIMIT = 4 * 1024 * 1024
@@ -21,29 +22,29 @@ class FilesPage(Adw.Bin):
         self._items: list[tuple[str, dict]] = []
 
         toolbar = Adw.ToolbarView()
-        header = make_header("Dosyalar")
-        add_btn = Gtk.Button(icon_name="list-add-symbolic", tooltip_text="Dosya ekle (Ctrl+O)")
+        header = make_header(tr("Dosyalar"))
+        add_btn = Gtk.Button(icon_name="list-add-symbolic", tooltip_text=tr("Dosya ekle (Ctrl+O)"))
         add_btn.connect("clicked", lambda *_: self.present_import())
         header.pack_start(add_btn)
-        add_folder_btn = Gtk.Button(icon_name="folder-new-symbolic", tooltip_text="Kasaya klasör ekle")
+        add_folder_btn = Gtk.Button(icon_name="folder-new-symbolic", tooltip_text=tr("Kasaya klasör ekle"))
         add_folder_btn.connect("clicked", lambda *_: self.present_import(folders=True))
         header.pack_start(add_folder_btn)
-        new_folder = Gtk.Button(icon_name="tab-new-symbolic", tooltip_text="Yeni klasör (Ctrl+Shift+N)")
+        new_folder = Gtk.Button(icon_name="tab-new-symbolic", tooltip_text=tr("Yeni klasör (Ctrl+Shift+N)"))
         new_folder.connect("clicked", lambda *_: self.new_folder())
         header.pack_start(new_folder)
 
-        self.search_toggle = Gtk.ToggleButton(icon_name="system-search-symbolic", tooltip_text="Ara (Ctrl+F)")
+        self.search_toggle = Gtk.ToggleButton(icon_name="system-search-symbolic", tooltip_text=tr("Ara (Ctrl+F)"))
         header.pack_end(self.search_toggle)
-        self.layout_btn = Gtk.Button(tooltip_text="Görünümü değiştir")
+        self.layout_btn = Gtk.Button(tooltip_text=tr("Görünümü değiştir"))
         self.layout_btn.connect("clicked", lambda *_: self._toggle_layout())
         header.pack_end(self.layout_btn)
         toolbar.add_top_bar(header)
-        self.banner = Adw.Banner(button_label="Yedekle")
+        self.banner = Adw.Banner(button_label=tr("Yedekle"))
         toolbar.add_top_bar(self.banner)
 
         self.search_bar = Gtk.SearchBar()
         self.search_entry = Gtk.SearchEntry(hexpand=True)
-        self.search_entry.set_property("placeholder-text", "Kasada ara")
+        self.search_entry.set_property("placeholder-text", tr("Kasada ara"))
         self.search_entry.connect("search-changed", self._on_search)
         clamp = Adw.Clamp(maximum_size=500, child=self.search_entry)
         self.search_bar.set_child(clamp)
@@ -56,11 +57,11 @@ class FilesPage(Adw.Bin):
         bar = Gtk.Box(spacing=6, margin_start=12, margin_end=12, margin_top=6, margin_bottom=6)
         self.crumbs = Gtk.Box(spacing=2, hexpand=True)
         bar.append(self.crumbs)
-        self.fav_toggle = Gtk.ToggleButton(icon_name="starred-symbolic", tooltip_text="Yalnızca favoriler",
+        self.fav_toggle = Gtk.ToggleButton(icon_name="starred-symbolic", tooltip_text=tr("Yalnızca favoriler"),
                                            css_classes=["flat"])
         self.fav_toggle.connect("toggled", self._on_fav_toggle)
         bar.append(self.fav_toggle)
-        self.tag_menu_btn = Gtk.MenuButton(icon_name="mahzen-tag-symbolic", tooltip_text="Etikete göre süz",
+        self.tag_menu_btn = Gtk.MenuButton(icon_name="mahzen-tag-symbolic", tooltip_text=tr("Etikete göre süz"),
                                            css_classes=["flat"])
         self.tag_popover = Gtk.Popover()
         self.tag_list = Gtk.ListBox(css_classes=["navigation-sidebar"], selection_mode=Gtk.SelectionMode.NONE)
@@ -72,9 +73,9 @@ class FilesPage(Adw.Bin):
 
         # İçerik
         self.stack = Gtk.Stack(vexpand=True)
-        self.empty = Adw.StatusPage(icon_name="folder-open-symbolic", title="Bu klasör boş",
-                                    description="Dosyaları buraya sürükleyin ya da + düğmesiyle ekleyin.\n"
-                                                "Her şey eklenirken bu bilgisayarda şifrelenir.")
+        self.empty = Adw.StatusPage(icon_name="folder-open-symbolic", title=tr("Bu klasör boş"),
+                                    description=tr("Dosyaları buraya sürükleyin ya da + düğmesiyle ekleyin.\n"
+                                                   "Her şey eklenirken bu bilgisayarda şifrelenir."))
         self.stack.add_named(self.empty, "empty")
 
         self.flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.MULTIPLE, activate_on_single_click=False,
@@ -109,11 +110,11 @@ class FilesPage(Adw.Bin):
         self.selection_label = Gtk.Label(css_classes=["dim-label"])
         self.action_bar.pack_start(self.selection_label)
         for icon, tip, cb in [
-            ("user-trash-symbolic", "Çöp kutusuna taşı (Delete)", self.trash_selected),
-            ("mahzen-tag-symbolic", "Etiketler", self.tag_selected),
-            ("starred-symbolic", "Favori", self.favorite_selected),
-            ("folder-symbolic", "Taşı", self.move_selected),
-            ("document-save-symbolic", "Dışa aktar", self.export_selected),
+            ("user-trash-symbolic", tr("Çöp kutusuna taşı (Delete)"), self.trash_selected),
+            ("mahzen-tag-symbolic", tr("Etiketler"), self.tag_selected),
+            ("starred-symbolic", tr("Favori"), self.favorite_selected),
+            ("folder-symbolic", tr("Taşı"), self.move_selected),
+            ("document-save-symbolic", tr("Dışa aktar"), self.export_selected),
         ]:
             b = Gtk.Button(icon_name=icon, tooltip_text=tip)
             b.connect("clicked", lambda *_, c=cb: c())
@@ -185,13 +186,13 @@ class FilesPage(Adw.Bin):
         if not self._items:
             if filtering:
                 self.empty.set_icon_name("system-search-symbolic")
-                self.empty.set_title("Sonuç yok")
-                self.empty.set_description("Aramayı veya filtreleri değiştirin.")
+                self.empty.set_title(tr("Sonuç yok"))
+                self.empty.set_description(tr("Aramayı veya filtreleri değiştirin."))
             else:
                 self.empty.set_icon_name("folder-open-symbolic")
-                self.empty.set_title("Bu klasör boş" if current else "Kasa boş")
-                self.empty.set_description("Dosyaları buraya sürükleyin ya da + düğmesiyle ekleyin.\n"
-                                           "Her şey eklenirken bu bilgisayarda şifrelenir.")
+                self.empty.set_title(tr("Bu klasör boş") if current else tr("Kasa boş"))
+                self.empty.set_description(tr("Dosyaları buraya sürükleyin ya da + düğmesiyle ekleyin.\n"
+                                              "Her şey eklenirken bu bilgisayarda şifrelenir."))
             self.stack.set_visible_child_name("empty")
         elif self.layout == "grid":
             for item in self._items:
@@ -212,8 +213,8 @@ class FilesPage(Adw.Bin):
             if self.tag_filter:
                 parts.append(f"#{self.tag_filter}")
             if self.favorites_only:
-                parts.append("Favoriler")
-            self.crumbs.append(Gtk.Label(label="Arama: " + " · ".join(parts), css_classes=["heading"]))
+                parts.append(tr("Favoriler"))
+            self.crumbs.append(Gtk.Label(label=tr("Arama: {query}", query=" · ".join(parts)), css_classes=["heading"]))
             return
         path = self.state.index.path_to(self.state.current_folder)
         root = Gtk.Button(label=self.state.prefs.get("displayName") or "Mahzen", css_classes=["flat"])
@@ -237,7 +238,7 @@ class FilesPage(Adw.Bin):
             self.tag_menu_btn.remove_css_class("accent")
         for tag in [None, *tags]:
             row = Gtk.ListBoxRow()
-            label = Gtk.Label(label="Tüm dosyalar" if tag is None else f"#{tag}", xalign=0,
+            label = Gtk.Label(label=tr("Tüm dosyalar") if tag is None else f"#{tag}", xalign=0,
                               margin_start=6, margin_end=6)
             if tag == self.tag_filter:
                 label.add_css_class("heading")
@@ -300,7 +301,7 @@ class FilesPage(Adw.Bin):
         name = Gtk.Label(label=record["name"], ellipsize=Pango.EllipsizeMode.MIDDLE, max_width_chars=16,
                          lines=2, wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR, justify=Gtk.Justification.CENTER)
         box.append(name)
-        detail = (f"{self.state.index.live_file_count_in_tree(record['id'])} dosya" if kind == "folder"
+        detail = (tr("{n} dosya", n=self.state.index.live_file_count_in_tree(record["id"])) if kind == "folder"
                   else format_size(int(record.get("size", 0))))
         box.append(Gtk.Label(label=detail, css_classes=["caption", "dim-label"]))
         child = Gtk.FlowBoxChild(child=box, tooltip_text=record["name"])
@@ -318,7 +319,7 @@ class FilesPage(Adw.Bin):
         thumb.set_valign(Gtk.Align.CENTER)
         row.add_prefix(thumb)
         if kind == "folder":
-            row.set_subtitle(f"{self.state.index.live_file_count_in_tree(record['id'])} dosya")
+            row.set_subtitle(tr("{n} dosya", n=self.state.index.live_file_count_in_tree(record["id"])))
             row.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
             self._add_folder_drop(row, record["id"])
         else:
@@ -367,10 +368,10 @@ class FilesPage(Adw.Bin):
         folders = len(items) - files
         parts = []
         if files:
-            parts.append(f"{files} dosya")
+            parts.append(tr("{n} dosya", n=files))
         if folders:
-            parts.append(f"{folders} klasör")
-        self.selection_label.set_text(", ".join(parts) + " seçili" if parts else "")
+            parts.append(tr("{n} klasör", n=folders))
+        self.selection_label.set_text(tr("{items} seçili", items=", ".join(parts)) if parts else "")
 
     def _select_only(self, widget) -> None:
         if isinstance(widget, Gtk.FlowBoxChild):
@@ -388,24 +389,24 @@ class FilesPage(Adw.Bin):
         kind, record = item
         menu = Gio.Menu()
         if kind == "folder":
-            menu.append("Aç", "item.open")
-            menu.append("Yeniden Adlandır…", "item.rename")
-            menu.append("Taşı…", "item.move")
+            menu.append(tr("Aç"), "item.open")
+            menu.append(tr("Yeniden Adlandır…"), "item.rename")
+            menu.append(tr("Taşı…"), "item.move")
             section = Gio.Menu()
-            section.append("Çöp Kutusuna Taşı", "item.trash")
+            section.append(tr("Çöp Kutusuna Taşı"), "item.trash")
             menu.append_section(None, section)
         else:
-            menu.append("Önizle", "item.open")
-            menu.append("Geçici Olarak Aç", "item.open-temp")
-            menu.append("Dışa Aktar…", "item.export")
+            menu.append(tr("Önizle"), "item.open")
+            menu.append(tr("Geçici Olarak Aç"), "item.open-temp")
+            menu.append(tr("Dışa Aktar…"), "item.export")
             section = Gio.Menu()
-            section.append("Yeniden Adlandır…", "item.rename")
-            section.append("Favori", "item.favorite")
-            section.append("Etiketler…", "item.tags")
-            section.append("Taşı…", "item.move")
+            section.append(tr("Yeniden Adlandır…"), "item.rename")
+            section.append(tr("Favori"), "item.favorite")
+            section.append(tr("Etiketler…"), "item.tags")
+            section.append(tr("Taşı…"), "item.move")
             menu.append_section(None, section)
             trash = Gio.Menu()
-            trash.append("Çöp Kutusuna Taşı", "item.trash")
+            trash.append(tr("Çöp Kutusuna Taşı"), "item.trash")
             menu.append_section(None, trash)
 
         group = Gio.SimpleActionGroup()
@@ -483,10 +484,11 @@ class FilesPage(Adw.Bin):
 
         self.state.mutate(body)
         if failed:
-            alert(self, "Taşınamadı", "Bir klasör kendi içine taşınamaz.")
+            alert(self, tr("Taşınamadı"), tr("Bir klasör kendi içine taşınamaz."))
         else:
             target = self.state.index.folder(folder_id)
-            self.state.toast(f"Taşındı: {target['name'] if target else self.state.prefs.get('displayName', 'Mahzen')}")
+            self.state.toast(tr("Taşındı: {name}",
+                                name=target["name"] if target else self.state.prefs.get("displayName", "Mahzen")))
 
     # MARK: - İşlemler
 
@@ -516,8 +518,8 @@ class FilesPage(Adw.Bin):
     def present_import(self, folders: bool = False) -> None:
         if self.state.task:
             return
-        dialog = Gtk.FileDialog(title="Kasaya eklenecek klasörleri seç" if folders else
-                                "Kasaya eklenecek dosyaları seç", accept_label="Şifrele ve Ekle", modal=True)
+        dialog = Gtk.FileDialog(title=tr("Kasaya eklenecek klasörleri seç") if folders else
+                                tr("Kasaya eklenecek dosyaları seç"), accept_label=tr("Şifrele ve Ekle"), modal=True)
         target = self.state.current_folder
 
         def done(d, result):
@@ -539,15 +541,15 @@ class FilesPage(Adw.Bin):
         def create(name):
             result = {}
             self.state.mutate(lambda idx: result.update(id=idx.create_folder(name, self.state.current_folder)))
-        ask_text(self, "Yeni klasör", "Yeni Klasör", "Oluştur", create)
+        ask_text(self, tr("Yeni klasör"), tr("Yeni Klasör"), tr("Oluştur"), create)
 
     def rename(self, item) -> None:
         kind, record = item
         if kind == "folder":
-            ask_text(self, "Klasörü yeniden adlandır", record["name"], "Yeniden Adlandır",
+            ask_text(self, tr("Klasörü yeniden adlandır"), record["name"], tr("Yeniden Adlandır"),
                      lambda name: self.state.mutate(lambda idx: idx.rename_folder(record["id"], name)))
         else:
-            ask_text(self, "Dosyayı yeniden adlandır", record["name"], "Yeniden Adlandır",
+            ask_text(self, tr("Dosyayı yeniden adlandır"), record["name"], tr("Yeniden Adlandır"),
                      lambda name: self.state.rename_file(record["id"], name))
 
     def trash_selected(self) -> None:
@@ -569,9 +571,9 @@ class FilesPage(Adw.Bin):
         if not ids:
             return
         current = sorted({t for f in self.state.index.files if f["id"] in ids for t in f.get("tags", [])})
-        ask_text(self, "Etiketler", ", ".join(current), "Kaydet",
+        ask_text(self, tr("Etiketler"), ", ".join(current), tr("Kaydet"),
                  lambda text: self.state.mutate(lambda idx: idx.set_tags(text.split(","), ids)),
-                 body="Etiketleri virgülle ayırın. Hepsini silmek için alanı boşaltıp kaydedin.")
+                 body=tr("Etiketleri virgülle ayırın. Hepsini silmek için alanı boşaltıp kaydedin."))
 
     def move_selected(self) -> None:
         items = self.selected()
@@ -583,7 +585,7 @@ class FilesPage(Adw.Bin):
             blocked |= {x for x in self.state.index.descendant_folder_ids(fid)}
         blocked = {b.upper() for b in blocked}
 
-        dialog = Adw.AlertDialog(heading="Taşı", body="Hedef klasörü seçin.")
+        dialog = Adw.AlertDialog(heading=tr("Taşı"), body=tr("Hedef klasörü seçin."))
         listbox = Gtk.ListBox(css_classes=["boxed-list"], selection_mode=Gtk.SelectionMode.SINGLE)
         rows = []
 
@@ -605,8 +607,8 @@ class FilesPage(Adw.Bin):
         scroller = Gtk.ScrolledWindow(min_content_height=240, max_content_height=360, propagate_natural_height=True)
         scroller.set_child(listbox)
         dialog.set_extra_child(scroller)
-        dialog.add_response("cancel", "Vazgeç")
-        dialog.add_response("ok", "Taşı")
+        dialog.add_response("cancel", tr("Vazgeç"))
+        dialog.add_response("ok", tr("Taşı"))
         dialog.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
         dialog.set_close_response("cancel")
 
@@ -622,8 +624,8 @@ class FilesPage(Adw.Bin):
         records = [r for k, r in self.selected() if k == "file"]
         if not records:
             return
-        dialog = Gtk.FileDialog(title="Şifresi çözülmüş kopyaların kaydedileceği klasör", accept_label="Dışa Aktar",
-                                modal=True)
+        dialog = Gtk.FileDialog(title=tr("Şifresi çözülmüş kopyaların kaydedileceği klasör"),
+                                accept_label=tr("Dışa Aktar"), modal=True)
 
         def done(d, result):
             try:
@@ -640,13 +642,13 @@ class FilesPage(Adw.Bin):
             self.state.open_temporarily(record)
             return
         dialog = Adw.AlertDialog(
-            heading="Dosya geçici olarak açılsın mı?",
-            body="Dosyanın şifresiz bir kopyası oturumun geçici klasörüne yazılır ve kasa kilitlenince ya da "
-                 "uygulama kapanınca silinir. Açan uygulama kendi önbelleğinde iz bırakabilir.")
-        check = Gtk.CheckButton(label="Bir daha sorma")
+            heading=tr("Dosya geçici olarak açılsın mı?"),
+            body=tr("Dosyanın şifresiz bir kopyası oturumun geçici klasörüne yazılır ve kasa kilitlenince ya da "
+                    "uygulama kapanınca silinir. Açan uygulama kendi önbelleğinde iz bırakabilir."))
+        check = Gtk.CheckButton(label=tr("Bir daha sorma"))
         dialog.set_extra_child(check)
-        dialog.add_response("cancel", "Vazgeç")
-        dialog.add_response("ok", "Aç")
+        dialog.add_response("cancel", tr("Vazgeç"))
+        dialog.add_response("ok", tr("Aç"))
         dialog.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
         dialog.set_close_response("cancel")
 
@@ -675,10 +677,10 @@ class PreviewDialog(Adw.Dialog):
 
         toolbar = Adw.ToolbarView()
         header = Adw.HeaderBar()
-        open_btn = Gtk.Button(icon_name="document-open-symbolic", tooltip_text="Geçici olarak aç")
+        open_btn = Gtk.Button(icon_name="document-open-symbolic", tooltip_text=tr("Geçici olarak aç"))
         open_btn.connect("clicked", lambda *_: (self.close(), page.open_temporarily(record)))
         header.pack_start(open_btn)
-        export_btn = Gtk.Button(icon_name="document-save-symbolic", tooltip_text="Dışa aktar")
+        export_btn = Gtk.Button(icon_name="document-save-symbolic", tooltip_text=tr("Dışa aktar"))
         export_btn.connect("clicked", lambda *_: self._export())
         header.pack_start(export_btn)
         toolbar.add_top_bar(header)
@@ -690,7 +692,7 @@ class PreviewDialog(Adw.Dialog):
         toolbar.set_content(self.stack)
 
         info = " · ".join(x for x in [format_size(int(record.get("size", 0))),
-                                      "Eklendi: " + format_date(record.get("addedAt")),
+                                      tr("Eklendi: {date}", date=format_date(record.get("addedAt"))),
                                       " ".join(f"#{t}" for t in record.get("tags", []))] if x)
         footer = Gtk.Label(label=info, css_classes=["caption", "dim-label"], margin_top=6, margin_bottom=6,
                            ellipsize=Pango.EllipsizeMode.END)
@@ -716,7 +718,7 @@ class PreviewDialog(Adw.Dialog):
         try:
             texture = Gdk.Texture.new_from_bytes(GLib.Bytes.new(data))
         except GLib.Error:
-            self._show_fallback("Bu görsel biçimi önizlenemiyor.")
+            self._show_fallback(tr("Bu görsel biçimi önizlenemiyor."))
             return
         picture = Gtk.Picture(paintable=texture, content_fit=Gtk.ContentFit.CONTAIN, can_shrink=True)
         self.stack.add_named(picture, "content")
@@ -737,9 +739,9 @@ class PreviewDialog(Adw.Dialog):
     def _show_fallback(self, message: str | None = None) -> None:
         status = Adw.StatusPage(
             icon_name=icon_for(self.record), title=self.record["name"],
-            description=message or "Bu dosya türü uygulama içinde önizlenemiyor.\n"
-                                   "Geçici olarak açabilir ya da dışa aktarabilirsiniz.")
-        button = Gtk.Button(label="Geçici Olarak Aç", css_classes=["pill", "suggested-action"],
+            description=message or tr("Bu dosya türü uygulama içinde önizlenemiyor.\n"
+                                      "Geçici olarak açabilir ya da dışa aktarabilirsiniz."))
+        button = Gtk.Button(label=tr("Geçici Olarak Aç"), css_classes=["pill", "suggested-action"],
                             halign=Gtk.Align.CENTER)
         button.connect("clicked", lambda *_: (self.close(), self.page.open_temporarily(self.record)))
         status.set_child(button)
@@ -747,15 +749,15 @@ class PreviewDialog(Adw.Dialog):
         self.stack.set_visible_child_name("content")
 
     def _show_error(self, error) -> None:
-        status = Adw.StatusPage(icon_name="dialog-error-symbolic", title="Dosya çözülemedi",
+        status = Adw.StatusPage(icon_name="dialog-error-symbolic", title=tr("Dosya çözülemedi"),
                                 description=str(error) if error else "")
         self.stack.add_named(status, "content")
         self.stack.set_visible_child_name("content")
 
     def _export(self) -> None:
         self.close()
-        dialog = Gtk.FileDialog(title="Şifresi çözülmüş kopyanın kaydedileceği klasör", accept_label="Dışa Aktar",
-                                modal=True)
+        dialog = Gtk.FileDialog(title=tr("Şifresi çözülmüş kopyanın kaydedileceği klasör"),
+                                accept_label=tr("Dışa Aktar"), modal=True)
 
         def done(d, result):
             try:

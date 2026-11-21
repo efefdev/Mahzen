@@ -13,6 +13,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
 from .. import APP_ID, __version__  # noqa: E402
 from ..core.index import parse_date  # noqa: E402
+from ..i18n import tr  # noqa: E402
 from .common import alert, confirm  # noqa: E402
 from .files import FilesPage  # noqa: E402
 from .lock import CreatePage, LockPage, WelcomePage  # noqa: E402
@@ -30,11 +31,11 @@ ACCENT_HEX = {
 }
 
 SECTIONS = [
-    ("files", "Dosyalar", "folder-symbolic"),
-    ("notes", "Notlar", "document-edit-symbolic"),
-    ("secrets", "Parolalar", "dialog-password-symbolic"),
-    ("trash", "Çöp Kutusu", "user-trash-symbolic"),
-    ("settings", "Ayarlar", "emblem-system-symbolic"),
+    ("files", tr("Dosyalar"), "folder-symbolic"),
+    ("notes", tr("Notlar"), "document-edit-symbolic"),
+    ("secrets", tr("Parolalar"), "dialog-password-symbolic"),
+    ("trash", tr("Çöp Kutusu"), "user-trash-symbolic"),
+    ("settings", tr("Ayarlar"), "emblem-system-symbolic"),
 ]
 
 BASE_CSS = """
@@ -96,7 +97,7 @@ class MainWindow(Adw.ApplicationWindow):
         task_box.append(labels)
         self.task_progress = Gtk.ProgressBar(hexpand=True, valign=Gtk.Align.CENTER)
         task_box.append(self.task_progress)
-        self.task_cancel = Gtk.Button(label="Durdur")
+        self.task_cancel = Gtk.Button(label=tr("Durdur"))
         self.task_cancel.connect("clicked", lambda *_: self.state.cancel_task())
         task_box.append(self.task_cancel)
         self.task_revealer.set_child(task_box)
@@ -134,7 +135,7 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             header.set_title_widget(Gtk.Box())
         if lock:
-            btn = Gtk.Button(icon_name="system-lock-screen-symbolic", tooltip_text="Kilitle (Ctrl+L)")
+            btn = Gtk.Button(icon_name="system-lock-screen-symbolic", tooltip_text=tr("Kilitle (Ctrl+L)"))
             btn.connect("clicked", lambda *_: self.state.lock())
             header.pack_end(btn)
         return header
@@ -147,9 +148,9 @@ class MainWindow(Adw.ApplicationWindow):
         self.side_title = Adw.WindowTitle(title="Mahzen")
         side_header.set_title_widget(self.side_title)
         menu = Gio.Menu()
-        menu.append("Klavye Kısayolları", "win.show-help-overlay")
-        menu.append("Mahzen Hakkında", "app.about")
-        side_header.pack_end(Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu, tooltip_text="Menü"))
+        menu.append(tr("Klavye Kısayolları"), "win.show-help-overlay")
+        menu.append(tr("Mahzen Hakkında"), "app.about")
+        side_header.pack_end(Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu, tooltip_text=tr("Menü")))
         sidebar.add_top_bar(side_header)
 
         self.nav = Gtk.ListBox(css_classes=["navigation-sidebar"])
@@ -173,7 +174,7 @@ class MainWindow(Adw.ApplicationWindow):
         sidebar.set_content(side_scroller)
         self.recovered_banner = Gtk.Label(wrap=True, css_classes=["caption", "warning"], margin_start=12,
                                           margin_end=12, margin_bottom=12, visible=False,
-                                          label="Dizin yedekten kurtarıldı.")
+                                          label=tr("Dizin yedekten kurtarıldı."))
         sidebar.add_bottom_bar(self.recovered_banner)
         self.split.set_sidebar(Adw.NavigationPage(title="Mahzen", child=sidebar))
 
@@ -188,7 +189,7 @@ class MainWindow(Adw.ApplicationWindow):
         for key, page in [("files", self.files), ("notes", self.notes), ("secrets", self.secrets),
                           ("trash", self.trash), ("settings", self.settings)]:
             self.content.add_named(page, key)
-        self.content_page = Adw.NavigationPage(title="Dosyalar", child=self.content)
+        self.content_page = Adw.NavigationPage(title=tr("Dosyalar"), child=self.content)
         self.split.set_content(self.content_page)
 
         breakpoint_ = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 640sp"))
@@ -269,13 +270,13 @@ class MainWindow(Adw.ApplicationWindow):
         if days > 0 and self.state.index.live_files:
             if last is None:
                 show = True
-                self.backup_banner.set_title("Kasanın henüz yedeği yok")
+                self.backup_banner.set_title(tr("Kasanın henüz yedeği yok"))
             else:
                 from datetime import datetime, timezone
                 age = (datetime.now(timezone.utc) - last).days
                 if age >= days:
                     show = True
-                    self.backup_banner.set_title(f"Son yedek {age} gün önce")
+                    self.backup_banner.set_title(tr("Son yedek {n} gün önce", n=age))
         self.backup_banner.set_revealed(show)
 
     def _backup_from_banner(self) -> None:
@@ -283,7 +284,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.state.backup_now(self._update_backup_banner)
         else:
             self.show_section("settings")
-            self.state.toast("Önce bir yedek konumu seçin")
+            self.state.toast(tr("Önce bir yedek konumu seçin"))
 
     def _on_task(self) -> None:
         task = self.state.task
@@ -309,10 +310,10 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _offer_trash(self, sources: list[str]) -> None:
         names = ", ".join(os.path.basename(s) for s in sources[:4]) + (" …" if len(sources) > 4 else "")
-        confirm(self, "Orijinaller çöp kutusuna taşınsın mı?",
-                f"Şifreli kopyaları kasaya güvenle yazıldı: {names}\n\n"
-                "Orijinaller sistemin çöp kutusuna taşınır (kalıcı silinmez).",
-                "Çöpe Taşı", lambda: self.state.trash_originals(sources))
+        confirm(self, tr("Orijinaller çöp kutusuna taşınsın mı?"),
+                tr("Şifreli kopyaları kasaya güvenle yazıldı: {names}\n\n"
+                   "Orijinaller sistemin çöp kutusuna taşınır (kalıcı silinmez).", names=names),
+                tr("Çöpe Taşı"), lambda: self.state.trash_originals(sources))
 
     def _on_close(self, *_args) -> bool:
         self.state.lock()
@@ -455,36 +456,42 @@ class MahzenApp(Adw.Application):
         about = Adw.AboutDialog(
             application_name="Mahzen", application_icon=APP_ID, version=__version__, developer_name="efefdev",
             website="https://github.com/efefdev/Mahzen", issue_url="https://github.com/efefdev/Mahzen/issues",
-            license_type=Gtk.License.CUSTOM, license="Lisans için depodaki LICENSE dosyasına bakın.",
-            comments="Dosyalar, notlar ve parolalar için şifreli, taşınabilir kasa.\n"
-                     "AES-256-GCM + Argon2id. macOS sürümüyle aynı kasayı açar.")
+            license_type=Gtk.License.CUSTOM, license=tr("Lisans için depodaki LICENSE dosyasına bakın."),
+            comments=tr("Dosyalar, notlar ve parolalar için şifreli, taşınabilir kasa.\n"
+                        "AES-256-GCM + Argon2id. macOS sürümüyle aynı kasayı açar."))
         about.present(self.window)
 
     def _install_help_overlay(self) -> None:
-        ui = """<?xml version="1.0" encoding="UTF-8"?>
-<interface>
-  <object class="GtkShortcutsWindow" id="help_overlay">
-    <property name="modal">True</property>
-    <child><object class="GtkShortcutsSection"><property name="section-name">genel</property>
-      <child><object class="GtkShortcutsGroup"><property name="title">Genel</property>
-        <child><object class="GtkShortcutsShortcut"><property name="title">Kasayı kilitle</property><property name="accelerator">&lt;Control&gt;l</property></object></child>
-        <child><object class="GtkShortcutsShortcut"><property name="title">Çıkış</property><property name="accelerator">&lt;Control&gt;q</property></object></child>
-        <child><object class="GtkShortcutsShortcut"><property name="title">Dosyalar / Notlar / Parolalar / Çöp</property><property name="accelerator">&lt;Alt&gt;1 &lt;Alt&gt;2 &lt;Alt&gt;3 &lt;Alt&gt;4</property></object></child>
-        <child><object class="GtkShortcutsShortcut"><property name="title">Ayarlar</property><property name="accelerator">&lt;Control&gt;comma</property></object></child>
-      </object></child>
-      <child><object class="GtkShortcutsGroup"><property name="title">Dosyalar</property>
-        <child><object class="GtkShortcutsShortcut"><property name="title">Dosya ekle</property><property name="accelerator">&lt;Control&gt;o</property></object></child>
-        <child><object class="GtkShortcutsShortcut"><property name="title">Yeni klasör</property><property name="accelerator">&lt;Control&gt;&lt;Shift&gt;n</property></object></child>
-        <child><object class="GtkShortcutsShortcut"><property name="title">Ara</property><property name="accelerator">&lt;Control&gt;f</property></object></child>
-        <child><object class="GtkShortcutsShortcut"><property name="title">Seçileni çöpe taşı</property><property name="accelerator">Delete</property></object></child>
-        <child><object class="GtkShortcutsShortcut"><property name="title">Üst klasör</property><property name="accelerator">&lt;Alt&gt;BackSpace</property></object></child>
-      </object></child>
-      <child><object class="GtkShortcutsGroup"><property name="title">Notlar ve parolalar</property>
-        <child><object class="GtkShortcutsShortcut"><property name="title">Yeni not / kayıt</property><property name="accelerator">&lt;Control&gt;n</property></object></child>
-      </object></child>
-    </object></child>
-  </object>
-</interface>"""
+        groups = [
+            (tr("Genel"), [
+                (tr("Kasayı kilitle"), "<Control>l"),
+                (tr("Çıkış"), "<Control>q"),
+                (tr("Dosyalar / Notlar / Parolalar / Çöp"), "<Alt>1 <Alt>2 <Alt>3 <Alt>4"),
+                (tr("Ayarlar"), "<Control>comma"),
+            ]),
+            (tr("Dosyalar"), [
+                (tr("Dosya ekle"), "<Control>o"),
+                (tr("Yeni klasör"), "<Control><Shift>n"),
+                (tr("Ara"), "<Control>f"),
+                (tr("Seçileni çöpe taşı"), "Delete"),
+                (tr("Üst klasör"), "<Alt>BackSpace"),
+            ]),
+            (tr("Notlar ve parolalar"), [
+                (tr("Yeni not / kayıt"), "<Control>n"),
+            ]),
+        ]
+        esc = GLib.markup_escape_text
+        body = "".join(
+            f'<child><object class="GtkShortcutsGroup"><property name="title">{esc(title)}</property>'
+            + "".join(f'<child><object class="GtkShortcutsShortcut"><property name="title">{esc(name)}</property>'
+                      f'<property name="accelerator">{esc(accel)}</property></object></child>'
+                      for name, accel in shortcuts)
+            + "</object></child>"
+            for title, shortcuts in groups)
+        ui = ('<?xml version="1.0" encoding="UTF-8"?><interface>'
+              '<object class="GtkShortcutsWindow" id="help_overlay"><property name="modal">True</property>'
+              '<child><object class="GtkShortcutsSection"><property name="section-name">genel</property>'
+              f"{body}</object></child></object></interface>")
         builder = Gtk.Builder.new_from_string(ui, -1)
         self.window.set_help_overlay(builder.get_object("help_overlay"))
         self.set_accels_for_action("win.show-help-overlay", ["<Control>question"])

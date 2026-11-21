@@ -11,6 +11,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 
+from ..i18n import tr
 from .paths import data_dir
 
 
@@ -74,7 +75,7 @@ class KeyfileStore:
             os.fsync(f.fileno())
         os.replace(tmp, target)
         if self.load(vault_id) != keyfile:
-            raise OSError(f"Anahtar dosyası yazılamadı: {target}")
+            raise OSError(tr("Anahtar dosyası yazılamadı: {path}", path=target))
 
     def archive(self, vault_id: uuid.UUID) -> None:
         """Etkin anahtarı arşive taşır (silmez). Etkin anahtar yoksa bir şey yapmaz."""

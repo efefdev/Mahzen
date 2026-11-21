@@ -23,15 +23,15 @@ enum AccentChoice: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .indigo: return "Çivit"
-        case .blue: return "Mavi"
-        case .teal: return "Turkuaz"
-        case .green: return "Yeşil"
-        case .orange: return "Turuncu"
-        case .pink: return "Pembe"
-        case .red: return "Kırmızı"
-        case .purple: return "Mor"
-        case .graphite: return "Grafit"
+        case .indigo: return L("Çivit")
+        case .blue: return L("Mavi")
+        case .teal: return L("Turkuaz")
+        case .green: return L("Yeşil")
+        case .orange: return L("Turuncu")
+        case .pink: return L("Pembe")
+        case .red: return L("Kırmızı")
+        case .purple: return L("Mor")
+        case .graphite: return L("Grafit")
         }
     }
 
@@ -57,9 +57,9 @@ enum AppearanceChoice: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .system: return "Sistem"
-        case .light: return "Açık"
-        case .dark: return "Koyu"
+        case .system: return L("Sistem")
+        case .light: return L("Açık")
+        case .dark: return L("Koyu")
         }
     }
 
@@ -79,10 +79,10 @@ enum NoteFontDesign: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .default: return "Sistem"
+        case .default: return L("Sistem")
         case .serif: return "Serif"
-        case .rounded: return "Yuvarlak"
-        case .monospaced: return "Eş aralıklı"
+        case .rounded: return L("Yuvarlak")
+        case .monospaced: return L("Eş aralıklı")
         }
     }
 
@@ -99,12 +99,12 @@ enum NoteFontDesign: String, CaseIterable, Identifiable {
 extension SecretCategory {
     var title: String {
         switch self {
-        case .login: return "Hesap"
-        case .card: return "Kart"
+        case .login: return L("Hesap")
+        case .card: return L("Kart")
         case .wifi: return "Wi-Fi"
-        case .server: return "Sunucu"
-        case .note: return "Gizli not"
-        case .other: return "Diğer"
+        case .server: return L("Sunucu")
+        case .note: return L("Gizli not")
+        case .other: return L("Diğer")
         }
     }
 
@@ -130,12 +130,12 @@ enum Format {
     static func size(_ bytes: Int64) -> String { self.bytes.string(fromByteCount: bytes) }
 
     static func date(_ date: Date) -> String {
-        date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().locale(Locale(identifier: "tr_TR")))
+        date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().locale(Localization.locale))
     }
 
     static func relative(_ date: Date) -> String {
         let f = RelativeDateTimeFormatter()
-        f.locale = Locale(identifier: "tr_TR")
+        f.locale = Localization.locale
         f.unitsStyle = .short
         return f.localizedString(for: date, relativeTo: Date())
     }

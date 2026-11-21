@@ -25,9 +25,9 @@ struct IntegrityReportSheet: View {
                     .font(.system(size: 40))
                     .foregroundStyle(problems.isEmpty ? Color.green : Color.orange)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(problems.isEmpty ? "Kasa sağlam" : "\(problems.count) dosyada sorun var")
+                    Text(problems.isEmpty ? L("Kasa sağlam") : LN("{0} dosyada sorun var", problems.count))
                         .font(.title2.weight(.bold))
-                    Text("\(report.checkedFiles) dosya · \(Format.size(report.checkedBytes)) baştan sona çözülerek doğrulandı")
+                    Text(LN("{0} dosya · {1} baştan sona çözülerek doğrulandı", report.checkedFiles, Format.size(report.checkedBytes)))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -56,21 +56,21 @@ struct IntegrityReportSheet: View {
                         Button {
                             restore(problems.map(\.file.id))
                         } label: {
-                            if restoring { ProgressView().controlSize(.small) } else { Label("Yedekten Geri Yükle", systemImage: "arrow.counterclockwise") }
+                            if restoring { ProgressView().controlSize(.small) } else { Label(L("Yedekten Geri Yükle"), systemImage: "arrow.counterclockwise") }
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(restoring)
                     } else {
-                        Text("Yedek konumu ayarlanmamış; bozuk dosyalar geri yüklenemez.")
+                        Text(L("Yedek konumu ayarlanmamış; bozuk dosyalar geri yüklenemez."))
                             .font(.callout).foregroundStyle(.secondary)
                     }
-                    Button("Çöp Kutusu'na Taşı") {
+                    Button(L("Çöp Kutusu'na Taşı")) {
                         state.trashFiles(Set(problems.map(\.file.id)))
                         state.integrityReport?.problems = [:]
                     }
                 }
                 if !restoreErrors.isEmpty {
-                    Text("Geri yüklenemeyenler:\n" + restoreErrors.prefix(5).joined(separator: "\n"))
+                    Text(L("Geri yüklenemeyenler:\n") + restoreErrors.prefix(5).joined(separator: "\n"))
                         .font(.caption).foregroundStyle(.red)
                 }
             }
@@ -78,25 +78,25 @@ struct IntegrityReportSheet: View {
             VStack(alignment: .leading, spacing: 8) {
                 if !report.orphanURLs.isEmpty {
                     HStack {
-                        Label("\(report.orphanURLs.count) artık dosya (\(Format.size(report.orphanBytes)))", systemImage: "doc.badge.ellipsis")
+                        Label(LN("{0} artık dosya ({1})", report.orphanURLs.count, Format.size(report.orphanBytes)), systemImage: "doc.badge.ellipsis")
                         Spacer()
-                        Button("Temizle") { state.removeOrphans(report.orphanURLs) }
+                        Button(L("Temizle")) { state.removeOrphans(report.orphanURLs) }
                     }
-                    Text("Kasada hiçbir kayda ait olmayan şifreli dosyalar veya yarıda kalmış yazmalar. Silinmeleri güvenlidir.")
+                    Text(L("Kasada hiçbir kayda ait olmayan şifreli dosyalar veya yarıda kalmış yazmalar. Silinmeleri güvenlidir."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if !report.brokenThumbnails.isEmpty {
-                    Label("\(report.brokenThumbnails.count) bozuk küçük resim kaldırıldı (dosyaların kendisi sağlam)", systemImage: "photo.badge.exclamationmark")
+                    Label(LN("{0} bozuk küçük resim kaldırıldı (dosyaların kendisi sağlam)", report.brokenThumbnails.count), systemImage: "photo.badge.exclamationmark")
                 }
                 if !report.indexBackupReadable {
-                    Label("Dizin yedeği (index.enc.bak) okunamıyor; bir sonraki kayıtta yenilenecek.", systemImage: "exclamationmark.circle")
+                    Label(L("Dizin yedeği (index.enc.bak) okunamıyor; bir sonraki kayıtta yenilenecek."), systemImage: "exclamationmark.circle")
                 }
             }
             .font(.callout)
 
             HStack {
                 Spacer()
-                Button("Kapat") {
+                Button(L("Kapat")) {
                     state.integrityReport = nil
                     dismiss()
                 }
@@ -109,9 +109,9 @@ struct IntegrityReportSheet: View {
 
     private func describe(_ problem: IntegrityProblem) -> String {
         switch problem {
-        case .missing: return "Şifreli dosya kasada bulunamadı"
-        case .damaged(let detail): return "Bozuk veya değiştirilmiş — \(detail)"
-        case .hashMismatch: return "İçerik, eklendiği andakinden farklı"
+        case .missing: return L("Şifreli dosya kasada bulunamadı")
+        case .damaged(let detail): return L("Bozuk veya değiştirilmiş — {0}", detail)
+        case .hashMismatch: return L("İçerik, eklendiği andakinden farklı")
         }
     }
 
@@ -120,7 +120,7 @@ struct IntegrityReportSheet: View {
         Task {
             restoreErrors = await state.restoreFromBackup(ids)
             restoring = false
-            if restoreErrors.isEmpty { state.showToast("\(ids.count) dosya yedekten geri yüklendi") }
+            if restoreErrors.isEmpty { state.showToast(LN("{0} dosya yedekten geri yüklendi", ids.count)) }
         }
     }
 }
@@ -135,10 +135,10 @@ struct BackupReminderBanner: View {
             Image(systemName: "externaldrive.badge.exclamationmark").foregroundStyle(.orange)
             Text(message).font(.callout)
             Spacer()
-            Button("Şimdi Yedekle") { state.backupNow() }
+            Button(L("Şimdi Yedekle")) { state.backupNow() }
                 .controlSize(.small)
                 .buttonStyle(.borderedProminent)
-            Button("Sonra", action: onDismiss).controlSize(.small)
+            Button(L("Sonra"), action: onDismiss).controlSize(.small)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -147,8 +147,8 @@ struct BackupReminderBanner: View {
 
     private var message: String {
         if let last = state.prefs.lastBackupAt {
-            return "Son yedek \(Format.relative(last)) alındı."
+            return L("Son yedek {0} alındı.", Format.relative(last))
         }
-        return "Kasan henüz hiç yedeklenmedi. SSD bozulur ya da kaybolursa her şey gider."
+        return L("Kasan henüz hiç yedeklenmedi. SSD bozulur ya da kaybolursa her şey gider.")
     }
 }

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mahzen — Your secrets, in your own vault.</title>
+  <meta name="description" content="Mahzen is an offline vault that keeps your files, notes and passwords in a single encrypted folder. AES-256-GCM and Argon2id. macOS and Linux.">
+  <meta name="theme-color" content="#000000">
+  <link rel="canonical" href="https://mahzen.efef.dev/en/">
+  <link rel="alternate" hreflang="tr" href="https://mahzen.efef.dev/">
+  <link rel="alternate" hreflang="en" href="https://mahzen.efef.dev/en/">
+  <link rel="alternate" hreflang="x-default" href="https://mahzen.efef.dev/">
+  <link rel="icon" href="../img/mahzen-logo.svg" type="image/svg+xml">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="tr_TR">
+  <meta property="og:url" content="https://mahzen.efef.dev/en/">
+  <meta property="og:title" content="Mahzen — Your secrets, in your own vault.">
+  <meta property="og:description" content="An offline, encrypted, portable vault for files, notes and passwords. macOS and Linux.">
+  <meta property="og:image" content="https://mahzen.efef.dev/img/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="nav" id="nav">
+    <div class="nav-in">
+      <a class="brand" href="#top" aria-label="Mahzen, back to top"><img src="../img/mahzen-logo.svg" alt="" width="22" height="22">Mahzen</a>
+      <nav aria-label="Sections">
+        <a href="#security">Security</a>
+        <a href="#features">Features</a>
+        <a href="#wipe">Self-wipe</a>
+        <a href="#systems">macOS and Linux</a>
+      </nav>
+      <a class="nav-dil" href="../" lang="tr" hreflang="tr" data-dil="tr">Türkçe</a>
+      <a class="nav-btn" href="#install">Install</a>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- 1. INTRO -->
+    <section class="hero">
+      <div class="hero-copy">
+        <img class="hero-icon" src="../img/mahzen-logo.svg" alt="Mahzen logo" width="112" height="112">
+        <h1>Your secrets, <br class="br-m"><span class="glow-text nowrap">in your own vault.</span></h1>
+        <p class="hero-sub">An encrypted, portable vault for your files, notes and passwords.
+          <span class="nowrap">No account. No cloud.</span> <span class="nowrap">Just you.</span></p>
+        <p class="links">
+          <a class="link-fire" href="#install">Install and get started <span aria-hidden="true">›</span></a>
+          <a class="link" href="https://github.com/efefdev/Mahzen" rel="noopener">View on GitHub <span aria-hidden="true">›</span></a>
+        </p>
+      </div>
+      <div class="stage" id="heroStage">
+        <div class="stage-light" aria-hidden="true"></div>
+        <img class="shot shot-hero" src="../img/mac-dosyalar.webp" alt="Mahzen's Files screen on macOS" width="2240" height="1440" fetchpriority="high">
+      </div>
+    </section>
+
+    <!-- 2. SECURITY, IN NUMBERS -->
+    <section class="statement" id="security">
+      <p class="eyebrow">Security</p>
+      <h2 class="big">Everything you see is encrypted.<br><span class="dim">So is everything you don't.</span></h2>
+      <p class="statement-sub">File contents, file names, folders, notes and passwords are encrypted before they ever leave this computer.
+        All that's left on disk are randomly named files full of random-looking bytes.</p>
+
+      <dl class="numbers">
+        <div><dt><span class="count" data-to="256">256</span><small>bit</small></dt><dd>AES-GCM encryption, with a separate key for every file.</dd></div>
+        <div><dt><span class="count" data-to="1">1</span><small>GB</small></dt><dd>The memory Argon2id demands for every password guess. Guessing in bulk gets expensive.</dd></div>
+        <div><dt><span class="count" data-to="0">0</span><small>servers</small></dt><dd>No account, no cloud, not a single byte sent to the internet.</dd></div>
+      </dl>
+
+      <div class="cipher-line" aria-hidden="true">
+        <span class="cl-plain" id="clText">passport-scan.pdf</span>
+        <span class="cl-arrow">→</span>
+        <span class="cl-hex" id="clHex">3f9a…</span>
+      </div>
+    </section>
+
+    <!-- 3. FEATURES: fixed screen, changing content -->
+    <section class="tour" id="features">
+      <div class="tour-head">
+        <p class="eyebrow">Inside</p>
+        <h2 class="big">Everything private.<br><span class="dim">In one place.</span></h2>
+      </div>
+      <div class="tour-grid">
+        <div class="tour-steps">
+          <article class="step" data-shot="0">
+            <h3>Files</h3>
+            <p>Drag and drop. Folder structure is preserved, and files are encrypted as they're added. Images and text
+              open right inside the app; a duplicate file is never added twice.</p>
+          </article>
+          <article class="step" data-shot="1">
+            <h3>Notes</h3>
+            <p>Recovery phrases, passport numbers, half-finished plans. Color them, pin them, search them.</p>
+          </article>
+          <article class="step" data-shot="2">
+            <h3>Passwords</h3>
+            <p>Accounts, cards, Wi-Fi, servers. It generates strong passwords and measures their strength, and clears
+              a copied password from the clipboard after 30 seconds.</p>
+          </article>
+          <article class="step" data-shot="3">
+            <h3>Locks itself</h3>
+            <p>It locks when you're idle, when the computer sleeps, when the screen locks and the moment the SSD is
+              unplugged. The keys are wiped from memory.</p>
+          </article>
+        </div>
+        <div class="tour-sticky">
+          <div class="tour-frame">
+            <div class="stage-light small" aria-hidden="true"></div>
+            <img class="shot tour-shot is-on" src="../img/mac-dosyalar.webp" alt="Files screen" width="2240" height="1440" loading="lazy">
+            <img class="shot tour-shot" src="../img/mac-notlar.webp" alt="Notes screen" width="2240" height="1440" loading="lazy">
+            <img class="shot tour-shot" src="../img/mac-parolalar.webp" alt="Passwords screen" width="2240" height="1440" loading="lazy">
+            <img class="shot tour-shot" src="../img/mac-kilit.webp" alt="Lock screen" width="2240" height="1440" loading="lazy">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. SELF-WIPE -->
+    <section class="wipe" id="wipe">
+      <div class="wipe-copy">
+        <p class="eyebrow ember">Wrong-password limit</p>
+        <h2 class="big">Five wrong passwords.<br><span class="ember-text">Then nothing.</span></h2>
+        <p class="statement-sub">If you turn it on, Mahzen destroys its own keys once the number of consecutive wrong passwords
+          you chose has been entered. Nothing in the vault can ever be opened again, not even with the right password.</p>
+      </div>
+      <div class="wipe-stage">
+        <div class="stage-light ember" aria-hidden="true"></div>
+        <img class="shot" src="../img/mac-son-hak.webp" alt="Lock screen: Wrong password. Last attempt: one more wrong password erases the vault." width="2240" height="1440" loading="lazy">
+      </div>
+      <ul class="facts">
+        <li><b>3–99</b><span>attempts; turn it on or off whenever you like</span></li>
+        <li><b>Attempts left</b><span>shown on the lock screen, reset by the right password</span></li>
+        <li><b>One counter</b><span>shared by macOS, Linux and the command line</span></li>
+      </ul>
+    </section>
+
+    <!-- 5. TWO SYSTEMS -->
+    <section class="systems" id="systems">
+      <p class="eyebrow">macOS and Linux</p>
+      <h2 class="big">One vault. <span class="dim">Two worlds.</span></h2>
+      <p class="statement-sub center">Put the vault on an SSD and open it on a Mac or on Linux. A file you add on one
+        is right there on the other.</p>
+      <div class="pair">
+        <img class="shot pair-back" src="../img/linux-parolalar.webp" alt="Mahzen's Passwords screen on Linux" width="1024" height="760" loading="lazy">
+        <img class="shot pair-front" src="../img/mac-parolalar.webp" alt="Mahzen's Passwords screen on macOS" width="2240" height="1440" loading="lazy">
+      </div>
+      <p class="caption">macOS · SwiftUI &nbsp;&nbsp;/&nbsp;&nbsp; Linux · GTK 4 + libadwaita</p>
+    </section>
+
+    <!-- 6. INSTALL -->
+    <section class="install" id="install">
+      <h2 class="big">Step into the vault.</h2>
+      <div class="install-grid">
+        <div class="cmd">
+          <p class="cmd-os">macOS <small>14+ · Xcode 15.3+</small></p>
+          <pre><code>git clone https://github.com/efefdev/Mahzen.git
+cd Mahzen
+./scripts/build-app.sh</code></pre>
+          <button class="copy" data-copy="git clone https://github.com/efefdev/Mahzen.git && cd Mahzen && ./scripts/build-app.sh">Copy</button>
+        </div>
+        <div class="cmd">
+          <p class="cmd-os">Linux <small>GTK 4 · libadwaita 1.5+</small></p>
+          <pre><code>git clone https://github.com/efefdev/Mahzen.git
+cd Mahzen/linux
+./install.sh</code></pre>
+          <button class="copy" data-copy="git clone https://github.com/efefdev/Mahzen.git && cd Mahzen/linux && ./install.sh">Copy</button>
+        </div>
+      </div>
+      <p class="fine">Mahzen has not yet been through an independent security audit. Its building blocks are audited libraries;
+        the code that puts them together is not. If you find a vulnerability, <a href="https://github.com/efefdev/Mahzen/blob/main/SECURITY.en.md" rel="noopener">report it</a>.
+        If you forget your password, your data cannot be recovered; there is no backdoor.</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-in">
+      <a class="brand" href="#top"><img src="../img/mahzen-logo.svg" alt="" width="22" height="22">Mahzen</a>
+      <p>Source-available · <a href="https://github.com/efefdev/Mahzen/blob/main/LICENSE" rel="noopener">PolyForm Noncommercial 1.0.0</a> · no commercial use</p>
+      <p class="footer-links"><a href="../" lang="tr" hreflang="tr" data-dil="tr">Türkçe</a><a href="https://github.com/efefdev/Mahzen" rel="noopener">GitHub</a><a href="https://efef.dev" rel="noopener">efef.dev</a></p>
+    </div>
+  </footer>
+
+  <script src="../main.js" defer></script>
+</body>
+</html>

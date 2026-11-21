@@ -1,3 +1,5 @@
+**Türkçe** · [English](README.en.md)
+
 # Mahzen — Linux sürümü
 
 Mahzen'in Linux uygulaması: GTK 4 + libadwaita arayüzü, Python ile yazılmış şifreleme çekirdeği.
@@ -71,6 +73,7 @@ macOS sürümündeki özelliklerin çoğu Linux'ta da var:
   eski (PBKDF2) kasaları açılışta Argon2id'ye yükseltme
 - **Bakım:** çöp kutusu (ayarlanabilir süre), artımlı yedek ve hatırlatma, bütünlük taraması ve yedekten geri yükleme
 - **Görünüm:** varsayılan olarak turuncu-siyah; açık / koyu / sistem teması, 9 vurgu rengi (ayarlar kasada saklanır, iki sistemde ortaktır)
+- **Dil:** Sistem / Türkçe / English, Ayarlar'dan seçilir (sistem dili Türkçe değilse uygulama İngilizce açılır)
 
 ### Linux'a özgü farklar
 

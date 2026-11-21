@@ -1,14 +1,20 @@
 [Desktop Entry]
 Type=Application
 Name=Mahzen
-GenericName=Şifreli Kasa
+Name[en]=Mahzen
+Name[tr]=Mahzen
+GenericName=Encrypted Vault
 GenericName[en]=Encrypted Vault
-Comment=Dosyalar, notlar ve parolalar için şifreli, taşınabilir kasa
+GenericName[tr]=Şifreli Kasa
+Comment=Encrypted, portable vault for files, notes and passwords
 Comment[en]=Encrypted, portable vault for files, notes and passwords
+Comment[tr]=Dosyalar, notlar ve parolalar için şifreli, taşınabilir kasa
 Exec=mahzen
 Icon=dev.efef.Mahzen
 Terminal=false
 Categories=Utility;Security;GTK;
-Keywords=kasa;şifre;parola;şifreleme;vault;encryption;password;
+Keywords=vault;encryption;password;passwords;notes;files;
+Keywords[en]=vault;encryption;password;passwords;notes;files;
+Keywords[tr]=kasa;şifre;parola;şifreleme;not;dosya;vault;encryption;password;
 StartupNotify=true
 StartupWMClass=dev.efef.Mahzen

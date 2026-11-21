@@ -167,7 +167,7 @@ section h2 .path span { color: var(--dim); }
 <div id="splash" class="screen">
   <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg></div>
   <h1>Mahzen</h1>
-  <p id="splash-text">Şifre çözülüyor…</p>
+  <p id="splash-text" data-t>Şifre çözülüyor…</p>
   <div class="spinner"></div>
 </div>
 <div id="error" class="screen error" hidden>
@@ -182,9 +182,9 @@ section h2 .path span { color: var(--dim); }
       <div class="pill" id="timer" title="Paylaşımın bitmesine kalan süre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2h4"/></svg><span id="timer-text"></span></div>
     </div>
     <div class="filters" id="filters" hidden>
-      <button data-filter="all" aria-pressed="true">Tümü</button>
-      <button data-filter="image" aria-pressed="false">Fotoğraflar</button>
-      <button data-filter="video" aria-pressed="false">Videolar</button>
+      <button data-filter="all" aria-pressed="true" data-t>Tümü</button>
+      <button data-filter="image" aria-pressed="false" data-t>Fotoğraflar</button>
+      <button data-filter="video" aria-pressed="false" data-t>Videolar</button>
     </div>
   </header>
   <main id="sections"></main>
@@ -453,6 +453,57 @@ const MahzenStream = (() => {
 
 (() => {
   "use strict";
+
+  // Arayüz dili telefonun dil tercihine göre: Türkçe tercih ediliyorsa Türkçe, değilse İngilizce.
+  const EN = {
+    "Şifre çözülüyor…": "Decrypting…",
+    "Paylaşımın bitmesine kalan süre": "Time left until sharing ends",
+    "Tümü": "All",
+    "Fotoğraflar": "Photos",
+    "Videolar": "Videos",
+    "Kapat": "Close",
+    "İndir": "Download",
+    "Önceki": "Previous",
+    "Sonraki": "Next",
+    "iptal": "cancelled",
+    "Mac'e ulaşılamadı": "Couldn't reach the Mac",
+    "Sunucu hatası": "Server error",
+    "Aktarım yarıda kesildi": "The transfer was interrupted",
+    "Dosya doğrulanamadı": "The file failed verification",
+    "Burada gösterilecek bir şey yok.": "Nothing to show here.",
+    "Bu video büyük ({0}); telefonun belleği yetmeyebilir.": "This video is large ({0}); your phone may run out of memory.",
+    "Tekrar dene": "Try again",
+    "Paylaşım sona erdi": "Sharing ended",
+    "Yeniden görmek için Mac'teki Mahzen'de yeni bir QR kod oluşturun.": "To view again, create a new QR code in Mahzen on the Mac.",
+    "Paylaşım durduruldu": "Sharing stopped",
+    "Mac'teki Mahzen paylaşımı kapattı.": "Mahzen on the Mac ended the sharing.",
+    "Bağlantı kesildi": "Connection lost",
+    "Mac'teki paylaşım kapandı ya da telefon aynı Wi-Fi ağında değil.": "Sharing ended on the Mac, or the phone isn't on the same Wi-Fi network.",
+    "Anahtar bulunamadı": "Key not found",
+    "QR kodu Mac'teki Mahzen'den yeniden okutun. Bağlantıyı kopyalamak yerine kamerayla açın.": "Scan the QR code from Mahzen on the Mac again. Open it with the camera rather than copying the link.",
+    "Anahtar uyuşmuyor": "Key doesn't match",
+    "Bu bağlantı eski bir paylaşıma ait olabilir. QR kodu yeniden okutun.": "This link may belong to an earlier share. Scan the QR code again.",
+    "Paylaşım bulunamadı": "Share not found",
+    "Paylaşımın süresi dolmuş ya da Mac'te durdurulmuş.": "The share has expired or was stopped on the Mac.",
+    "Telefon ile Mac aynı Wi-Fi ağında olmalı ve Mahzen'de paylaşım açık kalmalı.": "The phone and the Mac must be on the same Wi-Fi network, and sharing must stay open in Mahzen.",
+    "{0} fotoğraf": "{0} photo|{0} photos",
+    "{0} video": "{0} video|{0} videos",
+    "Boş": "Empty",
+  };
+  const english = (() => {
+    for (const l of navigator.languages || [navigator.language || ""]) {
+      if (/^tr\b/i.test(l)) return false;
+      if (/^en\b/i.test(l)) return true;
+    }
+    return true;
+  })();
+  const t = (s) => (english && EN[s]) || s;
+  const tn = (s, n) => { const f = t(s).split("|"); return (f.length === 2 ? f[n === 1 ? 0 : 1] : f[0]).replace("{0}", n); };
+  if (english) {
+    document.documentElement.lang = "en";
+    for (const n of document.querySelectorAll("[data-t]")) n.textContent = t(n.textContent);
+    for (const a of ["aria-label", "title"]) for (const n of document.querySelectorAll("[" + a + "]")) n.setAttribute(a, t(n.getAttribute(a)));
+  }
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => {
     const e = document.createElement(tag);
@@ -488,7 +539,7 @@ const MahzenStream = (() => {
   } catch (_) { key = null; }
 
   // ---------- Biçimlendirme ----------
-  const nf = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 });
+  const nf = new Intl.NumberFormat(english ? "en" : "tr-TR", { maximumFractionDigits: 1 });
   function fmtSize(n) {
     if (n < 1000) return n + " B";
     const units = ["KB", "MB", "GB", "TB"];
@@ -507,27 +558,27 @@ const MahzenStream = (() => {
     try {
       res = await fetch(path, { cache: "no-store", credentials: "omit", signal });
     } catch (e) {
-      if (signal && signal.aborted) throw new LoadError("abort", "iptal");
-      throw new LoadError("net", "Mac'e ulaşılamadı");
+      if (signal && signal.aborted) throw new LoadError("abort", t("iptal"));
+      throw new LoadError("net", t("Mac'e ulaşılamadı"));
     }
-    if (!res.ok) throw new LoadError(res.status === 404 ? "gone" : "http", "Sunucu hatası (" + res.status + ")");
+    if (!res.ok) throw new LoadError(res.status === 404 ? "gone" : "http", t("Sunucu hatası") + " (" + res.status + ")");
     const decoder = MahzenStream.decoder(key, stream), parts = [];
     const reader = res.body.getReader();
     let received = 0;
     for (;;) {
       let r;
       try { r = await reader.read(); } catch (e) {
-        if (signal && signal.aborted) throw new LoadError("abort", "iptal");
-        throw new LoadError("net", "Aktarım yarıda kesildi");
+        if (signal && signal.aborted) throw new LoadError("abort", t("iptal"));
+        throw new LoadError("net", t("Aktarım yarıda kesildi"));
       }
       if (r.done) break;
       received += r.value.length;
       try { for (const p of decoder.push(r.value)) parts.push(p); } catch (e) {
-        throw new LoadError("crypto", "Dosya doğrulanamadı");
+        throw new LoadError("crypto", t("Dosya doğrulanamadı"));
       }
       if (onProgress) onProgress(received);
     }
-    try { parts.push(decoder.finish()); } catch (e) { throw new LoadError("crypto", "Dosya doğrulanamadı"); }
+    try { parts.push(decoder.finish()); } catch (e) { throw new LoadError("crypto", t("Dosya doğrulanamadı")); }
     return parts;
   }
 
@@ -621,7 +672,7 @@ const MahzenStream = (() => {
     visible = items.filter((it) => filter === "all" || it.kind === filter).map((it) => it.index);
     const root = $("sections");
     root.textContent = "";
-    if (!visible.length) { root.append(el("div", "empty", "Burada gösterilecek bir şey yok.")); return; }
+    if (!visible.length) { root.append(el("div", "empty", t("Burada gösterilecek bir şey yok."))); return; }
     const groups = new Map();
     for (let pos = 0; pos < visible.length; pos++) {
       const it = items[visible[pos]];
@@ -779,10 +830,10 @@ const MahzenStream = (() => {
       ring.innerHTML = '<svg viewBox="0 0 64 64"><circle class="track" cx="32" cy="32" r="28"/><circle class="bar" cx="32" cy="32" r="28" stroke-dasharray="175.9" stroke-dashoffset="175.9"/></svg><span></span>';
       slide.append(ring);
       updateRing(slide, entry);
-      if (isVideo && it.size > 1.5e9) slide.append(el("div", "note", "Bu video büyük (" + fmtSize(it.size) + "); telefonun belleği yetmeyebilir."));
+      if (isVideo && it.size > 1.5e9) slide.append(el("div", "note", t("Bu video büyük ({0}); telefonun belleği yetmeyebilir.").replace("{0}", fmtSize(it.size))));
     } else if (state === "error") {
       const n = el("div", "note", entry.error.message + " · ");
-      const retry = el("button", null, "Tekrar dene");
+      const retry = el("button", null, t("Tekrar dene"));
       retry.style.color = "var(--accent)"; retry.style.fontWeight = "600";
       retry.onclick = (ev) => { ev.stopPropagation(); slide._key = null; renderSlide(slide, pos); };
       n.append(retry);
@@ -969,7 +1020,7 @@ const MahzenStream = (() => {
   // ---------- Süre ve bağlantı denetimi ----------
   function tick() {
     const left = Math.round(manifest.expiresAt - Date.now() / 1000);
-    if (left <= 0) return end("Paylaşım sona erdi", "Yeniden görmek için Mac'teki Mahzen'de yeni bir QR kod oluşturun.");
+    if (left <= 0) return end(t("Paylaşım sona erdi"), t("Yeniden görmek için Mac'teki Mahzen'de yeni bir QR kod oluşturun."));
     const m = Math.floor(left / 60), s = left % 60;
     $("timer-text").textContent = m + ":" + String(s).padStart(2, "0");
     $("timer").classList.toggle("low", left < 60);
@@ -978,25 +1029,25 @@ const MahzenStream = (() => {
     if (ended) return;
     try {
       const res = await fetch("m", { cache: "no-store", credentials: "omit" });
-      if (res.status === 404) return end("Paylaşım durduruldu", "Mac'teki Mahzen paylaşımı kapattı.");
+      if (res.status === 404) return end(t("Paylaşım durduruldu"), t("Mac'teki Mahzen paylaşımı kapattı."));
       netStrikes = 0;
     } catch (_) {
-      if (++netStrikes >= 2) end("Bağlantı kesildi", "Mac'teki paylaşım kapandı ya da telefon aynı Wi-Fi ağında değil.");
+      if (++netStrikes >= 2) end(t("Bağlantı kesildi"), t("Mac'teki paylaşım kapandı ya da telefon aynı Wi-Fi ağında değil."));
     }
   }
 
   // ---------- Başlangıç ----------
   async function start() {
     if (!key || key.length !== 32) {
-      return showError("Anahtar bulunamadı", "QR kodu Mac'teki Mahzen'den yeniden okutun. Bağlantıyı kopyalamak yerine kamerayla açın.");
+      return showError(t("Anahtar bulunamadı"), t("QR kodu Mac'teki Mahzen'den yeniden okutun. Bağlantıyı kopyalamak yerine kamerayla açın."));
     }
     let parts;
     try {
       parts = await fetchStream("m", 0);
     } catch (e) {
-      if (e.kind === "crypto") return showError("Anahtar uyuşmuyor", "Bu bağlantı eski bir paylaşıma ait olabilir. QR kodu yeniden okutun.");
-      if (e.kind === "gone") return showError("Paylaşım bulunamadı", "Paylaşımın süresi dolmuş ya da Mac'te durdurulmuş.");
-      return showError("Mac'e ulaşılamadı", "Telefon ile Mac aynı Wi-Fi ağında olmalı ve Mahzen'de paylaşım açık kalmalı.");
+      if (e.kind === "crypto") return showError(t("Anahtar uyuşmuyor"), t("Bu bağlantı eski bir paylaşıma ait olabilir. QR kodu yeniden okutun."));
+      if (e.kind === "gone") return showError(t("Paylaşım bulunamadı"), t("Paylaşımın süresi dolmuş ya da Mac'te durdurulmuş."));
+      return showError(t("Mac'e ulaşılamadı"), t("Telefon ile Mac aynı Wi-Fi ağında olmalı ve Mahzen'de paylaşım açık kalmalı."));
     }
     const bytes = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
     let o = 0;
@@ -1006,7 +1057,7 @@ const MahzenStream = (() => {
     document.title = manifest.title + " · Mahzen";
     $("title").textContent = manifest.title;
     const photos = items.filter((i) => i.kind === "image").length, videos = items.length - photos;
-    $("subtitle").textContent = [photos && photos + " fotoğraf", videos && videos + " video"].filter(Boolean).join(" · ") || "Boş";
+    $("subtitle").textContent = [photos && tn("{0} fotoğraf", photos), videos && tn("{0} video", videos)].filter(Boolean).join(" · ") || t("Boş");
     if (photos && videos) {
       $("filters").hidden = false;
       for (const b of $("filters").children) {

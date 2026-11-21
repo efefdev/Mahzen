@@ -1,3 +1,5 @@
+**Türkçe** · [English](README.en.md)
+
 <p align="center">
   <img src="Resources/Logo/mahzen-logo.svg" width="160" alt="Mahzen logosu">
 </p>
@@ -66,7 +68,8 @@ Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde 
 
 **Görünüm**
 - Varsayılan olarak logoyla uyumlu turuncu-siyah görünüm; açık / koyu / sistem teması ve 9 vurgu rengi (eski çivit dahil) seçilebilir; ızgara veya liste görünümü
-- Saatli kilit ekranı, Caps Lock uyarısı, Türkçe arayüz
+- Saatli kilit ekranı, Caps Lock uyarısı
+- Arayüz dili: Sistem / Türkçe / English, Ayarlar'dan seçilir (sistem dili Türkçe değilse uygulama İngilizce açılır)
 
 ## Şifreleme nasıl çalışıyor?
 

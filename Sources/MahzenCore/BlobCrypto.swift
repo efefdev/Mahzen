@@ -57,17 +57,17 @@ public enum BlobCrypto {
     ) throws {
         let hdr = Data(try read(headerSize))
         guard hdr.count == headerSize, hdr.prefix(4) == magic else {
-            throw VaultError.corrupted("dosya başlığı geçersiz")
+            throw VaultError.corrupted(L("dosya başlığı geçersiz"))
         }
         let chunkSize = hdr.suffix(4).reduce(0) { ($0 << 8) | Int($1) }
         guard (4096...(64 << 20)).contains(chunkSize) else {
-            throw VaultError.corrupted("parça boyutu geçersiz")
+            throw VaultError.corrupted(L("parça boyutu geçersiz"))
         }
         let full = chunkSize + tagSize
         var index: UInt64 = 0
         var current = Data(try read(full))
         while true {
-            guard current.count >= tagSize else { throw VaultError.corrupted("dosya kesik") }
+            guard current.count >= tagSize else { throw VaultError.corrupted(L("dosya kesik")) }
             let next = current.count == full ? Data(try read(full)) : Data()
             let isFinal = next.isEmpty
             let box = try AES.GCM.SealedBox(
@@ -79,7 +79,7 @@ public enum BlobCrypto {
             do {
                 plain = try AES.GCM.open(box, using: key, authenticating: hdr)
             } catch {
-                throw VaultError.corrupted("içerik doğrulanamadı (bozulmuş, değiştirilmiş veya yanlış anahtar)")
+                throw VaultError.corrupted(L("içerik doğrulanamadı (bozulmuş, değiştirilmiş veya yanlış anahtar)"))
             }
             try write(plain)
             try progress?(plain.count)

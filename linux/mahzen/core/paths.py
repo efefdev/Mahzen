@@ -6,6 +6,8 @@ import json
 import os
 import sys
 
+from ..i18n import tr
+
 APP_DIR_NAME = "Mahzen"
 DEFAULT_VAULT_NAME = "Mahzen Kasası"
 
@@ -60,4 +62,4 @@ def save_settings(settings: dict) -> None:
             json.dump(settings, f, ensure_ascii=False, indent=2)
         os.replace(tmp, path)
     except OSError as e:
-        print(f"Ayarlar kaydedilemedi: {e}", file=sys.stderr)
+        print(tr("Ayarlar kaydedilemedi: {error}", error=e), file=sys.stderr)

@@ -9,12 +9,11 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from ..core import paths
 from ..core import vault as vaultmod
-from ..core.passwords import STRENGTH_LABELS, strength
-from .common import alert
+from ..core.passwords import strength, strength_label
+from ..i18n import tr
+from .common import MONTHS, alert
 
-_DAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
-_MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim",
-           "Kasım", "Aralık"]
+_DAYS = [tr("Pazartesi"), tr("Salı"), tr("Çarşamba"), tr("Perşembe"), tr("Cuma"), tr("Cumartesi"), tr("Pazar")]
 
 
 def _choose_folder(parent: Gtk.Widget, title: str, callback) -> None:
@@ -38,18 +37,18 @@ class WelcomePage(Gtk.Box):
         status = Adw.StatusPage(
             icon_name="dev.efef.Mahzen",
             title="Mahzen",
-            description="Dosyaların, notların ve parolaların için\nşifreli, taşınabilir bir kasa.",
+            description=tr("Dosyaların, notların ve parolaların için\nşifreli, taşınabilir bir kasa."),
             vexpand=True,
         )
-        create = Gtk.Button(label="Yeni Kasa Oluştur", css_classes=["pill", "suggested-action"])
+        create = Gtk.Button(label=tr("Yeni Kasa Oluştur"), css_classes=["pill", "suggested-action"])
         create.connect("clicked", lambda *_: show_create())
-        open_btn = Gtk.Button(label="Var Olan Kasayı Aç…", css_classes=["pill"])
-        open_btn.connect("clicked", lambda *_: _choose_folder(self, "Kasa klasörünü seç", state.select_vault))
+        open_btn = Gtk.Button(label=tr("Var Olan Kasayı Aç…"), css_classes=["pill"])
+        open_btn.connect("clicked", lambda *_: _choose_folder(self, tr("Kasa klasörünü seç"), state.select_vault))
         buttons = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, halign=Gtk.Align.CENTER)
         buttons.append(create)
         buttons.append(open_btn)
         buttons.append(Gtk.Label(
-            label="macOS'ta oluşturulan kasalar da açılır: kasa klasörünü seçmeniz yeterli.",
+            label=tr("macOS'ta oluşturulan kasalar da açılır: kasa klasörünü seçmeniz yeterli."),
             css_classes=["dim-label", "caption"], margin_top=24, wrap=True, justify=Gtk.Justification.CENTER,
         ))
         status.set_child(buttons)
@@ -63,28 +62,31 @@ class CreatePage(Gtk.Box):
         self.location = paths.default_new_vault_path()
 
         header = Adw.HeaderBar(show_title=False)
-        back_btn = Gtk.Button(icon_name="go-previous-symbolic", tooltip_text="Geri")
+        back_btn = Gtk.Button(icon_name="go-previous-symbolic", tooltip_text=tr("Geri"))
         back_btn.connect("clicked", lambda *_: back())
         header.pack_start(back_btn)
         self.append(header)
 
         clamp = Adw.Clamp(maximum_size=460, vexpand=True, valign=Gtk.Align.CENTER, margin_start=16, margin_end=16)
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, margin_bottom=24)
-        box.append(Gtk.Label(label="Yeni kasa", css_classes=["title-1"]))
+        box.append(Gtk.Label(label=tr("Yeni kasa"), css_classes=["title-1"]))
 
         group = Adw.PreferencesGroup()
-        self.location_row = Adw.ActionRow(title="Konum", subtitle=self.location, subtitle_selectable=True)
-        change = Gtk.Button(label="Değiştir…", valign=Gtk.Align.CENTER)
-        change.connect("clicked", lambda *_: _choose_folder(self, "Kasanın oluşturulacağı klasörü seç", self._set_parent))
+        self.location_row = Adw.ActionRow(title=tr("Konum"), subtitle=self.location, subtitle_selectable=True)
+        change = Gtk.Button(label=tr("Değiştir…"), valign=Gtk.Align.CENTER)
+        change.connect("clicked", lambda *_: _choose_folder(self, tr("Kasanın oluşturulacağı klasörü seç"),
+                                                            self._set_parent))
         self.location_row.add_suffix(change)
         group.add(self.location_row)
         box.append(group)
 
-        pw_group = Adw.PreferencesGroup(title="Ana parola",
-                                        description=f"En az {vaultmod.MINIMUM_PASSWORD_LENGTH} karakter. "
-                                                    "Rastgele seçilmiş 5+ kelime veya 12+ rastgele karakter önerilir.")
-        self.password = Adw.PasswordEntryRow(title="Parola")
-        self.repeat = Adw.PasswordEntryRow(title="Parola (tekrar)")
+        pw_group = Adw.PreferencesGroup(title=tr("Ana parola"),
+                                        description=tr(
+                                            "En az {minimum} karakter. "
+                                            "Rastgele seçilmiş 5+ kelime veya 12+ rastgele karakter önerilir.",
+                                            minimum=vaultmod.MINIMUM_PASSWORD_LENGTH))
+        self.password = Adw.PasswordEntryRow(title=tr("Parola"))
+        self.repeat = Adw.PasswordEntryRow(title=tr("Parola (tekrar)"))
         self.password.connect("changed", self._validate)
         self.repeat.connect("changed", self._validate)
         self.repeat.connect("entry-activated", lambda *_: self._create())
@@ -100,12 +102,12 @@ class CreatePage(Gtk.Box):
         box.append(meter_box)
 
         self.understand = Gtk.CheckButton(
-            label="Bu parolayı unutursam kasadaki verilerin hiçbir şekilde kurtarılamayacağını anlıyorum.")
+            label=tr("Bu parolayı unutursam kasadaki verilerin hiçbir şekilde kurtarılamayacağını anlıyorum."))
         self.understand.get_last_child().set_wrap(True)
         self.understand.connect("toggled", self._validate)
         box.append(self.understand)
 
-        self.create_btn = Gtk.Button(label="Kasayı Oluştur", css_classes=["pill", "suggested-action"],
+        self.create_btn = Gtk.Button(label=tr("Kasayı Oluştur"), css_classes=["pill", "suggested-action"],
                                      sensitive=False, halign=Gtk.Align.CENTER)
         self.create_btn.connect("clicked", lambda *_: self._create())
         box.append(self.create_btn)
@@ -132,7 +134,7 @@ class CreatePage(Gtk.Box):
         pw = self.password.get_text()
         score, _bits = strength(pw)
         self.meter.set_value(score + 1 if pw else 0)
-        self.meter_label.set_text(f"Parola gücü: {STRENGTH_LABELS[score]}" if pw else "")
+        self.meter_label.set_text(tr("Parola gücü: {label}", label=strength_label(score)) if pw else "")
         ok = (len(pw) >= vaultmod.MINIMUM_PASSWORD_LENGTH and pw == self.repeat.get_text()
               and self.understand.get_active())
         self.create_btn.set_sensitive(ok)
@@ -141,13 +143,13 @@ class CreatePage(Gtk.Box):
     def _create(self) -> None:
         if not self._validate():
             if self.password.get_text() != self.repeat.get_text():
-                alert(self, "Parolalar eşleşmiyor")
+                alert(self, tr("Parolalar eşleşmiyor"))
             return
         if vaultmod.exists(self.location):
-            alert(self, "Bu konumda zaten bir kasa var", self.location)
+            alert(self, tr("Bu konumda zaten bir kasa var"), self.location)
             return
         if os.path.exists(self.location) and os.listdir(self.location):
-            alert(self, "Klasör boş değil", "Kasa boş bir klasöre ya da yeni bir klasöre oluşturulmalı.")
+            alert(self, tr("Klasör boş değil"), tr("Kasa boş bir klasöre ya da yeni bir klasöre oluşturulmalı."))
             return
         self.create_btn.set_sensitive(False)
         self.spinner.set_visible(True)
@@ -158,7 +160,7 @@ class CreatePage(Gtk.Box):
             self.spinner.set_visible(False)
             self.create_btn.set_sensitive(True)
             if error:
-                alert(self, "Kasa oluşturulamadı", error)
+                alert(self, tr("Kasa oluşturulamadı"), error)
             else:
                 self.reset()
 
@@ -171,15 +173,15 @@ class LockPage(Gtk.Box):
         self.state = state
         header = Adw.HeaderBar(show_title=False, css_classes=["flat"])
         menu = Gio.Menu()
-        menu.append("Başka Kasa Aç…", "lock.open-other")
-        menu.append("Yeni Kasa Oluştur…", "lock.create")
-        menu.append("Anahtar Dosyası İçe Aktar…", "lock.import-keyfile")
-        header.pack_end(Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu, tooltip_text="Menü"))
+        menu.append(tr("Başka Kasa Aç…"), "lock.open-other")
+        menu.append(tr("Yeni Kasa Oluştur…"), "lock.create")
+        menu.append(tr("Anahtar Dosyası İçe Aktar…"), "lock.import-keyfile")
+        header.pack_end(Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu, tooltip_text=tr("Menü")))
         self.append(header)
 
         group = Gio.SimpleActionGroup()
         for name, cb in [
-            ("open-other", lambda *_: _choose_folder(self, "Kasa klasörünü seç", state.select_vault)),
+            ("open-other", lambda *_: _choose_folder(self, tr("Kasa klasörünü seç"), state.select_vault)),
             ("create", lambda *_: show_create()),
             ("import-keyfile", lambda *_: self._import_keyfile()),
         ]:
@@ -203,9 +205,9 @@ class LockPage(Gtk.Box):
 
         entry_box = Gtk.Box(spacing=6)
         self.entry = Gtk.PasswordEntry(show_peek_icon=True, hexpand=True)
-        self.entry.set_property("placeholder-text", "Parola")
+        self.entry.set_property("placeholder-text", tr("Parola"))
         self.entry.connect("activate", lambda *_: self._unlock())
-        self.button = Gtk.Button(icon_name="go-next-symbolic", tooltip_text="Kilidi aç",
+        self.button = Gtk.Button(icon_name="go-next-symbolic", tooltip_text=tr("Kilidi aç"),
                                  css_classes=["suggested-action", "circular"])
         self.button.connect("clicked", lambda *_: self._unlock())
         entry_box.append(self.entry)
@@ -246,13 +248,14 @@ class LockPage(Gtk.Box):
 
     def _update_caps(self, keyboard) -> None:
         if not self.spinner.get_spinning():
-            self._set_status("Caps Lock açık" if keyboard.get_caps_lock_state() else "",
+            self._set_status(tr("Caps Lock açık") if keyboard.get_caps_lock_state() else "",
                              warning=True)
 
     def _tick(self) -> bool:
         n = datetime.now()
         self.clock.set_text(f"{n.hour:02d}:{n.minute:02d}")
-        self.date.set_text(f"{n.day} {_MONTHS[n.month - 1]} {_DAYS[n.weekday()]}")
+        self.date.set_text(tr("{day} {month} {weekday}", day=n.day, month=MONTHS[n.month - 1],
+                              weekday=_DAYS[n.weekday()]))
         return True
 
     def _set_status(self, text: str, warning: bool = False, error: bool = False) -> None:
@@ -271,7 +274,7 @@ class LockPage(Gtk.Box):
         self.entry.set_sensitive(False)
         self.button.set_sensitive(False)
         self.spinner.start()
-        self._set_status("Anahtar türetiliyor…")
+        self._set_status(tr("Anahtar türetiliyor…"))
 
         def done(error):
             self.spinner.stop()
@@ -290,7 +293,7 @@ class LockPage(Gtk.Box):
         self.state.unlock(password, done)
 
     def _import_keyfile(self) -> None:
-        dialog = Gtk.FileDialog(title="Anahtar dosyasını seç", modal=True)
+        dialog = Gtk.FileDialog(title=tr("Anahtar dosyasını seç"), modal=True)
 
         def done(d, result):
             try:

@@ -24,21 +24,22 @@ from .core.importplan import ImportPlan
 from .core.index import new_file_record, new_id, now
 from .core.keyfiles import KeyfileStore
 from .core.vault import Vault
+from .i18n import language, tr
 
 
 def _read_password(args) -> str:
-    if args.parola_stdin:
+    if args.password_stdin:
         return sys.stdin.readline().rstrip("\n")
-    return getpass.getpass("Kasa parolası: ")
+    return getpass.getpass(tr("Kasa parolası: "))
 
 
 def _unlock(args) -> Vault:
-    folder = args.kasa
+    folder = args.vault
     header = vaultmod.read_header(folder)
     password = _read_password(args)
     keyfiles: list[bytes] = []
-    if args.anahtar:
-        with open(args.anahtar, "rb") as f:
+    if args.keyfile:
+        with open(args.keyfile, "rb") as f:
             keyfiles.append(f.read())
     keyfiles += KeyfileStore.standard().candidates(header.vault_id)
     try:
@@ -54,62 +55,64 @@ def _unlock(args) -> Vault:
         # Arayüzdeki gibi: yanlış parola sınırı açıksa say, aşıldıysa anahtarları yok et.
         wiped, remaining = vaultmod.record_failed_attempt(folder)
         if wiped:
-            print("Yanlış parola sınırı aşıldı: kasanın anahtarları yok edildi, kasa kalıcı olarak silindi.",
-                  file=sys.stderr)
+            print(tr("Yanlış parola sınırı aşıldı: kasanın anahtarları yok edildi, "
+                     "kasa kalıcı olarak silindi."), file=sys.stderr)
         elif remaining is not None:
-            print(f"Kalan deneme: {remaining}", file=sys.stderr)
+            print(tr("Kalan deneme: {remaining}", remaining=remaining), file=sys.stderr)
         raise
     vault.clear_failed_attempts()
     return vault
 
 
 def _size(n: int) -> str:
-    for unit in ("bayt", "KB", "MB", "GB"):
+    for unit in ("", "KB", "MB", "GB"):
         if n < 1000 or unit == "GB":
-            return f"{n:.0f} {unit}" if unit == "bayt" else f"{n:.1f} {unit}"
+            return f"{n:.1f} {unit}" if unit else tr("{n} bayt", n=int(n))
         n /= 1000
     return str(n)
 
 
 def cmd_info(args) -> int:
-    header = vaultmod.read_header(args.kasa)
+    header = vaultmod.read_header(args.vault)
     limit = header.wipe_after_failed_attempts
-    print(f"Kasa kimliği : {header.vault_id}")
-    print(f"Biçim        : {header.version}")
-    print(f"Oluşturulma  : {header.raw.get('createdAt')}")
-    print(f"Şifreleme    : AES-256-GCM · {header.kdf_summary}")
-    print("Yanlış parola: " + (f"{limit} denemede kasa silinir (şu an {header.failed_attempts} yanlış)" if limit
-                                else "sınır yok"))
+    print(tr("Kasa kimliği : {value}", value=header.vault_id))
+    print(tr("Biçim        : {value}", value=header.version))
+    print(tr("Oluşturulma  : {value}", value=header.raw.get("createdAt")))
+    print(tr("Şifreleme    : {value}", value=f"AES-256-GCM · {header.kdf_summary}"))
+    print(tr("Yanlış parola: {value}", value=(
+        tr("{n} denemede kasa silinir (şu an {failed} yanlış)", n=limit, failed=header.failed_attempts) if limit
+        else tr("sınır yok"))))
     return 0
 
 
 def cmd_list(args) -> int:
     v = _unlock(args)
     idx, _ = v.load_index()
-    files = idx.files if args.hepsi else idx.live_files
+    files = idx.files if args.all else idx.live_files
     for f in sorted(files, key=lambda f: ["/".join(p["name"] for p in idx.path_to(f.get("folderID"))), f["name"]]):
         path = "/".join([p["name"] for p in idx.path_to(f.get("folderID"))] + [f["name"]])
-        mark = " (çöpte)" if f.get("deletedAt") else ""
+        mark = tr(" (çöpte)") if f.get("deletedAt") else ""
         print(f"{f['id'][:8]}  {_size(int(f.get('size', 0))):>10}  {path}{mark}")
     notes = sum(1 for n in idx.notes if not n.get("deletedAt"))
     secrets = sum(1 for s in idx.secrets if not s.get("deletedAt"))
-    print(f"\n{len(idx.live_files)} dosya · {notes} not · {secrets} parola kaydı", file=sys.stderr)
+    print("\n" + " · ".join([tr("{n} dosya", n=len(idx.live_files)), tr("{n} not", n=notes),
+                              tr("{n} parola kaydı", n=secrets)]), file=sys.stderr)
     return 0
 
 
 def cmd_export(args) -> int:
     v = _unlock(args)
     idx, _ = v.load_index()
-    query = args.dosya
+    query = args.file
     matches = [f for f in idx.live_files if f["id"].lower().startswith(query.lower()) or f["name"] == query]
     if not matches:
-        print(f"Bulunamadı: {query}", file=sys.stderr)
+        print(tr("Bulunamadı: {name}", name=query), file=sys.stderr)
         return 1
-    os.makedirs(args.hedef, exist_ok=True)
+    os.makedirs(args.target, exist_ok=True)
     for f in matches:
-        dest = os.path.join(args.hedef, os.path.basename(f["name"]))
+        dest = os.path.join(args.target, os.path.basename(f["name"]))
         if os.path.exists(dest):
-            print(f"Zaten var, atlandı: {dest}", file=sys.stderr)
+            print(tr("Zaten var, atlandı: {path}", path=dest), file=sys.stderr)
             continue
         v.export_file(f["id"], dest)
         print(dest)
@@ -119,7 +122,7 @@ def cmd_export(args) -> int:
 def cmd_add(args) -> int:
     v = _unlock(args)
     idx, _ = v.load_index()
-    plan = ImportPlan.build(args.kaynak)
+    plan = ImportPlan.build(args.source)
     hashes = {f.get("sha256") for f in idx.live_files}
     added = 0
     for item in plan.items:
@@ -128,18 +131,19 @@ def cmd_add(args) -> int:
         name = os.path.basename(item.path)
         if digest in hashes:
             v.delete_file(fid)
-            print(f"Zaten kasada: {name}", file=sys.stderr)
+            print(tr("Zaten kasada: {name}", name=name), file=sys.stderr)
             continue
         hashes.add(digest)
         folder = idx.ensure_folder_path(item.folder_path, None)
         idx.files.append(new_file_record(fid, name, item.size, content_type_for(name), item.modified, False,
                                          folder, digest))
         added += 1
-        print(f"Eklendi: {name}")
+        print(tr("Eklendi: {name}", name=name))
     v.save_index(idx)
     if plan.skipped_count:
-        print(f"{plan.skipped_count} öğe atlandı (gizli dosya, kısayol veya okunamayan öğe).", file=sys.stderr)
-    print(f"{added} dosya şifrelendi.", file=sys.stderr)
+        print(tr("{n} öğe atlandı (gizli dosya, kısayol veya okunamayan öğe).", n=plan.skipped_count),
+              file=sys.stderr)
+    print(tr("{n} dosya şifrelendi.", n=added), file=sys.stderr)
     return 0
 
 
@@ -148,50 +152,60 @@ def cmd_verify(args) -> int:
     idx, _ = v.load_index()
     report = v.check_integrity(idx.files)
     names = {f["id"]: f["name"] for f in idx.files}
-    print(f"{report.checked_files} dosya ({_size(report.checked_bytes)}) doğrulandı.")
+    print(tr("{n} dosya ({size}) doğrulandı.", n=report.checked_files, size=_size(report.checked_bytes)))
     for fid, problem in report.problems.items():
-        print(f"SORUN  {names.get(fid, fid)}: {problem}")
+        print(tr("SORUN  {name}: {problem}", name=names.get(fid, fid), problem=problem))
     if report.orphan_paths:
-        print(f"{len(report.orphan_paths)} sahipsiz dosya ({_size(report.orphan_bytes)}).")
+        print(tr("{n} sahipsiz dosya ({size}).", n=len(report.orphan_paths), size=_size(report.orphan_bytes)))
     if not report.index_backup_readable:
-        print("Dizin yedeği okunamıyor.")
+        print(tr("Dizin yedeği okunamıyor."))
     return 1 if report.problems else 0
 
 
 def cmd_backup(args) -> int:
     v = _unlock(args)
     idx, _ = v.load_index()
-    os.makedirs(args.hedef, exist_ok=True)
-    report = v.backup(args.hedef, {f["id"] for f in idx.files}, {f["id"] for f in idx.files if f.get("hasThumbnail")})
+    os.makedirs(args.target, exist_ok=True)
+    report = v.backup(args.target, {f["id"] for f in idx.files}, {f["id"] for f in idx.files if f.get("hasThumbnail")})
     idx.preferences["lastBackupAt"] = now()
     v.save_index(idx)
-    print(f"{report.copied_files} dosya kopyalandı ({_size(report.copied_bytes)}), "
-          f"{report.unchanged_files} değişmemiş, {report.removed_files} eski kopya silindi.")
+    print(tr("{n} dosya kopyalandı ({size}), {unchanged} değişmemiş, {removed} eski kopya silindi.",
+             n=report.copied_files, size=_size(report.copied_bytes), unchanged=report.unchanged_files,
+             removed=report.removed_files))
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="mahzen-cli", description="Mahzen şifreli kasası için komut satırı.")
-    sub = parser.add_subparsers(dest="komut", required=True)
+    parser = argparse.ArgumentParser(prog="mahzen-cli", description=tr("Mahzen şifreli kasası için komut satırı."))
+    sub = parser.add_subparsers(dest="command", metavar=tr("komut"), required=True)
 
-    def add(name, help_text, fn, needs_password=True):
-        p = sub.add_parser(name, help=help_text)
-        p.add_argument("kasa", help="kasa klasörü")
+    def both(turkish, english):
+        # Türkçe ve İngilizce adlar her dilde geçerlidir; yardımda etkin dildeki önce yazılır.
+        return (english, turkish) if language() == "en" else (turkish, english)
+
+    def add(turkish, english, help_text, fn, needs_password=True):
+        name, alias = both(turkish, english)
+        p = sub.add_parser(name, aliases=[alias], help=help_text, description=help_text)
+        p.add_argument("vault", metavar=tr("kasa"), help=tr("kasa klasörü"))
         if needs_password:
-            p.add_argument("--parola-stdin", action="store_true", help="parolayı standart girdiden oku")
-            p.add_argument("--anahtar", help="anahtar dosyası (.mahzenkey)")
+            p.add_argument(*both("--parola-stdin", "--password-stdin"), dest="password_stdin", action="store_true",
+                           help=tr("parolayı standart girdiden oku"))
+            p.add_argument(*both("--anahtar", "--keyfile"), dest="keyfile", metavar=tr("DOSYA"),
+                           help=tr("anahtar dosyası (.mahzenkey)"))
         p.set_defaults(fn=fn)
         return p
 
-    add("bilgi", "kasa başlığını göster (parola gerekmez)", cmd_info, needs_password=False)
-    add("listele", "dosyaları listele", cmd_list).add_argument("--hepsi", action="store_true",
-                                                               help="çöp kutusundakileri de göster")
-    p = add("disari", "dosyayı şifresini çözerek dışa aktar", cmd_export)
-    p.add_argument("dosya", help="dosya adı ya da kimliğin başı")
-    p.add_argument("hedef", help="hedef klasör")
-    add("ekle", "dosya veya klasörleri şifreleyip ekle", cmd_add).add_argument("kaynak", nargs="+")
-    add("dogrula", "bütünlük taraması", cmd_verify)
-    add("yedekle", "artımlı yedek al", cmd_backup).add_argument("hedef", help="yedek klasörü")
+    add("bilgi", "info", tr("kasa başlığını göster (parola gerekmez)"), cmd_info, needs_password=False)
+    add("listele", "list", tr("dosyaları listele"), cmd_list).add_argument(
+        *both("--hepsi", "--all"), dest="all", action="store_true", help=tr("çöp kutusundakileri de göster"))
+    p = add("disari", "export", tr("dosyayı şifresini çözerek dışa aktar"), cmd_export)
+    p.add_argument("file", metavar=tr("dosya"), help=tr("dosya adı ya da kimliğin başı"))
+    p.add_argument("target", metavar=tr("hedef"), help=tr("hedef klasör"))
+    add("ekle", "add", tr("dosya veya klasörleri şifreleyip ekle"), cmd_add).add_argument(
+        "source", metavar=tr("kaynak"), nargs="+", help=tr("eklenecek dosya ya da klasör"))
+    add("dogrula", "verify", tr("bütünlük taraması"), cmd_verify)
+    add("yedekle", "backup", tr("artımlı yedek al"), cmd_backup).add_argument(
+        "target", metavar=tr("hedef"), help=tr("yedek klasörü"))
 
     args = parser.parse_args(argv)
     try:

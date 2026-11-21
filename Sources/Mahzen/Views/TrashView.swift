@@ -12,11 +12,11 @@ struct TrashView: View {
         list += idx.trashedFolders.map { folder in
             let tree = idx.descendantFolderIDs(of: folder.id).union([folder.id])
             let count = idx.files.filter { $0.deletedAt == folder.deletedAt && $0.folderID.map(tree.contains) == true }.count
-            return TrashEntry(id: folder.id, kind: .folder, title: folder.name, subtitle: "Klasör · \(count) dosya", deletedAt: folder.deletedAt!)
+            return TrashEntry(id: folder.id, kind: .folder, title: folder.name, subtitle: L("Klasör") + " · " + LN("{0} dosya", count), deletedAt: folder.deletedAt!)
         }
         list += idx.trashedFiles.map { TrashEntry(id: $0.id, kind: .file($0), title: $0.name, subtitle: Format.size($0.size), deletedAt: $0.deletedAt!) }
-        list += idx.trashedNotes.map { TrashEntry(id: $0.id, kind: .note, title: $0.title.isEmpty ? "Başlıksız not" : $0.title, subtitle: "Not", deletedAt: $0.deletedAt!) }
-        list += idx.trashedSecrets.map { TrashEntry(id: $0.id, kind: .secret($0.category), title: $0.title.isEmpty ? "Adsız" : $0.title, subtitle: "Parola kaydı", deletedAt: $0.deletedAt!) }
+        list += idx.trashedNotes.map { TrashEntry(id: $0.id, kind: .note, title: $0.title.isEmpty ? L("Başlıksız not") : $0.title, subtitle: L("Not"), deletedAt: $0.deletedAt!) }
+        list += idx.trashedSecrets.map { TrashEntry(id: $0.id, kind: .secret($0.category), title: $0.title.isEmpty ? L("Adsız") : $0.title, subtitle: L("Parola kaydı"), deletedAt: $0.deletedAt!) }
         return list.sorted { $0.deletedAt > $1.deletedAt }
     }
 
@@ -24,7 +24,7 @@ struct TrashView: View {
         let entries = self.entries
         Group {
             if entries.isEmpty {
-                EmptyState(symbol: "trash", title: "Çöp Kutusu boş", message: retentionText)
+                EmptyState(symbol: "trash", title: L("Çöp Kutusu boş"), message: retentionText)
             } else {
                 List {
                     SwiftUI.Section {
@@ -38,41 +38,41 @@ struct TrashView: View {
                 .listStyle(.inset)
             }
         }
-        .navigationTitle("Çöp Kutusu")
-        .navigationSubtitle("\(entries.count) öğe")
+        .navigationTitle(L("Çöp Kutusu"))
+        .navigationSubtitle(LN("{0} öğe", entries.count))
         .toolbar {
             ToolbarItem {
                 Button(role: .destructive) { confirmEmpty = true } label: {
-                    Label("Boşalt", systemImage: "trash.slash")
+                    Label(L("Boşalt"), systemImage: "trash.slash")
                 }
-                .help("Çöp Kutusu'nu boşalt")
+                .help(L("Çöp Kutusu'nu boşalt"))
                 .disabled(entries.isEmpty)
             }
         }
-        .confirmationDialog("Çöp Kutusu boşaltılsın mı?", isPresented: $confirmEmpty, titleVisibility: .visible) {
-            Button("\(entries.count) Öğeyi Kalıcı Olarak Sil", role: .destructive) { state.emptyTrash() }
+        .confirmationDialog(L("Çöp Kutusu boşaltılsın mı?"), isPresented: $confirmEmpty, titleVisibility: .visible) {
+            Button(LN("{0} Öğeyi Kalıcı Olarak Sil", entries.count), role: .destructive) { state.emptyTrash() }
         } message: {
-            Text("Bu işlem geri alınamaz.")
+            Text(L("Bu işlem geri alınamaz."))
         }
         .confirmationDialog(
-            "\"\(pendingPurge?.title ?? "")\" kalıcı olarak silinsin mi?",
+            L("\"{0}\" kalıcı olarak silinsin mi?", pendingPurge?.title ?? ""),
             isPresented: Binding(get: { pendingPurge != nil }, set: { if !$0 { pendingPurge = nil } }),
             titleVisibility: .visible
         ) {
-            Button("Kalıcı Olarak Sil", role: .destructive) {
+            Button(L("Kalıcı Olarak Sil"), role: .destructive) {
                 if let entry = pendingPurge { purge(entry) }
                 pendingPurge = nil
             }
         } message: {
-            Text("Bu işlem geri alınamaz.")
+            Text(L("Bu işlem geri alınamaz."))
         }
     }
 
     private var retentionText: String {
         let days = state.prefs.trashRetentionDays
         return days > 0
-            ? "Silinen dosya, not ve parolalar \(days) gün burada kalır, sonra kalıcı olarak silinir."
-            : "Otomatik silme kapalı; öğeler sen boşaltana kadar burada kalır."
+            ? LN("Silinen dosya, not ve parolalar {0} gün burada kalır, sonra kalıcı olarak silinir.", days)
+            : L("Otomatik silme kapalı; öğeler sen boşaltana kadar burada kalır.")
     }
 
     private func row(_ entry: TrashEntry) -> some View {
@@ -81,20 +81,20 @@ struct TrashView: View {
                 .frame(width: 32, height: 32)
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.title).font(.headline).lineLimit(1)
-                Text("\(entry.subtitle) · \(Format.relative(entry.deletedAt)) silindi\(remaining(entry))")
+                Text(L("{0} · {1} silindi", entry.subtitle, Format.relative(entry.deletedAt)) + remaining(entry))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Geri Al") { restore(entry) }
+            Button(L("Geri Al")) { restore(entry) }
             Button(role: .destructive) { pendingPurge = entry } label: { Image(systemName: "trash") }
                 .buttonStyle(.borderless)
-                .help("Kalıcı olarak sil")
+                .help(L("Kalıcı olarak sil"))
         }
         .padding(.vertical, 4)
         .contextMenu {
-            Button("Geri Al") { restore(entry) }
-            Button("Kalıcı Olarak Sil…", role: .destructive) { pendingPurge = entry }
+            Button(L("Geri Al")) { restore(entry) }
+            Button(L("Kalıcı Olarak Sil…"), role: .destructive) { pendingPurge = entry }
         }
     }
 
@@ -102,7 +102,7 @@ struct TrashView: View {
         let days = state.prefs.trashRetentionDays
         guard days > 0 else { return "" }
         let left = Int(ceil(entry.deletedAt.addingTimeInterval(Double(days) * 86_400).timeIntervalSinceNow / 86_400))
-        return " · \(max(left, 0)) gün sonra kalıcı silinecek"
+        return " · " + LN("{0} gün sonra kalıcı silinecek", max(left, 0))
     }
 
     private func restore(_ entry: TrashEntry) {
@@ -112,7 +112,7 @@ struct TrashView: View {
         case .note: state.restoreNote(entry.id)
         case .secret: state.restoreSecret(entry.id)
         }
-        state.showToast("\"\(entry.title)\" geri alındı")
+        state.showToast(L("\"{0}\" geri alındı", entry.title))
     }
 
     private func purge(_ entry: TrashEntry) {

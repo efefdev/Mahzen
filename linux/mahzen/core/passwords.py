@@ -5,13 +5,14 @@ from __future__ import annotations
 import math
 import secrets
 
+from ..i18n import tr
+
 UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 LOWER = "abcdefghijklmnopqrstuvwxyz"
 DIGITS = "0123456789"
 SYMBOLS = "!@#$%^&*()-_=+[]{};:,.<>?/~"
 AMBIGUOUS = set("O0oIl1|`'\"")
 
-STRENGTH_LABELS = ["Çok zayıf", "Zayıf", "Orta", "Güçlü", "Çok güçlü"]
 COMMON = ["password", "parola", "sifre", "şifre", "123456", "qwerty", "asdf", "abc123", "111111",
           "admin", "letmein", "iloveyou"]
 
@@ -41,6 +42,11 @@ def generate(options: dict) -> str:
         j = secrets.randbelow(i + 1)
         chars[i], chars[j] = chars[j], chars[i]
     return "".join(chars)
+
+
+def strength_label(score: int) -> str:
+    """Puanın (0…4) etkin dildeki adı."""
+    return [tr("Çok zayıf"), tr("Zayıf"), tr("Orta"), tr("Güçlü"), tr("Çok güçlü")][score]
 
 
 def strength(password: str) -> tuple[int, float]:

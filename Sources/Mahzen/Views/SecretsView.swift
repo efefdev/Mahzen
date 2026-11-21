@@ -31,11 +31,11 @@ struct SecretsView: View {
             VStack(spacing: 0) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
-                        chip("Tümü", symbol: "square.grid.2x2", active: category == nil && !favoritesOnly) {
+                        chip(L("Tümü"), symbol: "square.grid.2x2", active: category == nil && !favoritesOnly) {
                             category = nil
                             favoritesOnly = false
                         }
-                        chip("Favoriler", symbol: "star.fill", active: favoritesOnly) {
+                        chip(L("Favoriler"), symbol: "star.fill", active: favoritesOnly) {
                             favoritesOnly.toggle()
                             category = nil
                         }
@@ -66,22 +66,22 @@ struct SecretsView: View {
                 } else {
                     EmptyState(
                         symbol: "key.horizontal.fill",
-                        title: state.index.secrets.allSatisfy { $0.deletedAt != nil } ? "Henüz parola kaydı yok" : "Bir kayıt seç",
-                        message: "Hesaplar, kart bilgileri, Wi-Fi ve sunucu parolaları burada şifreli saklanır.",
-                        actionTitle: "Yeni Kayıt",
+                        title: state.index.secrets.allSatisfy { $0.deletedAt != nil } ? L("Henüz parola kaydı yok") : L("Bir kayıt seç"),
+                        message: L("Hesaplar, kart bilgileri, Wi-Fi ve sunucu parolaları burada şifreli saklanır."),
+                        actionTitle: L("Yeni Kayıt"),
                         action: { editing = Secret() }
                     )
                 }
             }
             .frame(minWidth: 380, maxWidth: .infinity, maxHeight: .infinity)
         }
-        .navigationTitle("Parolalar")
-        .navigationSubtitle("\(state.index.secrets.filter { $0.deletedAt == nil }.count) kayıt")
-        .searchable(text: $search, placement: .toolbar, prompt: "Parolalarda ara")
+        .navigationTitle(L("Parolalar"))
+        .navigationSubtitle(LN("{0} kayıt", state.index.secrets.filter { $0.deletedAt == nil }.count))
+        .searchable(text: $search, placement: .toolbar, prompt: L("Parolalarda ara"))
         .toolbar {
             ToolbarItemGroup {
-                Button { editing = Secret() } label: { Label("Yeni Kayıt", systemImage: "plus") }
-                    .help("Yeni parola kaydı (⇧⌘N)")
+                Button { editing = Secret() } label: { Label(L("Yeni Kayıt"), systemImage: "plus") }
+                    .help(L("Yeni parola kaydı (⇧⌘N)"))
             }
         }
         .sheet(item: $editing) { secret in
@@ -90,8 +90,8 @@ struct SecretsView: View {
                 selectedID = saved.id
             }
         }
-        .confirmationDialog("Bu kayıt Çöp Kutusu'na taşınsın mı?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Çöp Kutusu'na Taşı", role: .destructive) {
+        .confirmationDialog(L("Bu kayıt Çöp Kutusu'na taşınsın mı?"), isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button(L("Çöp Kutusu'na Taşı"), role: .destructive) {
                 if let id = selectedID { state.deleteSecret(id) }
                 selectedID = nil
             }
@@ -152,7 +152,7 @@ private struct SecretRow: View {
         HStack(spacing: 10) {
             SecretIcon(secret: secret)
             VStack(alignment: .leading, spacing: 2) {
-                Text(secret.title.isEmpty ? "Adsız" : secret.title).font(.headline).lineLimit(1)
+                Text(secret.title.isEmpty ? L("Adsız") : secret.title).font(.headline).lineLimit(1)
                 Text(secret.username.isEmpty ? secret.category.title : secret.username)
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -178,7 +178,7 @@ private struct SecretDetail: View {
                 HStack(spacing: 16) {
                     SecretIcon(secret: secret, size: 64)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(secret.title.isEmpty ? "Adsız" : secret.title).font(.title.weight(.bold))
+                        Text(secret.title.isEmpty ? L("Adsız") : secret.title).font(.title.weight(.bold))
                         Text(secret.category.title).foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -192,17 +192,17 @@ private struct SecretDetail: View {
                             .font(.title3)
                     }
                     .buttonStyle(.plain)
-                    .help(secret.favorite ? "Favorilerden çıkar" : "Favorilere ekle")
+                    .help(secret.favorite ? L("Favorilerden çıkar") : L("Favorilere ekle"))
                 }
 
                 // Satırlar arasındaki 1 pt boşluk ayırıcı çizgi işlevi görür; son satırdan sonra çizgi kalmaz.
                 VStack(spacing: 1) {
                     if !secret.username.isEmpty {
-                        FieldRow(label: "Kullanıcı adı", copyValue: secret.username) { Text(secret.username) }
+                        FieldRow(label: L("Kullanıcı adı"), copyValue: secret.username) { Text(secret.username) }
                             .background(.quaternary.opacity(0.35))
                     }
                     if !secret.password.isEmpty {
-                        FieldRow(label: "Parola", copyValue: secret.password, sensitive: true) {
+                        FieldRow(label: L("Parola"), copyValue: secret.password, sensitive: true) {
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack(spacing: 10) {
                                     Text(reveal ? secret.password : String(repeating: "•", count: min(secret.password.count, 18)))
@@ -211,7 +211,7 @@ private struct SecretDetail: View {
                                         Image(systemName: reveal ? "eye.slash" : "eye")
                                     }
                                     .buttonStyle(.borderless)
-                                    .help(reveal ? "Gizle" : "Göster")
+                                    .help(reveal ? L("Gizle") : L("Göster"))
                                 }
                                 StrengthMeter(password: secret.password).frame(maxWidth: 320)
                             }
@@ -219,7 +219,7 @@ private struct SecretDetail: View {
                         .background(.quaternary.opacity(0.35))
                     }
                     if !secret.url.isEmpty {
-                        FieldRow(label: "Web sitesi", copyValue: secret.url) {
+                        FieldRow(label: L("Web sitesi"), copyValue: secret.url) {
                             if let url = URL(string: secret.url.contains("://") ? secret.url : "https://\(secret.url)") {
                                 Link(secret.url, destination: url)
                             } else {
@@ -229,20 +229,20 @@ private struct SecretDetail: View {
                         .background(.quaternary.opacity(0.35))
                     }
                     if !secret.notes.isEmpty {
-                        FieldRow(label: "Notlar", copyValue: secret.notes, sensitive: true) { Text(secret.notes) }
+                        FieldRow(label: L("Notlar"), copyValue: secret.notes, sensitive: true) { Text(secret.notes) }
                             .background(.quaternary.opacity(0.35))
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                Text("Oluşturuldu \(Format.date(secret.createdAt)) · Güncellendi \(Format.date(secret.updatedAt))")
+                Text(L("Oluşturuldu {0} · Güncellendi {1}", Format.date(secret.createdAt), Format.date(secret.updatedAt)))
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
                 HStack {
-                    Button(action: onEdit) { Label("Düzenle", systemImage: "pencil") }
+                    Button(action: onEdit) { Label(L("Düzenle"), systemImage: "pencil") }
                         .keyboardShortcut("e", modifiers: .command)
-                    Button(role: .destructive, action: onDelete) { Label("Sil", systemImage: "trash") }
+                    Button(role: .destructive, action: onDelete) { Label(L("Sil"), systemImage: "trash") }
                 }
             }
             .padding(28)
@@ -261,24 +261,24 @@ struct SecretEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(secret.title.isEmpty ? "Yeni kayıt" : secret.title)
+            Text(secret.title.isEmpty ? L("Yeni kayıt") : secret.title)
                 .font(.title2.weight(.bold))
                 .padding([.horizontal, .top], 22)
             Form {
-                Picker("Tür", selection: $secret.category) {
+                Picker(L("Tür"), selection: $secret.category) {
                     ForEach(SecretCategory.allCases, id: \.self) { Label($0.title, systemImage: $0.symbol).tag($0) }
                 }
-                TextField("Başlık", text: $secret.title, prompt: Text("ör. Gmail"))
-                TextField("Kullanıcı adı", text: $secret.username, prompt: Text("e-posta veya kullanıcı adı"))
-                LabeledContent("Parola") {
+                TextField(L("Başlık"), text: $secret.title, prompt: Text(L("ör. Gmail")))
+                TextField(L("Kullanıcı adı"), text: $secret.username, prompt: Text(L("e-posta veya kullanıcı adı")))
+                LabeledContent(L("Parola")) {
                     HStack {
-                        RevealableField(title: "Parola", text: $secret.password)
+                        RevealableField(title: L("Parola"), text: $secret.password)
                         Button {
                             showGenerator = true
                         } label: {
                             Image(systemName: "wand.and.stars")
                         }
-                        .help("Güçlü parola üret")
+                        .help(L("Güçlü parola üret"))
                         .popover(isPresented: $showGenerator, arrowEdge: .bottom) {
                             GeneratorView { secret.password = $0; showGenerator = false }
                         }
@@ -287,8 +287,8 @@ struct SecretEditor: View {
                 if !secret.password.isEmpty {
                     LabeledContent(" ") { StrengthMeter(password: secret.password) }
                 }
-                TextField("Web sitesi", text: $secret.url, prompt: Text("ornek.com"))
-                LabeledContent("Notlar") {
+                TextField(L("Web sitesi"), text: $secret.url, prompt: Text("ornek.com"))
+                LabeledContent(L("Notlar")) {
                     TextEditor(text: $secret.notes)
                         .font(.body)
                         .frame(height: 80)
@@ -296,13 +296,13 @@ struct SecretEditor: View {
                         .padding(4)
                         .background(Color(nsColor: .textBackgroundColor).opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
                 }
-                Toggle("Favori", isOn: $secret.favorite)
+                Toggle(L("Favori"), isOn: $secret.favorite)
             }
             .formStyle(.grouped)
             HStack {
                 Spacer()
-                Button("Vazgeç") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Kaydet") {
+                Button(L("Vazgeç")) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(L("Kaydet")) {
                     onSave(secret)
                     dismiss()
                 }
@@ -325,7 +325,7 @@ struct GeneratorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Parola üretici").font(.headline)
+            Text(L("Parola üretici")).font(.headline)
             HStack {
                 Text(generated)
                     .font(.system(.title3, design: .monospaced).weight(.medium))
@@ -334,28 +334,28 @@ struct GeneratorView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button(action: regenerate) { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.borderless)
-                    .help("Yeniden üret")
+                    .help(L("Yeniden üret"))
             }
             .padding(12)
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
             StrengthMeter(password: generated)
 
             HStack {
-                Text("Uzunluk")
+                Text(L("Uzunluk"))
                 Slider(value: Binding(get: { Double(options.length) }, set: { v in set { $0.length = Int(v) } }), in: 8...64, step: 1)
                 Text("\(options.length)").monospacedDigit().frame(width: 28)
             }
-            Toggle("Büyük harf (A–Z)", isOn: binding(\.uppercase))
-            Toggle("Küçük harf (a–z)", isOn: binding(\.lowercase))
-            Toggle("Rakam (0–9)", isOn: binding(\.digits))
-            Toggle("Sembol (!@#…)", isOn: binding(\.symbols))
-            Toggle("Karışan karakterleri çıkar (O/0, l/1)", isOn: binding(\.avoidAmbiguous))
+            Toggle(L("Büyük harf (A–Z)"), isOn: binding(\.uppercase))
+            Toggle(L("Küçük harf (a–z)"), isOn: binding(\.lowercase))
+            Toggle(L("Rakam (0–9)"), isOn: binding(\.digits))
+            Toggle(L("Sembol (!@#…)"), isOn: binding(\.symbols))
+            Toggle(L("Karışan karakterleri çıkar (O/0, l/1)"), isOn: binding(\.avoidAmbiguous))
 
             HStack {
-                Button("Kopyala") { state.copy(generated, label: "Parola kopyalandı") }
+                Button(L("Kopyala")) { state.copy(generated, label: L("Parola kopyalandı")) }
                 Spacer()
                 if let onUse {
-                    Button("Bu Parolayı Kullan") { onUse(generated) }
+                    Button(L("Bu Parolayı Kullan")) { onUse(generated) }
                         .buttonStyle(.borderedProminent)
                 }
             }

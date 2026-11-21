@@ -69,10 +69,10 @@ public enum PhoneShare {
         var offset = stream.startIndex
         var chunk: UInt64 = 0
         while offset < stream.endIndex {
-            guard stream.endIndex - offset >= 4 else { throw VaultError.corrupted("akış kesik") }
+            guard stream.endIndex - offset >= 4 else { throw VaultError.corrupted(L("akış kesik")) }
             let length = stream[offset..<offset + 4].reduce(0) { ($0 << 8) | Int($1) }
             offset += 4
-            guard length >= tagSize, stream.endIndex - offset >= length else { throw VaultError.corrupted("akış kesik") }
+            guard length >= tagSize, stream.endIndex - offset >= length else { throw VaultError.corrupted(L("akış kesik")) }
             let body = stream[offset..<offset + length]
             offset += length
             let final = offset == stream.endIndex
@@ -84,7 +84,7 @@ public enum PhoneShare {
             out.append(try ChaChaPoly.open(box, using: key, authenticating: aad(final: final)))
             chunk += 1
         }
-        guard chunk > 0 else { throw VaultError.corrupted("akış boş") }
+        guard chunk > 0 else { throw VaultError.corrupted(L("akış boş")) }
         return out
     }
 }

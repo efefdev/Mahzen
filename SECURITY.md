@@ -1,3 +1,5 @@
+**Türkçe** · [English](SECURITY.en.md)
+
 # Güvenlik Politikası
 
 Mahzen bir şifreleme uygulamasıdır; güvenlik açıklarını bildirenlere teşekkür ederiz.

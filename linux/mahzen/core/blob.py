@@ -17,6 +17,7 @@ from typing import BinaryIO, Callable
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from ..i18n import tr
 from .errors import Corrupted
 
 MAGIC = b"MHZ1"
@@ -37,10 +38,10 @@ def nonce(index: int, is_final: bool) -> bytes:
 
 def _parse_header(hdr: bytes) -> int:
     if len(hdr) != HEADER_SIZE or hdr[:4] != MAGIC:
-        raise Corrupted("dosya başlığı geçersiz")
+        raise Corrupted(tr("dosya başlığı geçersiz"))
     chunk_size = struct.unpack(">I", hdr[4:])[0]
     if not 4096 <= chunk_size <= (64 << 20):
-        raise Corrupted("parça boyutu geçersiz")
+        raise Corrupted(tr("parça boyutu geçersiz"))
     return chunk_size
 
 
@@ -84,13 +85,13 @@ def decrypt_stream(read: Callable[[int], bytes], write: Callable[[bytes], None],
     current = read(full)
     while True:
         if len(current) < TAG_SIZE:
-            raise Corrupted("dosya kesik")
+            raise Corrupted(tr("dosya kesik"))
         nxt = read(full) if len(current) == full else b""
         is_final = not nxt
         try:
             plain = aes.decrypt(nonce(index, is_final), current, hdr)
         except InvalidTag:
-            raise Corrupted("içerik doğrulanamadı (bozulmuş, değiştirilmiş veya yanlış anahtar)") from None
+            raise Corrupted(tr("içerik doğrulanamadı (bozulmuş, değiştirilmiş veya yanlış anahtar)")) from None
         write(plain)
         if progress:
             progress(len(plain))
@@ -187,7 +188,7 @@ class BlobReader:
             body = self._blob_size - HEADER_SIZE
             full = self.chunk_size + TAG_SIZE
             if body < TAG_SIZE:
-                raise Corrupted("dosya kesik")
+                raise Corrupted(tr("dosya kesik"))
             self.chunk_count = (body + full - 1) // full
             self.plain_size = body - self.chunk_count * TAG_SIZE
             # Boyut kimliği doğrulanmamış dosya uzunluğundan geliyor: son parçayı baştan "son" olarak doğrula.
@@ -218,7 +219,7 @@ class BlobReader:
                 start = position - index * self.chunk_size
                 take = min(len(chunk) - start, end - position)
                 if take <= 0:
-                    raise Corrupted("beklenmeyen dosya sonu")
+                    raise Corrupted(tr("beklenmeyen dosya sonu"))
                 out += chunk[start:start + take]
                 position += take
             return bytes(out)
@@ -232,10 +233,10 @@ class BlobReader:
         self._f.seek(start)
         raw = read_fully(self._f, length)
         if len(raw) != length or length < TAG_SIZE:
-            raise Corrupted("dosya kesik")
+            raise Corrupted(tr("dosya kesik"))
         try:
             plain = self._aes.decrypt(nonce(index, index == self.chunk_count - 1), raw, self._header)
         except InvalidTag:
-            raise Corrupted("içerik doğrulanamadı") from None
+            raise Corrupted(tr("içerik doğrulanamadı")) from None
         self._cached_index, self._cached = index, plain
         return plain

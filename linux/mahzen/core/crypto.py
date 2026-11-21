@@ -19,6 +19,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
+from ..i18n import tr
 from .errors import Corrupted, KDFFailed
 
 PBKDF2 = "PBKDF2-HMAC-SHA512"
@@ -62,9 +63,9 @@ def derive_key(password: str, params: dict) -> bytes:
     if algorithm == ARGON2ID:
         memory, parallelism = params.get("memoryKiB"), params.get("parallelism")
         if memory is None or parallelism is None:
-            raise Corrupted("Argon2id ayarları eksik")
+            raise Corrupted(tr("Argon2id ayarları eksik"))
         return argon2id(password, salt, int(params["iterations"]), int(memory), int(parallelism))
-    raise Corrupted(f"bilinmeyen anahtar türetme yöntemi: {algorithm}")
+    raise Corrupted(tr("bilinmeyen anahtar türetme yöntemi: {algorithm}", algorithm=algorithm))
 
 
 def argon2id(password: str, salt: bytes, time: int, memory_kib: int, parallelism: int) -> bytes:

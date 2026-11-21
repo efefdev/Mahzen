@@ -5,12 +5,14 @@ from __future__ import annotations
 from gi.repository import Adw, Gio, GLib, Gtk, Pango
 
 from ..core.index import parse_date
+from ..i18n import tr
 from .common import clear_box, relative_date
 
 # macOS sürümüyle aynı renk adları (vurgu renkleri).
 NOTE_COLORS = [
-    (None, "Renk yok"), ("indigo", "Çivit"), ("blue", "Mavi"), ("teal", "Turkuaz"), ("green", "Yeşil"),
-    ("orange", "Turuncu"), ("pink", "Pembe"), ("red", "Kırmızı"), ("purple", "Mor"), ("graphite", "Grafit"),
+    (None, tr("Renk yok")), ("indigo", tr("Çivit")), ("blue", tr("Mavi")), ("teal", tr("Turkuaz")),
+    ("green", tr("Yeşil")), ("orange", tr("Turuncu")), ("pink", tr("Pembe")), ("red", tr("Kırmızı")),
+    ("purple", tr("Mor")), ("graphite", tr("Grafit")),
 ]
 
 
@@ -34,13 +36,13 @@ class NotesPage(Adw.Bin):
 
         # Liste
         list_toolbar = Adw.ToolbarView()
-        list_header = make_header("Notlar", lock=False)
-        add = Gtk.Button(icon_name="list-add-symbolic", tooltip_text="Yeni not (Ctrl+N)")
+        list_header = make_header(tr("Notlar"), lock=False)
+        add = Gtk.Button(icon_name="list-add-symbolic", tooltip_text=tr("Yeni not (Ctrl+N)"))
         add.connect("clicked", lambda *_: self.new_note())
         list_header.pack_start(add)
         list_toolbar.add_top_bar(list_header)
         search = Gtk.SearchEntry(margin_start=8, margin_end=8, margin_bottom=6)
-        search.set_property("placeholder-text", "Notlarda ara")
+        search.set_property("placeholder-text", tr("Notlarda ara"))
         search.connect("search-changed", lambda e: self._set_search(e.get_text()))
         list_toolbar.add_top_bar(search)
         self.listbox = Gtk.ListBox(css_classes=["navigation-sidebar"])
@@ -48,21 +50,21 @@ class NotesPage(Adw.Bin):
         scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True)
         scroller.set_child(self.listbox)
         list_toolbar.set_content(scroller)
-        split.set_sidebar(Adw.NavigationPage(title="Notlar", child=list_toolbar))
+        split.set_sidebar(Adw.NavigationPage(title=tr("Notlar"), child=list_toolbar))
 
         # Düzenleyici
         editor_toolbar = Adw.ToolbarView()
         editor_header = make_header("")
-        self.pin_btn = Gtk.ToggleButton(icon_name="view-pin-symbolic", tooltip_text="Sabitle")
+        self.pin_btn = Gtk.ToggleButton(icon_name="view-pin-symbolic", tooltip_text=tr("Sabitle"))
         self.pin_btn.connect("toggled", self._on_pin)
         editor_header.pack_start(self.pin_btn)
-        self.color_btn = Gtk.MenuButton(icon_name="color-select-symbolic", tooltip_text="Renk")
+        self.color_btn = Gtk.MenuButton(icon_name="color-select-symbolic", tooltip_text=tr("Renk"))
         color_menu = Gio.Menu()
         for key, label in NOTE_COLORS:
             color_menu.append(label, f"note.color('{key or ''}')")
         self.color_btn.set_menu_model(color_menu)
         editor_header.pack_start(self.color_btn)
-        delete = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text="Çöp kutusuna taşı")
+        delete = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=tr("Çöp kutusuna taşı"))
         delete.connect("clicked", lambda *_: self.delete_note())
         editor_header.pack_start(delete)
         editor_toolbar.add_top_bar(editor_header)
@@ -74,13 +76,13 @@ class NotesPage(Adw.Bin):
         self.insert_action_group("note", group)
 
         self.editor_stack = Gtk.Stack()
-        self.editor_stack.add_named(Adw.StatusPage(icon_name="document-edit-symbolic", title="Not seçilmedi",
-                                                   description="Soldan bir not seçin ya da yeni bir not ekleyin."),
+        self.editor_stack.add_named(Adw.StatusPage(icon_name="document-edit-symbolic", title=tr("Not seçilmedi"),
+                                                   description=tr("Soldan bir not seçin ya da yeni bir not ekleyin.")),
                                     "empty")
         editor = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.title_entry = Gtk.Entry(css_classes=["note-title", "flat"], margin_start=18, margin_end=18,
                                      margin_top=12, has_frame=False)
-        self.title_entry.set_property("placeholder-text", "Başlık")
+        self.title_entry.set_property("placeholder-text", tr("Başlık"))
         self.title_entry.connect("changed", self._on_title)
         editor.append(self.title_entry)
         self.date_label = Gtk.Label(xalign=0, css_classes=["caption", "dim-label"], margin_start=22)
@@ -93,7 +95,7 @@ class NotesPage(Adw.Bin):
         editor.append(body_scroller)
         self.editor_stack.add_named(editor, "editor")
         editor_toolbar.set_content(self.editor_stack)
-        self.editor_page = Adw.NavigationPage(title="Not", child=editor_toolbar)
+        self.editor_page = Adw.NavigationPage(title=tr("Not"), child=editor_toolbar)
         split.set_content(self.editor_page)
 
         self.set_child(split)
@@ -151,7 +153,7 @@ class NotesPage(Adw.Bin):
                 dot = Gtk.Box(width_request=10, height_request=10, valign=Gtk.Align.CENTER,
                               css_classes=["color-dot", f"accent-{n['color']}"])
                 top.append(dot)
-            top.append(Gtk.Label(label=n.get("title") or "Başlıksız not", xalign=0, hexpand=True,
+            top.append(Gtk.Label(label=n.get("title") or tr("Başlıksız not"), xalign=0, hexpand=True,
                                  ellipsize=Pango.EllipsizeMode.END, css_classes=["heading"]))
             if n.get("pinned"):
                 top.append(Gtk.Image(icon_name="view-pin-symbolic", css_classes=["dim-label"]))
@@ -192,7 +194,7 @@ class NotesPage(Adw.Bin):
             self.title_entry.set_text(note.get("title", ""))
             self.body.get_buffer().set_text(note.get("body", ""))
             self.pin_btn.set_active(bool(note.get("pinned")))
-            self.date_label.set_text("Düzenlendi: " + relative_date(note.get("updatedAt")))
+            self.date_label.set_text(tr("Düzenlendi: {date}", date=relative_date(note.get("updatedAt"))))
         self._loading = False
 
     def _update(self, **values) -> None:
@@ -234,4 +236,4 @@ class NotesPage(Adw.Bin):
         self.selected_id = None
         self.state.mutate(lambda idx: idx.trash_note(nid))
         self._load(None)
-        self.state.toast("Not çöp kutusuna taşındı")
+        self.state.toast(tr("Not çöp kutusuna taşındı"))

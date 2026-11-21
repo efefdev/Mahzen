@@ -20,14 +20,14 @@ public final class BlobReader: @unchecked Sendable {
         self.key = key
         header = Data(try handle.read(upToCount: BlobCrypto.headerSize) ?? Data())
         guard header.count == BlobCrypto.headerSize, header.prefix(4) == BlobCrypto.magic else {
-            throw VaultError.corrupted("dosya başlığı geçersiz")
+            throw VaultError.corrupted(L("dosya başlığı geçersiz"))
         }
         chunkSize = header.suffix(4).reduce(0) { ($0 << 8) | Int($1) }
-        guard (4096...(64 << 20)).contains(chunkSize) else { throw VaultError.corrupted("parça boyutu geçersiz") }
+        guard (4096...(64 << 20)).contains(chunkSize) else { throw VaultError.corrupted(L("parça boyutu geçersiz")) }
         blobSize = Int64(try handle.seekToEnd())
         let body = blobSize - Int64(BlobCrypto.headerSize)
         let full = Int64(chunkSize + BlobCrypto.tagSize)
-        guard body >= Int64(BlobCrypto.tagSize) else { throw VaultError.corrupted("dosya kesik") }
+        guard body >= Int64(BlobCrypto.tagSize) else { throw VaultError.corrupted(L("dosya kesik")) }
         chunkCount = Int((body + full - 1) / full)
         plainSize = body - Int64(chunkCount * BlobCrypto.tagSize)
         // Boyut kimliği doğrulanmamış dosya uzunluğundan geliyor: son parçayı baştan "son" olarak
@@ -50,7 +50,7 @@ public final class BlobReader: @unchecked Sendable {
             let chunk = try decryptChunk(index)
             let start = Int(position - Int64(index) * Int64(chunkSize))
             let take = min(chunk.count - start, Int(end - position))
-            guard take > 0 else { throw VaultError.corrupted("beklenmeyen dosya sonu") }
+            guard take > 0 else { throw VaultError.corrupted(L("beklenmeyen dosya sonu")) }
             out.append(chunk[(chunk.startIndex + start)..<(chunk.startIndex + start + take)])
             position += Int64(take)
         }
@@ -64,7 +64,7 @@ public final class BlobReader: @unchecked Sendable {
         let length = Int(min(Int64(full), blobSize - start))
         try handle.seek(toOffset: UInt64(start))
         let raw = try handle.read(upToCount: length) ?? Data()
-        guard raw.count == length, length >= BlobCrypto.tagSize else { throw VaultError.corrupted("dosya kesik") }
+        guard raw.count == length, length >= BlobCrypto.tagSize else { throw VaultError.corrupted(L("dosya kesik")) }
         let isFinal = index == chunkCount - 1
         let box = try AES.GCM.SealedBox(
             nonce: BlobCrypto.nonce(index: UInt64(index), isFinal: isFinal),
@@ -74,7 +74,7 @@ public final class BlobReader: @unchecked Sendable {
         do {
             cachedChunk = try AES.GCM.open(box, using: key, authenticating: header)
         } catch {
-            throw VaultError.corrupted("içerik doğrulanamadı")
+            throw VaultError.corrupted(L("içerik doğrulanamadı"))
         }
         cachedIndex = index
         return cachedChunk

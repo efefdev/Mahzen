@@ -8,16 +8,44 @@ struct SettingsView: View {
     @State private var keyfileSheet: KeyfileSheet.Mode?
     @State private var confirmAutoWipe = false
     @State private var showGenerator = false
+    @State private var languageChoice = UserDefaults.standard.string(forKey: Localization.overrideKey) ?? "system"
+
+    /// Seçim açılıştakinden farklıysa yeniden açmak gerekir.
+    private var languageChangePending: Bool {
+        languageChoice != (Localization.overrideAtLaunch ?? "system")
+    }
+
+    private func setLanguage(_ choice: String) {
+        languageChoice = choice
+        if let language = Language(rawValue: choice) {
+            UserDefaults.standard.set(language.rawValue, forKey: Localization.overrideKey)
+            // Menü çubuğu ve sistem pencereleri de aynı dili kullansın.
+            UserDefaults.standard.set([language.rawValue], forKey: "AppleLanguages")
+        } else {
+            UserDefaults.standard.removeObject(forKey: Localization.overrideKey)
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        }
+    }
+
+    private func relaunch() {
+        let url = Bundle.main.bundleURL
+        guard url.pathExtension == "app" else { return NSApp.terminate(nil) }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, _ in
+            DispatchQueue.main.async { NSApp.terminate(nil) }
+        }
+    }
 
     var body: some View {
         Form {
-            SwiftUI.Section("Görünüm") {
-                Picker("Tema", selection: state.preference(\.appearance)) {
+            SwiftUI.Section(L("Görünüm")) {
+                Picker(L("Tema"), selection: state.preference(\.appearance)) {
                     ForEach(AppearanceChoice.allCases) { Text($0.title).tag($0.rawValue) }
                 }
                 .pickerStyle(.segmented)
 
-                LabeledContent("Vurgu rengi") {
+                LabeledContent(L("Vurgu rengi")) {
                     HStack(spacing: 8) {
                         ForEach(AccentChoice.allCases) { choice in
                             Button {
@@ -35,13 +63,13 @@ struct SettingsView: View {
                     }
                 }
 
-                TextField("Kasa adı", text: state.preference(\.displayName))
+                TextField(L("Kasa adı"), text: state.preference(\.displayName))
 
-                Picker("Not yazı tipi", selection: state.preference(\.noteFontDesign)) {
+                Picker(L("Not yazı tipi"), selection: state.preference(\.noteFontDesign)) {
                     ForEach(NoteFontDesign.allCases) { Text($0.title).tag($0.rawValue) }
                 }
 
-                LabeledContent("Not yazı boyutu") {
+                LabeledContent(L("Not yazı boyutu")) {
                     HStack {
                         Slider(value: state.preference(\.noteFontSize), in: 11...26, step: 1)
                             .frame(width: 200)
@@ -49,42 +77,56 @@ struct SettingsView: View {
                     }
                 }
 
-                Picker("Dosya görünümü", selection: state.preference(\.filesLayout)) {
-                    Text("Izgara").tag("grid")
-                    Text("Liste").tag("list")
+                Picker(L("Dosya görünümü"), selection: state.preference(\.filesLayout)) {
+                    Text(L("Izgara")).tag("grid")
+                    Text(L("Liste")).tag("list")
+                }
+
+                Picker(L("Dil"), selection: Binding(get: { languageChoice }, set: setLanguage)) {
+                    Text(L("Sistem")).tag("system")
+                    Text(verbatim: "Türkçe").tag("tr")
+                    Text(verbatim: "English").tag("en")
+                }
+                if languageChangePending {
+                    LabeledContent {
+                        Button(L("Yeniden Aç"), action: relaunch)
+                    } label: {
+                        Text(L("Dil değişikliği Mahzen yeniden açılınca uygulanır."))
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 
             SwiftUI.Section {
-                Picker("Otomatik kilit", selection: state.preference(\.autoLockMinutes)) {
-                    ForEach([1, 2, 5, 10, 15, 30, 60], id: \.self) { Text("\($0) dk hareketsizlikte").tag($0) }
+                Picker(L("Otomatik kilit"), selection: state.preference(\.autoLockMinutes)) {
+                    ForEach([1, 2, 5, 10, 15, 30, 60], id: \.self) { Text(L("{0} dk hareketsizlikte", $0)).tag($0) }
                     Divider()
-                    Text("Kapalı").tag(0)
+                    Text(L("Kapalı")).tag(0)
                 }
-                Picker("Kopyalanan parolayı panodan sil", selection: state.preference(\.clipboardClearSeconds)) {
-                    ForEach([10, 20, 30, 60, 120], id: \.self) { Text("\($0) sn sonra").tag($0) }
+                Picker(L("Kopyalanan parolayı panodan sil"), selection: state.preference(\.clipboardClearSeconds)) {
+                    ForEach([10, 20, 30, 60, 120], id: \.self) { Text(L("{0} sn sonra", $0)).tag($0) }
                     Divider()
-                    Text("Silme").tag(0)
+                    Text(L("Silme")).tag(0)
                 }
-                Toggle("Uyku, ekran kilidi ve kullanıcı değişiminde kilitle", isOn: state.preference(\.lockOnSleep))
-                Toggle("Ekran görüntüsü, kayıt ve paylaşımda pencereyi gizle", isOn: state.preference(\.hideFromScreenCapture))
-                Toggle("Ekledikten sonra orijinalleri Çöp Kutusu'na taşımayı sor", isOn: state.preference(\.askToTrashOriginals))
-                LabeledContent("Ana parola") {
-                    Button("Parolayı Değiştir…") { changingPassword = true }
+                Toggle(L("Uyku, ekran kilidi ve kullanıcı değişiminde kilitle"), isOn: state.preference(\.lockOnSleep))
+                Toggle(L("Ekran görüntüsü, kayıt ve paylaşımda pencereyi gizle"), isOn: state.preference(\.hideFromScreenCapture))
+                Toggle(L("Ekledikten sonra orijinalleri Çöp Kutusu'na taşımayı sor"), isOn: state.preference(\.askToTrashOriginals))
+                LabeledContent(L("Ana parola")) {
+                    Button(L("Parolayı Değiştir…")) { changingPassword = true }
                 }
-                LabeledContent("Parola üretici") {
-                    Button("Aç…") { showGenerator = true }
+                LabeledContent(L("Parola üretici")) {
+                    Button(L("Aç…")) { showGenerator = true }
                         .popover(isPresented: $showGenerator) { GeneratorView() }
                 }
             } header: {
-                Text("Güvenlik")
+                Text(L("Güvenlik"))
             } footer: {
-                Text("SSD çıkarıldığında kasa her zaman kilitlenir.")
+                Text(L("SSD çıkarıldığında kasa her zaman kilitlenir."))
                     .foregroundStyle(.secondary)
             }
 
             SwiftUI.Section {
-                Toggle("Yanlış parolada kasayı kalıcı olarak sil", isOn: Binding(
+                Toggle(L("Yanlış parolada kasayı kalıcı olarak sil"), isOn: Binding(
                     get: { state.autoWipeAttempts != nil },
                     set: { on in
                         if on { confirmAutoWipe = true } else { state.setAutoWipe(nil) }
@@ -93,51 +135,51 @@ struct SettingsView: View {
                 if let attempts = state.autoWipeAttempts {
                     Stepper(value: Binding(get: { attempts }, set: { state.setAutoWipe($0) }),
                             in: Vault.autoWipeRange) {
-                        LabeledContent("Deneme sayısı", value: "\(attempts) yanlış parola")
+                        LabeledContent(L("Deneme sayısı"), value: LN("{0} yanlış parola", attempts))
                     }
                 }
             } header: {
-                Text("Yanlış parola sınırı")
+                Text(L("Yanlış parola sınırı"))
             } footer: {
-                Text("Açıkken art arda bu kadar yanlış parola girilirse kasanın anahtarları yok edilir ve kasadaki her şey kalıcı olarak açılamaz hale gelir; geri alınamaz. Sayaç doğru parolayla açılınca sıfırlanır. Anahtar dosyalı bir kasayı başka bir Mac'te açmaya çalışmak da yanlış deneme sayılır. Yedekler bu ayardan etkilenmez.")
+                Text(L("Açıkken art arda bu kadar yanlış parola girilirse kasanın anahtarları yok edilir ve kasadaki her şey kalıcı olarak açılamaz hale gelir; geri alınamaz. Sayaç doğru parolayla açılınca sıfırlanır. Anahtar dosyalı bir kasayı başka bir Mac'te açmaya çalışmak da yanlış deneme sayılır. Yedekler bu ayardan etkilenmez."))
                     .foregroundStyle(.secondary)
             }
-            .confirmationDialog("Yanlış parola sınırı açılsın mı?", isPresented: $confirmAutoWipe, titleVisibility: .visible) {
-                Button("\(Vault.defaultAutoWipeAttempts) yanlış denemede sil", role: .destructive) {
+            .confirmationDialog(L("Yanlış parola sınırı açılsın mı?"), isPresented: $confirmAutoWipe, titleVisibility: .visible) {
+                Button(L("{0} yanlış denemede sil", Vault.defaultAutoWipeAttempts), role: .destructive) {
                     state.setAutoWipe(Vault.defaultAutoWipeAttempts)
                 }
-                Button("Vazgeç", role: .cancel) {}
+                Button(L("Vazgeç"), role: .cancel) {}
             } message: {
-                Text("Art arda \(Vault.defaultAutoWipeAttempts) yanlış parola girilirse kasa kalıcı olarak silinir ve hiçbir şekilde geri getirilemez. Deneme sayısını sonra değiştirebilirsiniz. Güncel bir yedeğiniz olduğundan emin olun.")
+                Text(L("Art arda {0} yanlış parola girilirse kasa kalıcı olarak silinir ve hiçbir şekilde geri getirilemez. Deneme sayısını sonra değiştirebilirsiniz. Güncel bir yedeğiniz olduğundan emin olun.", Vault.defaultAutoWipeAttempts))
             }
 
             SwiftUI.Section {
-                LabeledContent("Durum") {
-                    Label(state.keyfileEnabled ? "Açık — kasa yalnızca bu Mac'te açılır" : "Kapalı — kasa parolayla her Mac'te açılır",
+                LabeledContent(L("Durum")) {
+                    Label(state.keyfileEnabled ? L("Açık — kasa yalnızca bu Mac'te açılır") : L("Kapalı — kasa parolayla her Mac'te açılır"),
                           systemImage: state.keyfileEnabled ? "lock.laptopcomputer" : "lock.open")
                         .foregroundStyle(state.keyfileEnabled ? Color.green : Color.secondary)
                 }
                 HStack {
                     if state.keyfileEnabled {
-                        Button("Anahtar Dosyasını Yedekle…") { state.exportKeyfile() }
-                        Button("Bağlantıyı Kaldır…", role: .destructive) { keyfileSheet = .disable }
+                        Button(L("Anahtar Dosyasını Yedekle…")) { state.exportKeyfile() }
+                        Button(L("Bağlantıyı Kaldır…"), role: .destructive) { keyfileSheet = .disable }
                     } else {
                         Button {
                             keyfileSheet = .enable
-                        } label: { Label("Bu Mac'e Bağla…", systemImage: "lock.laptopcomputer") }
+                        } label: { Label(L("Bu Mac'e Bağla…"), systemImage: "lock.laptopcomputer") }
                             .buttonStyle(.borderedProminent)
                     }
                 }
                 .disabled(state.task != nil)
             } header: {
-                Text("Bu Mac'e bağlama (anahtar dosyası)")
+                Text(L("Bu Mac'e bağlama (anahtar dosyası)"))
             } footer: {
-                Text("Açıkken kasa, parola + bu Mac'te saklanan rastgele bir anahtar dosyasıyla açılır. Başka bir Mac'te doğru parola bile yalnızca \"Parola yanlış\" der; kasada anahtar dosyası kullanıldığına dair iz yoktur.")
+                Text(L("Açıkken kasa, parola + bu Mac'te saklanan rastgele bir anahtar dosyasıyla açılır. Başka bir Mac'te doğru parola bile yalnızca \"Parola yanlış\" der; kasada anahtar dosyası kullanıldığına dair iz yoktur."))
                     .foregroundStyle(.secondary)
             }
 
             SwiftUI.Section {
-                LabeledContent("Yedek konumu") {
+                LabeledContent(L("Yedek konumu")) {
                     HStack {
                         if let url = state.backupURL {
                             Text(url.path).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
@@ -145,40 +187,40 @@ struct SettingsView: View {
                                 NSWorkspace.shared.activateFileViewerSelecting([url])
                             } label: { Image(systemName: "arrow.right.circle.fill") }
                                 .buttonStyle(.borderless)
-                                .help("Finder'da göster")
+                                .help(L("Finder'da göster"))
                                 .disabled(!FileManager.default.fileExists(atPath: url.path))
                         } else {
-                            Text("Seçilmedi").foregroundStyle(.secondary)
+                            Text(L("Seçilmedi")).foregroundStyle(.secondary)
                         }
-                        Button("Değiştir…") { state.chooseBackupLocation() }
+                        Button(L("Değiştir…")) { state.chooseBackupLocation() }
                     }
                 }
-                LabeledContent("Son yedek", value: state.prefs.lastBackupAt.map { "\(Format.date($0)) (\(Format.relative($0)))" } ?? "Hiç alınmadı")
-                Picker("Hatırlat", selection: state.preference(\.backupReminderDays)) {
-                    ForEach([1, 3, 7, 14, 30], id: \.self) { Text("\($0) gün yedek alınmazsa").tag($0) }
+                LabeledContent(L("Son yedek"), value: state.prefs.lastBackupAt.map { "\(Format.date($0)) (\(Format.relative($0)))" } ?? L("Hiç alınmadı"))
+                Picker(L("Hatırlat"), selection: state.preference(\.backupReminderDays)) {
+                    ForEach([1, 3, 7, 14, 30], id: \.self) { Text(LN("{0} gün yedek alınmazsa", $0)).tag($0) }
                     Divider()
-                    Text("Hatırlatma").tag(0)
+                    Text(L("Hatırlatma")).tag(0)
                 }
                 HStack {
                     Button {
                         state.backupNow()
-                    } label: { Label("Şimdi Yedekle", systemImage: "externaldrive.fill.badge.timemachine") }
+                    } label: { Label(L("Şimdi Yedekle"), systemImage: "externaldrive.fill.badge.timemachine") }
                         .buttonStyle(.borderedProminent)
                     Button {
                         state.runIntegrityScan()
-                    } label: { Label("Bütünlük Taraması", systemImage: "checkmark.shield") }
+                    } label: { Label(L("Bütünlük Taraması"), systemImage: "checkmark.shield") }
                 }
                 .disabled(state.task != nil)
             } header: {
-                Text("Yedekleme ve bakım")
+                Text(L("Yedekleme ve bakım"))
             } footer: {
-                Text("Yedek yalnızca değişen dosyaları kopyalar ve şifreli kalır; aynı parolayla Mahzen'de \"Mevcut kasayı aç\" ile açılır. Bütünlük taraması her dosyayı çözerek doğrular, bozukları yedekten geri yükleyebilir.")
+                Text(L("Yedek yalnızca değişen dosyaları kopyalar ve şifreli kalır; aynı parolayla Mahzen'de \"Mevcut kasayı aç\" ile açılır. Bütünlük taraması her dosyayı çözerek doğrular, bozukları yedekten geri yükleyebilir."))
                     .foregroundStyle(.secondary)
             }
 
-            SwiftUI.Section("Kasa") {
+            SwiftUI.Section(L("Kasa")) {
                 if let url = state.vaultURL {
-                    LabeledContent("Konum") {
+                    LabeledContent(L("Konum")) {
                         HStack {
                             Text(url.path).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
                             Button {
@@ -187,23 +229,23 @@ struct SettingsView: View {
                                 Image(systemName: "arrow.right.circle.fill")
                             }
                             .buttonStyle(.borderless)
-                            .help("Finder'da göster")
+                            .help(L("Finder'da göster"))
                         }
                     }
                 }
-                LabeledContent("Şifreleme", value: "AES-256-GCM (dosya başına ayrı anahtar)")
-                LabeledContent("Anahtar türetme", value: state.kdfSummary)
-                LabeledContent("İçerik", value: "\(state.index.liveFiles.count) dosya · \(state.index.folders.filter { $0.deletedAt == nil }.count) klasör · \(state.index.notes.filter { $0.deletedAt == nil }.count) not · \(state.index.secrets.filter { $0.deletedAt == nil }.count) parola")
-                Picker("Çöp Kutusu'nu otomatik boşalt", selection: state.preference(\.trashRetentionDays)) {
-                    ForEach([7, 30, 90, 365], id: \.self) { Text("\($0) gün sonra").tag($0) }
+                LabeledContent(L("Şifreleme"), value: L("AES-256-GCM (dosya başına ayrı anahtar)"))
+                LabeledContent(L("Anahtar türetme"), value: state.kdfSummary)
+                LabeledContent(L("İçerik"), value: [LN("{0} dosya", state.index.liveFiles.count), LN("{0} klasör", state.index.folders.filter { $0.deletedAt == nil }.count), LN("{0} not", state.index.notes.filter { $0.deletedAt == nil }.count), LN("{0} parola", state.index.secrets.filter { $0.deletedAt == nil }.count)].joined(separator: " · "))
+                Picker(L("Çöp Kutusu'nu otomatik boşalt"), selection: state.preference(\.trashRetentionDays)) {
+                    ForEach([7, 30, 90, 365], id: \.self) { Text(LN("{0} gün sonra", $0)).tag($0) }
                     Divider()
-                    Text("Hiçbir zaman").tag(0)
+                    Text(L("Hiçbir zaman")).tag(0)
                 }
             }
 
         }
         .formStyle(.grouped)
-        .navigationTitle("Ayarlar")
+        .navigationTitle(L("Ayarlar"))
         .sheet(isPresented: $changingPassword) { ChangePasswordSheet() }
         .sheet(item: $keyfileSheet) { KeyfileSheet(mode: $0) }
     }
@@ -224,26 +266,26 @@ private struct ChangePasswordSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Ana parolayı değiştir").font(.title3.weight(.bold))
-            Text("Dosyaların yeniden şifrelenmesi gerekmez; yalnızca ana anahtar yeni parolayla yeniden sarılır.")
+            Text(L("Ana parolayı değiştir")).font(.title3.weight(.bold))
+            Text(L("Dosyaların yeniden şifrelenmesi gerekmez; yalnızca ana anahtar yeni parolayla yeniden sarılır."))
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            RevealableField(title: "Mevcut parola", text: $current)
-            RevealableField(title: "Yeni parola (en az \(Vault.minimumPasswordLength) karakter)", text: $new)
+            RevealableField(title: L("Mevcut parola"), text: $current)
+            RevealableField(title: L("Yeni parola (en az {0} karakter)", Vault.minimumPasswordLength), text: $new)
             StrengthMeter(password: new)
-            RevealableField(title: "Yeni parolayı tekrarla", text: $confirm, onSubmit: save)
+            RevealableField(title: L("Yeni parolayı tekrarla"), text: $confirm, onSubmit: save)
             if !confirm.isEmpty, confirm != new {
-                Text("Parolalar eşleşmiyor").font(.caption).foregroundStyle(.orange)
+                Text(L("Parolalar eşleşmiyor")).font(.caption).foregroundStyle(.orange)
             }
             if let error {
                 Text(error).font(.callout).foregroundStyle(.red)
             }
             HStack {
                 Spacer()
-                Button("Vazgeç") { dismiss() }.keyboardShortcut(.cancelAction).disabled(working)
+                Button(L("Vazgeç")) { dismiss() }.keyboardShortcut(.cancelAction).disabled(working)
                 Button(action: save) {
-                    if working { ProgressView().controlSize(.small) } else { Text("Değiştir") }
+                    if working { ProgressView().controlSize(.small) } else { Text(L("Değiştir")) }
                 }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
@@ -287,18 +329,18 @@ struct KeyfileSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             if done {
-                Label("Kasa bu Mac'e bağlandı", systemImage: "checkmark.seal.fill")
+                Label(L("Kasa bu Mac'e bağlandı"), systemImage: "checkmark.seal.fill")
                     .font(.title3.weight(.bold))
                     .foregroundStyle(.green)
-                Text("Şimdi anahtar dosyasının bir yedeğini al. Bu Mac bozulur, çalınır ya da sıfırlanırsa kasayı açmanın tek yolu o yedektir. Yedeği SSD'de değil, ayrı ve güvendiğin bir yerde tut (ör. başka bir USB bellek).")
+                Text(L("Şimdi anahtar dosyasının bir yedeğini al. Bu Mac bozulur, çalınır ya da sıfırlanırsa kasayı açmanın tek yolu o yedektir. Yedeği SSD'de değil, ayrı ve güvendiğin bir yerde tut (ör. başka bir USB bellek)."))
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Kasanın mevcut yedeği, bir sonraki \"Şimdi Yedekle\" ile güncellenince o da anahtar dosyası ister.")
+                Text(L("Kasanın mevcut yedeği, bir sonraki \"Şimdi Yedekle\" ile güncellenince o da anahtar dosyası ister."))
                     .font(.callout).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack {
                     Spacer()
-                    Button("Sonra") { dismiss() }
-                    Button("Anahtar Dosyasını Yedekle…") {
+                    Button(L("Sonra")) { dismiss() }
+                    Button(L("Anahtar Dosyasını Yedekle…")) {
                         state.exportKeyfile()
                         dismiss()
                     }
@@ -306,32 +348,32 @@ struct KeyfileSheet: View {
                     .keyboardShortcut(.defaultAction)
                 }
             } else {
-                Text(mode == .enable ? "Kasayı bu Mac'e bağla" : "Bu Mac'e bağlantıyı kaldır")
+                Text(mode == .enable ? L("Kasayı bu Mac'e bağla") : L("Bu Mac'e bağlantıyı kaldır"))
                     .font(.title3.weight(.bold))
                 if mode == .enable {
                     VStack(alignment: .leading, spacing: 8) {
-                        bullet("lock.laptopcomputer", "Kasa bundan sonra parola + bu Mac'teki anahtar dosyasıyla açılır.")
-                        bullet("eye.slash", "SSD başka bir Mac'e takılırsa doğru parola da \"Parola yanlış\" der; anahtar dosyası istendiği belli olmaz.")
-                        bullet("exclamationmark.triangle.fill", "Bu Mac bozulur, sıfırlanır ya da anahtar dosyası silinirse, yedeği yoksa kasa bir daha açılamaz.")
+                        bullet("lock.laptopcomputer", L("Kasa bundan sonra parola + bu Mac'teki anahtar dosyasıyla açılır."))
+                        bullet("eye.slash", L("SSD başka bir Mac'e takılırsa doğru parola da \"Parola yanlış\" der; anahtar dosyası istendiği belli olmaz."))
+                        bullet("exclamationmark.triangle.fill", L("Bu Mac bozulur, sıfırlanır ya da anahtar dosyası silinirse, yedeği yoksa kasa bir daha açılamaz."))
                     }
                     Toggle(isOn: $understood) {
-                        Text("Anahtar dosyasının yedeğini almazsam verilerimi kaybedebileceğimi anlıyorum.")
+                        Text(L("Anahtar dosyasının yedeğini almazsam verilerimi kaybedebileceğimi anlıyorum."))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .toggleStyle(.checkbox)
                 } else {
-                    Text("Kasa yeniden yalnızca parolayla açılır hale gelir ve bu Mac'teki anahtar dosyası silinir. Dışa aktardığın yedek kopyaları kendin silmelisin.")
+                    Text(L("Kasa yeniden yalnızca parolayla açılır hale gelir ve bu Mac'teki anahtar dosyası silinir. Dışa aktardığın yedek kopyaları kendin silmelisin."))
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                RevealableField(title: "Kasa parolası", text: $password, onSubmit: submit)
+                RevealableField(title: L("Kasa parolası"), text: $password, onSubmit: submit)
                 if let error {
                     Text(error).font(.callout).foregroundStyle(.red)
                 }
                 HStack {
                     Spacer()
-                    Button("Vazgeç") { dismiss() }.keyboardShortcut(.cancelAction).disabled(working)
+                    Button(L("Vazgeç")) { dismiss() }.keyboardShortcut(.cancelAction).disabled(working)
                     Button(action: submit) {
-                        if working { ProgressView().controlSize(.small) } else { Text(mode == .enable ? "Bağla" : "Kaldır") }
+                        if working { ProgressView().controlSize(.small) } else { Text(mode == .enable ? L("Bağla") : L("Kaldır")) }
                     }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
