@@ -51,12 +51,12 @@ extension Vault {
         let source = folder.standardizedFileURL.resolvingSymlinksInPath().path
         let target = destination.standardizedFileURL.resolvingSymlinksInPath().path
         guard !target.hasPrefix(source + "/"), target != source, !source.hasPrefix(target + "/") else {
-            throw VaultError.corrupted("yedek konumu kasanın kendisi veya içi olamaz")
+            throw VaultError.corrupted(L("yedek konumu kasanın kendisi veya içi olamaz"))
         }
         if Vault.exists(at: destination) {
             let other = try Vault.readHeader(at: destination)
             guard other.vaultID == header.vaultID else {
-                throw VaultError.corrupted("seçilen klasörde başka bir kasa var")
+                throw VaultError.corrupted(L("seçilen klasörde başka bir kasa var"))
             }
         }
 
@@ -193,7 +193,7 @@ extension Vault {
     public func restoreFile(_ id: UUID, fromBackup backupFolder: URL) throws {
         let backupBlob = backupFolder.appendingPathComponent(relativePath(blobURL(id)))
         guard Vault.exists(at: backupFolder), try Vault.readHeader(at: backupFolder).vaultID == header.vaultID else {
-            throw VaultError.corrupted("yedek bu kasaya ait değil")
+            throw VaultError.corrupted(L("yedek bu kasaya ait değil"))
         }
         let input = try FileHandle(forReadingFrom: backupBlob)
         try BlobCrypto.decrypt(read: { try BlobCrypto.readFully(input, $0) }, write: { _ in }, key: fileKey(id))

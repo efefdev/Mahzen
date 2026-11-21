@@ -34,7 +34,7 @@ public struct PasswordStrength: Equatable, Sendable {
     public let bits: Double
 
     public var label: String {
-        ["Çok zayıf", "Zayıf", "Orta", "Güçlü", "Çok güçlü"][score]
+        [L("Çok zayıf"), L("Zayıf"), L("Orta"), L("Güçlü"), L("Çok güçlü")][score]
     }
 
     static let common = ["password", "parola", "sifre", "şifre", "123456", "qwerty", "asdf", "abc123", "111111", "admin", "letmein", "iloveyou"]

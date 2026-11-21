@@ -36,11 +36,11 @@ public enum Crypto {
             return try deriveKey(password: password, salt: params.salt, iterations: params.iterations)
         case KDFParams.argon2id:
             guard let memory = params.memoryKiB, let parallelism = params.parallelism else {
-                throw VaultError.corrupted("Argon2id ayarları eksik")
+                throw VaultError.corrupted(L("Argon2id ayarları eksik"))
             }
             return try argon2id(password: password, salt: params.salt, time: params.iterations, memoryKiB: memory, parallelism: parallelism)
         default:
-            throw VaultError.corrupted("bilinmeyen anahtar türetme yöntemi: \(params.algorithm)")
+            throw VaultError.corrupted(L("bilinmeyen anahtar türetme yöntemi: {0}", params.algorithm))
         }
     }
 

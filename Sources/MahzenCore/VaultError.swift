@@ -12,19 +12,19 @@ public enum VaultError: LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .wrongPassword:
-            return "Parola yanlış."
+            return L("Parola yanlış.")
         case .corrupted(let detail):
-            return "Kasa verisi doğrulanamadı: \(detail)"
+            return L("Kasa verisi doğrulanamadı: {0}", detail)
         case .notAVault:
-            return "Bu klasör bir Mahzen kasası değil."
+            return L("Bu klasör bir Mahzen kasası değil.")
         case .alreadyExists:
-            return "Bu konumda zaten bir kasa var."
+            return L("Bu konumda zaten bir kasa var.")
         case .unsupportedVersion(let v):
-            return "Bu kasa daha yeni bir Mahzen sürümüyle oluşturulmuş (biçim \(v))."
+            return L("Bu kasa daha yeni bir Mahzen sürümüyle oluşturulmuş (biçim {0}).", v)
         case .kdfFailed:
-            return "Anahtar türetilemedi."
+            return L("Anahtar türetilemedi.")
         case .passwordTooShort(let min):
-            return "Parola en az \(min) karakter olmalı."
+            return L("Parola en az {0} karakter olmalı.", min)
         }
     }
 }

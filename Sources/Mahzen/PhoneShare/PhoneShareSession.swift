@@ -74,7 +74,7 @@ final class PhoneShareSession: ObservableObject, Identifiable {
         }
         Task { [weak self] in
             guard let host = LocalNetwork.primaryIPv4() else {
-                self?.fail("Bu Mac bir Wi-Fi ya da yerel ağa bağlı görünmüyor. Telefonla aynı ağa bağlanıp yeniden deneyin.")
+                self?.fail(L("Bu Mac bir Wi-Fi ya da yerel ağa bağlı görünmüyor. Telefonla aynı ağa bağlanıp yeniden deneyin."))
                 return
             }
             do {
@@ -83,7 +83,7 @@ final class PhoneShareSession: ObservableObject, Identifiable {
                 self.phase = .running(url: "http://\(host):\(port)/\(token)/#\(keyText)")
                 self.scheduleExpiry()
             } catch {
-                self?.fail("Paylaşım başlatılamadı: \(error.localizedDescription)")
+                self?.fail(L("Paylaşım başlatılamadı: {0}", error.localizedDescription))
             }
         }
     }
@@ -130,7 +130,7 @@ final class PhoneShareSession: ObservableObject, Identifiable {
 extension AppState {
     /// Seçili dosyalardaki fotoğraf ve videoları telefonda gösterir.
     func showOnPhone(files: [FileRecord]) {
-        let title = files.count == 1 ? files[0].name : "\(files.count) öğe"
+        let title = files.count == 1 ? files[0].name : LN("{0} öğe", files.count)
         startPhoneShare(title: title, files: files.map { ($0, []) })
     }
 
@@ -147,8 +147,8 @@ extension AppState {
         guard let vault else { return }
         phoneShare?.stop()
         guard let session = PhoneShareSession(vault: vault, title: title, files: files) else {
-            alert = AlertItem(title: "Gösterilecek fotoğraf ya da video yok",
-                              message: "Telefonda yalnızca fotoğraflar ve videolar gösterilebilir.")
+            alert = AlertItem(title: L("Gösterilecek fotoğraf ya da video yok"),
+                              message: L("Telefonda yalnızca fotoğraflar ve videolar gösterilebilir."))
             return
         }
         phoneShare = session

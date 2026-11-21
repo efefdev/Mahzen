@@ -2,17 +2,16 @@ import AppKit
 import MahzenCore
 import SwiftUI
 
-private let turkish = Locale(identifier: "tr_TR")
 
 /// Büyük saat ve tarih (macOS kilit ekranı gibi).
 private struct LockClock: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             VStack(spacing: 0) {
-                Text(context.date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(turkish)))
+                Text(context.date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Localization.locale)))
                     .font(.title3.weight(.medium))
                     .foregroundStyle(.secondary)
-                Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).locale(turkish)))
+                Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).locale(Localization.locale)))
                     .font(.system(size: 92, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .contentTransition(.numericText())
@@ -36,7 +35,7 @@ private struct PillPasswordField: View {
             Image(systemName: "key.fill")
                 .foregroundStyle(.secondary)
                 .padding(.leading, 16)
-            SecureField("Parola", text: $password)
+            SecureField(L("Parola"), text: $password)
                 .textFieldStyle(.plain)
                 .font(.system(size: 16))
                 .focused($focused)
@@ -58,7 +57,7 @@ private struct PillPasswordField: View {
             .buttonStyle(.plain)
             .disabled(password.isEmpty || working)
             .keyboardShortcut(.defaultAction)
-            .help("Kilidi aç (↩)")
+            .help(L("Kilidi aç (↩)"))
             .padding(.trailing, 6)
         }
         .frame(width: 340, height: 46)
@@ -110,7 +109,7 @@ struct UnlockView: View {
                     VaultBadge(size: 84, open: opened)
                         .scaleEffect(opened ? 1.08 : 1)
                     VStack(spacing: 6) {
-                        Text(opened ? "Kilit açıldı" : "Mahzen kilitli")
+                        Text(opened ? L("Kilit açıldı") : L("Mahzen kilitli"))
                             .font(.title2.weight(.semibold))
                             .contentTransition(.opacity)
                         if let url = state.vaultURL {
@@ -147,11 +146,11 @@ struct UnlockView: View {
                 .font(.callout)
                 .transition(.opacity)
         } else if working {
-            Text("Anahtar türetiliyor…")
+            Text(L("Anahtar türetiliyor…"))
                 .foregroundStyle(.secondary)
                 .font(.callout)
         } else if capsLock.isOn {
-            Label("Caps Lock açık", systemImage: "capslock.fill")
+            Label(L("Caps Lock açık"), systemImage: "capslock.fill")
                 .foregroundStyle(.orange)
                 .font(.callout)
                 .transition(.opacity)
@@ -163,11 +162,11 @@ struct UnlockView: View {
             HStack(spacing: 16) {
                 Label("AES-256-GCM", systemImage: "lock.fill")
                 Label("Argon2id", systemImage: "cpu")
-                Label("Çevrimdışı", systemImage: "wifi.slash")
+                Label(L("Çevrimdışı"), systemImage: "wifi.slash")
             }
             .font(.caption)
             .foregroundStyle(.tertiary)
-            Button("Başka bir kasa aç veya yeni oluştur") { state.showWelcome() }
+            Button(L("Başka bir kasa aç veya yeni oluştur")) { state.showWelcome() }
                 .buttonStyle(.link)
                 .font(.callout)
         }
@@ -226,27 +225,27 @@ struct WelcomeView: View {
                         VaultBadge(size: 104)
                         Text("Mahzen")
                             .font(.system(size: 46, weight: .bold, design: .rounded))
-                        Text("Dosyaların, notların ve parolaların için\nşifreli, taşınabilir bir kasa.")
+                        Text(L("Dosyaların, notların ve parolaların için\nşifreli, taşınabilir bir kasa."))
                             .font(.title3)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(.secondary)
                     }
                     Card(width: 440) {
                         VStack(alignment: .leading, spacing: 16) {
-                            feature("lock.shield.fill", "Her şey şifreli", "Dosya adları, notlar ve parolalar dahil; AES-256-GCM ve Argon2id.")
-                            feature("externaldrive.fill", "Seninle taşınır", "Kasa, uygulamanın yanında SSD'de durur; her Mac'te açılır.")
-                            feature("wifi.slash", "Tamamen çevrimdışı", "Hiçbir şey internete gönderilmez, hesap gerekmez.")
+                            feature("lock.shield.fill", L("Her şey şifreli"), L("Dosya adları, notlar ve parolalar dahil; AES-256-GCM ve Argon2id."))
+                            feature("externaldrive.fill", L("Seninle taşınır"), L("Kasa, uygulamanın yanında SSD'de durur; her Mac'te açılır."))
+                            feature("wifi.slash", L("Tamamen çevrimdışı"), L("Hiçbir şey internete gönderilmez, hesap gerekmez."))
                             Divider().padding(.vertical, 2)
                             Button {
                                 withAnimation(.smooth) { creating = true }
                             } label: {
-                                Label("Yeni kasa oluştur", systemImage: "plus.circle.fill")
+                                Label(L("Yeni kasa oluştur"), systemImage: "plus.circle.fill")
                                     .frame(maxWidth: .infinity).frame(height: 28)
                             }
                             .buttonStyle(.borderedProminent)
                             .controlSize(.large)
                             Button(action: openExisting) {
-                                Label("Mevcut kasayı aç…", systemImage: "folder")
+                                Label(L("Mevcut kasayı aç…"), systemImage: "folder")
                                     .frame(maxWidth: .infinity).frame(height: 28)
                             }
                             .controlSize(.large)
@@ -273,8 +272,8 @@ struct WelcomeView: View {
 
     private func openExisting() {
         let panel = NSOpenPanel()
-        panel.title = "Mahzen kasa klasörünü seç"
-        panel.prompt = "Aç"
+        panel.title = L("Mahzen kasa klasörünü seç")
+        panel.prompt = L("Aç")
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         if panel.runModal() == .OK, let url = panel.url { state.selectVault(url) }
@@ -291,8 +290,8 @@ struct SetupView: View {
 
     private var strength: PasswordStrength { PasswordStrength.evaluate(password) }
     private var problem: String? {
-        if password.count < Vault.minimumPasswordLength { return "En az \(Vault.minimumPasswordLength) karakter" }
-        if !confirm.isEmpty, confirm != password { return "Parolalar eşleşmiyor" }
+        if password.count < Vault.minimumPasswordLength { return L("En az {0} karakter", Vault.minimumPasswordLength) }
+        if !confirm.isEmpty, confirm != password { return L("Parolalar eşleşmiyor") }
         return nil
     }
     private var canCreate: Bool { problem == nil && understood && !confirm.isEmpty }
@@ -303,13 +302,13 @@ struct SetupView: View {
                 HStack {
                     Button(action: onBack) { Image(systemName: "chevron.left") }
                         .buttonStyle(.borderless)
-                    Text("Yeni kasa").font(.title2.weight(.bold))
+                    Text(L("Yeni kasa")).font(.title2.weight(.bold))
                     Spacer()
                     VaultBadge(size: 36)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Konum").font(.caption).foregroundStyle(.secondary)
+                    Text(L("Konum")).font(.caption).foregroundStyle(.secondary)
                     HStack {
                         Image(systemName: "folder.fill").foregroundStyle(.tint)
                         Text(location.path)
@@ -317,31 +316,31 @@ struct SetupView: View {
                             .lineLimit(1)
                             .truncationMode(.head)
                         Spacer()
-                        Button("Değiştir…", action: chooseLocation).controlSize(.small)
+                        Button(L("Değiştir…"), action: chooseLocation).controlSize(.small)
                     }
                     .padding(10)
                     .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 9))
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Ana parola").font(.caption).foregroundStyle(.secondary)
-                    RevealableField(title: "Parola", text: $password)
+                    Text(L("Ana parola")).font(.caption).foregroundStyle(.secondary)
+                    RevealableField(title: L("Parola"), text: $password)
                     StrengthMeter(password: password)
-                    RevealableField(title: "Parolayı tekrarla", text: $confirm, onSubmit: create)
-                    Text(password.isEmpty ? "Uzun bir cümle iyi bir paroladır: \"mor-kedi 7 kez çay demledi!\"" : (problem ?? (strength.score < 3 ? "Daha uzun bir parola önerilir." : "Harika.")))
+                    RevealableField(title: L("Parolayı tekrarla"), text: $confirm, onSubmit: create)
+                    Text(password.isEmpty ? L("Uzun bir cümle iyi bir paroladır: \"mor-kedi 7 kez çay demledi!\"") : (problem ?? (strength.score < 3 ? L("Daha uzun bir parola önerilir.") : L("Harika."))))
                         .font(.caption)
                         .foregroundStyle(problem != nil && !password.isEmpty ? .orange : .secondary)
                 }
 
                 Toggle(isOn: $understood) {
-                    Text("Bu parolayı unutursam kasadaki verilerin **hiçbir şekilde** kurtarılamayacağını anlıyorum.")
+                    Text(LocalizedStringKey(L("Bu parolayı unutursam kasadaki verilerin **hiçbir şekilde** kurtarılamayacağını anlıyorum.")))
                         .font(.callout)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .toggleStyle(.checkbox)
 
                 Button(action: create) {
-                    Text("Kasayı Oluştur").frame(maxWidth: .infinity).frame(height: 26)
+                    Text(L("Kasayı Oluştur")).frame(maxWidth: .infinity).frame(height: 26)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -352,8 +351,8 @@ struct SetupView: View {
 
     private func chooseLocation() {
         let panel = NSOpenPanel()
-        panel.title = "Kasanın oluşturulacağı yer (ör. SSD)"
-        panel.prompt = "Burada Oluştur"
+        panel.title = L("Kasanın oluşturulacağı yer (ör. SSD)")
+        panel.prompt = L("Burada Oluştur")
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true

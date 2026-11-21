@@ -52,7 +52,7 @@ extension Vault {
     /// Sınırı açar (`attempts` dolu) veya kapatır (`nil`). Sayaç sıfırlanır.
     public func setAutoWipe(attempts: Int?) throws {
         if let attempts, !Self.autoWipeRange.contains(attempts) {
-            throw VaultError.corrupted("deneme sınırı \(Self.autoWipeRange.lowerBound)–\(Self.autoWipeRange.upperBound) arasında olmalı")
+            throw VaultError.corrupted(L("deneme sınırı {0}–{1} arasında olmalı", Self.autoWipeRange.lowerBound, Self.autoWipeRange.upperBound))
         }
         var updated = header
         updated.wipeAfterFailedAttempts = attempts

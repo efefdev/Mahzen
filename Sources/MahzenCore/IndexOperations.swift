@@ -70,7 +70,7 @@ extension VaultIndex {
 
     @discardableResult
     public mutating func createFolder(named name: String, in parent: UUID?) -> UUID {
-        let base = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Yeni Klasör" : name
+        let base = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? L("Yeni Klasör") : name
         var candidate = base
         var n = 2
         while folders.contains(where: { $0.parentID == parent && $0.deletedAt == nil && $0.name == candidate }) {

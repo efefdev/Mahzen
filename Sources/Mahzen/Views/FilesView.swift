@@ -11,10 +11,10 @@ enum FileSort: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .newest: return "En yeni"
-        case .oldest: return "En eski"
-        case .name: return "Ada göre"
-        case .largest: return "En büyük"
+        case .newest: return L("En yeni")
+        case .oldest: return L("En eski")
+        case .name: return L("Ada göre")
+        case .largest: return L("En büyük")
         }
     }
 
@@ -34,11 +34,11 @@ enum FileFilter: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .all: return "Tümü"
-        case .favorites: return "Favoriler"
-        case .images: return "Görseller"
-        case .videos: return "Videolar"
-        case .documents: return "Belgeler"
+        case .all: return L("Tümü")
+        case .favorites: return L("Favoriler")
+        case .images: return L("Görseller")
+        case .videos: return L("Videolar")
+        case .documents: return L("Belgeler")
         }
     }
 
@@ -57,7 +57,7 @@ enum FileFilter: String, CaseIterable, Identifiable {
 
 extension FileRecord {
     var utType: UTType { contentType.flatMap(UTType.init) ?? .data }
-    var kind: String { utType.localizedDescription ?? "Dosya" }
+    var kind: String { utType.localizedDescription ?? L("Dosya") }
 }
 
 /// Izgara ve listede klasör ile dosyayı tek satır tipi olarak göstermek için.
@@ -109,9 +109,9 @@ struct FilesView: View {
             Divider()
             content(items)
         }
-        .navigationTitle("Dosyalar")
-        .navigationSubtitle("\(index.liveFiles.count) dosya · \(Format.size(index.liveFiles.reduce(0) { $0 + $1.size }))")
-        .searchable(text: $search, placement: .toolbar, prompt: "Tüm kasada ara")
+        .navigationTitle(L("Dosyalar"))
+        .navigationSubtitle(LN("{0} dosya · {1}", index.liveFiles.count, Format.size(index.liveFiles.reduce(0) { $0 + $1.size })))
+        .searchable(text: $search, placement: .toolbar, prompt: L("Tüm kasada ara"))
         .toolbar { toolbar }
         .onDrop(of: [.fileURL, .item], isTargeted: $dropTargeted) { state.handleDrop($0, into: current) }
         .overlay { if dropTargeted { dropOverlay } }
@@ -143,7 +143,7 @@ struct FilesView: View {
         HStack(spacing: 4) {
             if isGlobal {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                Text("Tüm kasa").font(.callout.weight(.medium))
+                Text(L("Tüm kasa")).font(.callout.weight(.medium))
                 if let tagFilter {
                     tagChip(tagFilter) { self.tagFilter = nil }
                 }
@@ -151,7 +151,7 @@ struct FilesView: View {
                     tagChip(filter.title, symbol: "line.3.horizontal.decrease") { filter = .all }
                 }
             } else {
-                crumb("Dosyalar", symbol: "house.fill", target: nil, isLast: current == nil)
+                crumb(L("Dosyalar"), symbol: "house.fill", target: nil, isLast: current == nil)
                 ForEach(index.path(to: current)) { folder in
                     Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
                     crumb(folder.name, symbol: nil, target: folder.id, isLast: folder.id == current)
@@ -159,7 +159,7 @@ struct FilesView: View {
             }
             Spacer()
             if !selection.isEmpty {
-                Text("\(selection.count) seçili").font(.caption).foregroundStyle(.secondary)
+                Text(L("{0} seçili", selection.count)).font(.caption).foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 16)
@@ -200,15 +200,15 @@ struct FilesView: View {
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItemGroup {
-            Picker("Filtre", selection: $filter) {
+            Picker(L("Filtre"), selection: $filter) {
                 ForEach(FileFilter.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.menu)
-            .help("Filtrele")
+            .help(L("Filtrele"))
 
             if !index.allTags.isEmpty {
                 Menu {
-                    Button("Tüm etiketler") { tagFilter = nil }
+                    Button(L("Tüm etiketler")) { tagFilter = nil }
                     Divider()
                     ForEach(index.allTags, id: \.self) { tag in
                         Button {
@@ -218,41 +218,41 @@ struct FilesView: View {
                         }
                     }
                 } label: {
-                    Label("Etiket", systemImage: tagFilter == nil ? "tag" : "tag.fill")
+                    Label(L("Etiket"), systemImage: tagFilter == nil ? "tag" : "tag.fill")
                 }
-                .help("Etikete göre filtrele")
+                .help(L("Etikete göre filtrele"))
             }
 
             Menu {
-                Picker("Sırala", selection: $sort) {
+                Picker(L("Sırala"), selection: $sort) {
                     ForEach(FileSort.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.inline)
             } label: {
-                Label("Sırala", systemImage: "arrow.up.arrow.down")
+                Label(L("Sırala"), systemImage: "arrow.up.arrow.down")
             }
-            .help("Sırala")
+            .help(L("Sırala"))
 
-            Picker("Görünüm", selection: layout) {
-                Label("Izgara", systemImage: "square.grid.2x2").tag("grid")
-                Label("Liste", systemImage: "list.bullet").tag("list")
+            Picker(L("Görünüm"), selection: layout) {
+                Label(L("Izgara"), systemImage: "square.grid.2x2").tag("grid")
+                Label(L("Liste"), systemImage: "list.bullet").tag("list")
             }
             .pickerStyle(.segmented)
-            .help("Görünüm")
+            .help(L("Görünüm"))
 
             Button {
                 let id = state.createFolder(in: current)
                 if let folder = state.index.folder(id) { renamingFolder = folder }
             } label: {
-                Label("Yeni Klasör", systemImage: "folder.badge.plus")
+                Label(L("Yeni Klasör"), systemImage: "folder.badge.plus")
             }
-            .help("Yeni klasör")
+            .help(L("Yeni klasör"))
             .disabled(isGlobal)
 
             Button(action: state.presentImportPanel) {
-                Label("Ekle", systemImage: "plus")
+                Label(L("Ekle"), systemImage: "plus")
             }
-            .help("Dosya ekle (⌘O)")
+            .help(L("Dosya ekle (⌘O)"))
         }
     }
 
@@ -262,7 +262,7 @@ struct FilesView: View {
             .foregroundStyle(.tint)
             .background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
             .overlay(
-                Label("Şifrelemek için bırak → \(index.folder(current)?.name ?? "Dosyalar")", systemImage: "lock.doc.fill")
+                Label(L("Şifrelemek için bırak → {0}", index.folder(current)?.name ?? L("Dosyalar")), systemImage: "lock.doc.fill")
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(.tint)
             )
@@ -277,16 +277,16 @@ struct FilesView: View {
         if index.liveFiles.isEmpty && index.childFolders(of: nil).isEmpty {
             EmptyState(
                 symbol: "tray.and.arrow.down.fill",
-                title: "Dosyaları buraya sürükle",
-                message: "Eklediğin her dosya, adıyla birlikte şifrelenip kasaya yazılır. Klasör sürüklersen yapısı korunur.",
-                actionTitle: "Dosya Seç…",
+                title: L("Dosyaları buraya sürükle"),
+                message: L("Eklediğin her dosya, adıyla birlikte şifrelenip kasaya yazılır. Klasör sürüklersen yapısı korunur."),
+                actionTitle: L("Dosya Seç…"),
                 action: state.presentImportPanel
             )
         } else if items.isEmpty {
             if isGlobal {
-                EmptyState(symbol: "magnifyingglass", title: "Sonuç yok", message: "Arama, filtre veya etiketle eşleşen dosya bulunamadı.")
+                EmptyState(symbol: "magnifyingglass", title: L("Sonuç yok"), message: L("Arama, filtre veya etiketle eşleşen dosya bulunamadı."))
             } else {
-                EmptyState(symbol: "folder", title: "Klasör boş", message: "Dosyaları buraya sürükleyebilir ya da başka klasörlerden taşıyabilirsin.")
+                EmptyState(symbol: "folder", title: L("Klasör boş"), message: L("Dosyaları buraya sürükleyebilir ya da başka klasörlerden taşıyabilirsin."))
             }
         } else if layout.wrappedValue == "list" {
             listView(items)
@@ -373,7 +373,7 @@ struct FilesView: View {
     }
 
     private func locationName(_ file: FileRecord) -> String {
-        index.path(to: file.folderID).map(\.name).joined(separator: " › ").nonEmpty ?? "Dosyalar"
+        index.path(to: file.folderID).map(\.name).joined(separator: " › ").nonEmpty ?? L("Dosyalar")
     }
 
     private func dragProvider(_ item: FileItem) -> NSItemProvider {
@@ -400,7 +400,7 @@ struct FilesView: View {
 
     private func listView(_ items: [FileItem]) -> some View {
         Table(of: FileItem.self, selection: $selection) {
-            TableColumn("Ad") { item in
+            TableColumn(L("Ad")) { item in
                 HStack(spacing: 8) {
                     if let file = item.file {
                         FileIcon(file: file, size: 22)
@@ -412,20 +412,20 @@ struct FilesView: View {
                 }
             }
             .width(min: 220, ideal: 340)
-            TableColumn("Etiketler") { item in
+            TableColumn(L("Etiketler")) { item in
                 Text(item.file?.tags.joined(separator: ", ") ?? "").foregroundStyle(.secondary).lineLimit(1)
             }
             .width(min: 60, ideal: 120)
-            TableColumn("Tür") { item in
-                Text(item.file?.kind ?? "Klasör").foregroundStyle(.secondary)
+            TableColumn(L("Tür")) { item in
+                Text(item.file?.kind ?? L("Klasör")).foregroundStyle(.secondary)
             }
             .width(min: 80, ideal: 130)
-            TableColumn("Boyut") { item in
-                Text(item.file.map { Format.size($0.size) } ?? "\(index.liveFileCount(inTree: item.id)) öğe")
+            TableColumn(L("Boyut")) { item in
+                Text(item.file.map { Format.size($0.size) } ?? LN("{0} öğe", index.liveFileCount(inTree: item.id)))
                     .foregroundStyle(.secondary).monospacedDigit()
             }
             .width(min: 60, ideal: 90)
-            TableColumn("Eklenme") { item in
+            TableColumn(L("Eklenme")) { item in
                 Text(Format.date(item.file?.addedAt ?? item.folder!.createdAt)).foregroundStyle(.secondary)
             }
             .width(min: 100, ideal: 150)
@@ -452,38 +452,38 @@ struct FilesView: View {
         let files = index.files.filter { ids.contains($0.id) }
         let folders = index.folders.filter { ids.contains($0.id) }
         if folders.count == 1, files.isEmpty, let folder = folders.first {
-            Button("Aç") { open(FileItem(folder: folder, file: nil)) }
-            Button("Yeniden Adlandır…") { renamingFolder = folder }
-            Menu("Renk") {
-                Button("Varsayılan") { setFolderColor(folder.id, nil) }
+            Button(L("Aç")) { open(FileItem(folder: folder, file: nil)) }
+            Button(L("Yeniden Adlandır…")) { renamingFolder = folder }
+            Menu(L("Renk")) {
+                Button(L("Varsayılan")) { setFolderColor(folder.id, nil) }
                 ForEach(AccentChoice.allCases) { c in Button(c.title) { setFolderColor(folder.id, c.rawValue) } }
             }
             moveMenu(files: [], folder: folder)
-            Button("Telefonda Göster…") { state.showOnPhone(folder: folder) }
+            Button(L("Telefonda Göster…")) { state.showOnPhone(folder: folder) }
             Divider()
-            Button("Çöp Kutusu'na Taşı", role: .destructive) { state.trashFolder(folder.id) }
+            Button(L("Çöp Kutusu'na Taşı"), role: .destructive) { state.trashFolder(folder.id) }
         } else if !files.isEmpty {
             if files.count == 1, let file = files.first {
-                Button("Önizle") { previewing = file }
-                Button("Geçici Olarak Aç") { state.openTemporarily(file) }
-                Button("Yeniden Adlandır…") { renamingFile = file }
+                Button(L("Önizle")) { previewing = file }
+                Button(L("Geçici Olarak Aç")) { state.openTemporarily(file) }
+                Button(L("Yeniden Adlandır…")) { renamingFile = file }
                 if isGlobal {
-                    Button("Bulunduğu Klasöre Git") {
+                    Button(L("Bulunduğu Klasöre Git")) {
                         search = ""; filter = .all; tagFilter = nil
                         state.currentFolder = file.folderID
                     }
                 }
                 Divider()
             }
-            Button("Etiketler…") { tagging = Set(files.map(\.id)) }
-            Button(files.allSatisfy(\.favorite) ? "Favorilerden Çıkar" : "Favorilere Ekle") { state.toggleFavorite(Set(files.map(\.id))) }
+            Button(L("Etiketler…")) { tagging = Set(files.map(\.id)) }
+            Button(files.allSatisfy(\.favorite) ? L("Favorilerden Çıkar") : L("Favorilere Ekle")) { state.toggleFavorite(Set(files.map(\.id))) }
             moveMenu(files: Set(files.map(\.id)), folder: nil)
-            Button(files.count == 1 ? "Dışa Aktar…" : "\(files.count) Dosyayı Dışa Aktar…") { state.exportFiles(files) }
+            Button(files.count == 1 ? L("Dışa Aktar…") : L("{0} Dosyayı Dışa Aktar…", files.count)) { state.exportFiles(files) }
             if files.contains(where: PhoneShareSession.isShareable) {
-                Button("Telefonda Göster…") { state.showOnPhone(files: files) }
+                Button(L("Telefonda Göster…")) { state.showOnPhone(files: files) }
             }
             Divider()
-            Button(files.count == 1 ? "Çöp Kutusu'na Taşı" : "\(files.count) Dosyayı Çöp Kutusu'na Taşı", role: .destructive) {
+            Button(files.count == 1 ? L("Çöp Kutusu'na Taşı") : L("{0} Dosyayı Çöp Kutusu'na Taşı", files.count), role: .destructive) {
                 state.trashFiles(Set(files.map(\.id)))
                 selection.subtract(files.map(\.id))
             }
@@ -497,8 +497,8 @@ struct FilesView: View {
             .filter { $0.deletedAt == nil && !excluded.contains($0.id) }
             .map { (id: $0.id, path: index.path(to: $0.id).map(\.name).joined(separator: " › ")) }
             .sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
-        return Menu("Taşı") {
-            Button("Dosyalar (en üst)") { move(files: files, folder: folder, to: nil) }
+        return Menu(L("Taşı")) {
+            Button(L("Dosyalar (en üst)")) { move(files: files, folder: folder, to: nil) }
             if !targets.isEmpty { Divider() }
             ForEach(targets, id: \.id) { target in
                 Button(target.path) { move(files: files, folder: folder, to: target.id) }
@@ -558,7 +558,7 @@ struct FolderTile: View {
                     .font(.callout.weight(.medium))
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
-                Text("\(count) dosya")
+                Text(LN("{0} dosya", count))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -595,9 +595,9 @@ struct TagEditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Etiketler").font(.headline)
+            Text(L("Etiketler")).font(.headline)
             if all.isEmpty {
-                Text("Henüz etiket yok. Aşağıdan ilk etiketini ekle.").font(.callout).foregroundStyle(.secondary)
+                Text(L("Henüz etiket yok. Aşağıdan ilk etiketini ekle.")).font(.callout).foregroundStyle(.secondary)
             } else {
                 FlowLayout(spacing: 6) {
                     ForEach(all, id: \.self) { tag in
@@ -617,15 +617,15 @@ struct TagEditorSheet: View {
                 }
             }
             HStack {
-                TextField("Yeni etiket", text: $newTag)
+                TextField(L("Yeni etiket"), text: $newTag)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(addTag)
-                Button("Ekle", action: addTag).disabled(newTag.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button(L("Ekle"), action: addTag).disabled(newTag.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             HStack {
                 Spacer()
-                Button("Vazgeç") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Kaydet") {
+                Button(L("Vazgeç")) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(L("Kaydet")) {
                     onSave(Array(tags))
                     dismiss()
                 }
@@ -807,32 +807,32 @@ struct FilePreviewSheet: View {
                     HStack(spacing: 2) {
                         Button { step(-1) } label: { Image(systemName: "chevron.left") }
                             .disabled(position == 0)
-                            .help("Önceki (←)")
+                            .help(L("Önceki (←)"))
                         Text("\(position + 1) / \(siblings.count)")
                             .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
                             .frame(minWidth: 56)
                         Button { step(1) } label: { Image(systemName: "chevron.right") }
                             .disabled(position == siblings.count - 1)
-                            .help("Sonraki (→)")
+                            .help(L("Sonraki (→)"))
                     }
                     .buttonStyle(.borderless)
                 }
                 Button {
                     dismiss()
                     state.openTemporarily(file)
-                } label: { Label("Geçici Aç", systemImage: "arrow.up.forward.app") }
+                } label: { Label(L("Geçici Aç"), systemImage: "arrow.up.forward.app") }
                 Button {
                     dismiss()
                     state.exportFiles([file])
-                } label: { Label("Dışa Aktar", systemImage: "square.and.arrow.up") }
-                Button("Kapat") { dismiss() }.keyboardShortcut(.cancelAction)
+                } label: { Label(L("Dışa Aktar"), systemImage: "square.and.arrow.up") }
+                Button(L("Kapat")) { dismiss() }.keyboardShortcut(.cancelAction)
             }
             .padding(14)
             Divider()
             Group {
                 switch content {
                 case .loading:
-                    ProgressView("Şifre çözülüyor…").frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ProgressView(L("Şifre çözülüyor…")).frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .image(let image):
                     Image(nsImage: image)
                         .resizable()
@@ -861,7 +861,7 @@ struct FilePreviewSheet: View {
                             }
                         }
                 case .unsupported(let reason):
-                    EmptyState(symbol: "eye.slash", title: "Uygulama içi önizleme yok", message: reason)
+                    EmptyState(symbol: "eye.slash", title: L("Uygulama içi önizleme yok"), message: reason)
                 }
             }
             .background(Color(nsColor: .textBackgroundColor).opacity(0.4))
@@ -953,7 +953,7 @@ struct FilePreviewSheet: View {
             let loader = EncryptedMediaLoader(reader: reader, contentType: file.utType.identifier)
             let asset = loader.makeAsset(fileExtension: (file.name as NSString).pathExtension)
             guard try await asset.load(.isPlayable) else {
-                content = .unsupported("Bu biçim (\(file.kind)) macOS tarafından oynatılamıyor. \"Geçici Aç\" ile başka bir oynatıcıda açabilirsin.")
+                content = .unsupported(L("Bu biçim ({0}) macOS tarafından oynatılamıyor. \"Geçici Aç\" ile başka bir oynatıcıda açabilirsin.", file.kind))
                 return
             }
             self.loader = loader
@@ -973,11 +973,11 @@ struct FilePreviewSheet: View {
         }
         let previewable = type.conforms(to: .image) || type.conforms(to: .pdf) || type.conforms(to: .text) || type.conforms(to: .sourceCode)
         guard previewable else {
-            content = .unsupported("Bu tür dosyalar (\(file.kind)) uygulama içinde gösterilemiyor. \"Geçici Aç\" ile varsayılan uygulamasında açabilirsin.")
+            content = .unsupported(L("Bu tür dosyalar ({0}) uygulama içinde gösterilemiyor. \"Geçici Aç\" ile varsayılan uygulamasında açabilirsin.", file.kind))
             return
         }
         guard file.size <= Self.maxInMemory else {
-            content = .unsupported("Dosya önizleme için çok büyük. \"Geçici Aç\" veya \"Dışa Aktar\" kullan.")
+            content = .unsupported(L("Dosya önizleme için çok büyük. \"Geçici Aç\" veya \"Dışa Aktar\" kullan."))
             return
         }
         do {
@@ -989,7 +989,7 @@ struct FilePreviewSheet: View {
             } else if let text = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) {
                 content = .text(text)
             } else {
-                content = .unsupported("Dosya içeriği okunamadı.")
+                content = .unsupported(L("Dosya içeriği okunamadı."))
             }
         } catch {
             content = .unsupported(error.localizedDescription)
@@ -1140,15 +1140,15 @@ struct RenameSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Yeniden adlandır").font(.headline)
-            TextField("Ad", text: $name)
+            Text(L("Yeniden adlandır")).font(.headline)
+            TextField(L("Ad"), text: $name)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 340)
                 .onSubmit(save)
             HStack {
                 Spacer()
-                Button("Vazgeç") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Kaydet", action: save).keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
+                Button(L("Vazgeç")) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(L("Kaydet"), action: save).keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
             }
         }
         .padding(20)

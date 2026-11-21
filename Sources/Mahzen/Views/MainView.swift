@@ -17,10 +17,10 @@ struct MainView: View {
                 if state.recoveredFromBackup {
                     HStack {
                         Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                        Text("Dizin dosyası okunamadı; son yedekten geri yüklendi. En son birkaç değişiklik eksik olabilir.")
+                        Text(L("Dizin dosyası okunamadı; son yedekten geri yüklendi. En son birkaç değişiklik eksik olabilir."))
                             .font(.callout)
                         Spacer()
-                        Button("Tamam") { state.recoveredFromBackup = false }.controlSize(.small)
+                        Button(L("Tamam")) { state.recoveredFromBackup = false }.controlSize(.small)
                     }
                     .padding(10)
                     .background(.orange.opacity(0.12))
@@ -49,7 +49,7 @@ private struct Sidebar: View {
 
     var body: some View {
         List(selection: selection) {
-            SwiftUI.Section("Kasa") {
+            SwiftUI.Section(L("Kasa")) {
                 row(.files, count: state.index.liveFiles.count)
                 row(.notes, count: state.index.notes.filter { $0.deletedAt == nil }.count)
                 row(.secrets, count: state.index.secrets.filter { $0.deletedAt == nil }.count)
@@ -65,7 +65,7 @@ private struct Sidebar: View {
                 VaultBadge(size: 34)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(state.prefs.displayName).font(.headline).lineLimit(1)
-                    Text(Format.size(state.index.liveFiles.reduce(0) { $0 + $1.size }) + " şifreli")
+                    Text(L("{0} şifreli", Format.size(state.index.liveFiles.reduce(0) { $0 + $1.size })))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -76,12 +76,12 @@ private struct Sidebar: View {
         }
         .safeAreaInset(edge: .bottom) {
             Button(action: state.lock) {
-                Label("Kilitle", systemImage: "lock.fill")
+                Label(L("Kilitle"), systemImage: "lock.fill")
                     .frame(maxWidth: .infinity)
                     .frame(height: 22)
             }
             .controlSize(.large)
-            .help("Kasayı kilitle (⌘L)")
+            .help(L("Kasayı kilitle (⌘L)"))
             .padding(12)
             .disabled(state.task != nil)
         }

@@ -1,3 +1,4 @@
+import MahzenCore
 import SwiftUI
 
 /// QR kodu ve paylaşımın durumunu gösteren pencere. Kapatılınca paylaşım da durur.
@@ -8,16 +9,16 @@ struct PhoneShareSheet: View {
     var body: some View {
         VStack(spacing: 18) {
             VStack(spacing: 4) {
-                Text("Telefonda Göster").font(.title2.weight(.semibold))
+                Text(L("Telefonda Göster")).font(.title2.weight(.semibold))
                 Text(summary).foregroundStyle(.secondary)
             }
             content
             Divider()
             HStack {
-                Label("Uçtan uca şifreli · internete çıkmaz", systemImage: "lock.fill")
+                Label(L("Uçtan uca şifreli · internete çıkmaz"), systemImage: "lock.fill")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Button(isRunning ? "Durdur" : "Kapat") { state.stopPhoneShare() }
+                Button(isRunning ? L("Durdur") : L("Kapat")) { state.stopPhoneShare() }
                     .keyboardShortcut(.cancelAction)
                     .controlSize(.large)
             }
@@ -32,8 +33,8 @@ struct PhoneShareSheet: View {
     }
 
     private var summary: String {
-        let parts = [session.photoCount > 0 ? "\(session.photoCount) fotoğraf" : nil,
-                     session.videoCount > 0 ? "\(session.videoCount) video" : nil].compactMap { $0 }
+        let parts = [session.photoCount > 0 ? LN("{0} fotoğraf", session.photoCount) : nil,
+                     session.videoCount > 0 ? LN("{0} video", session.videoCount) : nil].compactMap { $0 }
         return "\(session.title) · " + parts.joined(separator: ", ")
     }
 
@@ -41,7 +42,7 @@ struct PhoneShareSheet: View {
     private var content: some View {
         switch session.phase {
         case .starting:
-            ProgressView("Başlatılıyor…").frame(height: 300)
+            ProgressView(L("Başlatılıyor…")).frame(height: 300)
         case .running(let url):
             VStack(spacing: 14) {
                 if let image = PhoneShareSession.qrImage(for: url) {
@@ -51,12 +52,12 @@ struct PhoneShareSheet: View {
                         .frame(width: 240, height: 240)
                         .padding(12)
                         .background(.white, in: RoundedRectangle(cornerRadius: 14))
-                        .accessibilityLabel("Paylaşım QR kodu")
+                        .accessibilityLabel(L("Paylaşım QR kodu"))
                 }
                 VStack(spacing: 6) {
-                    Text("iPhone'un kamerasıyla okutun")
+                    Text(L("iPhone'un kamerasıyla okutun"))
                         .font(.headline)
-                    Text("Telefon bu Mac ile aynı Wi-Fi ağında olmalı. Dosyalar şifreli gelir, anahtar yalnızca bu QR kodda bulunur.")
+                    Text(L("Telefon bu Mac ile aynı Wi-Fi ağında olmalı. Dosyalar şifreli gelir, anahtar yalnızca bu QR kodda bulunur."))
                         .font(.callout).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
@@ -64,21 +65,21 @@ struct PhoneShareSheet: View {
                 HStack(spacing: 16) {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let left = max(0, Int(session.expiresAt.timeIntervalSince(context.date)))
-                        Label(String(format: "%d:%02d kaldı", left / 60, left % 60), systemImage: "timer")
+                        Label(L("{0} kaldı", String(format: "%d:%02d", left / 60, left % 60)), systemImage: "timer")
                             .monospacedDigit()
                     }
-                    Label(session.devices.isEmpty ? "Henüz bağlanan yok" : "\(session.devices.count) cihaz bağlandı",
+                    Label(session.devices.isEmpty ? L("Henüz bağlanan yok") : LN("{0} cihaz bağlandı", session.devices.count),
                           systemImage: session.devices.isEmpty ? "iphone.slash" : "iphone")
                         .foregroundStyle(session.devices.isEmpty ? Color.secondary : Color.green)
                 }
                 .font(.callout)
             }
         case .failed(let message):
-            ContentUnavailableView("Paylaşım başlatılamadı", systemImage: "wifi.exclamationmark", description: Text(message))
+            ContentUnavailableView(L("Paylaşım başlatılamadı"), systemImage: "wifi.exclamationmark", description: Text(message))
                 .frame(height: 300)
         case .stopped:
-            ContentUnavailableView("Paylaşım sona erdi", systemImage: "checkmark.circle",
-                                   description: Text("Telefondaki sayfa artık açılmaz. Yeniden göstermek için yeni bir QR kod oluşturun."))
+            ContentUnavailableView(L("Paylaşım sona erdi"), systemImage: "checkmark.circle",
+                                   description: Text(L("Telefondaki sayfa artık açılmaz. Yeniden göstermek için yeni bir QR kod oluşturun.")))
                 .frame(height: 300)
         }
     }

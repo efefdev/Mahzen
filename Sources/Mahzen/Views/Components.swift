@@ -134,7 +134,7 @@ struct RevealableField: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .help(reveal ? "Gizle" : "Göster")
+            .help(reveal ? L("Gizle") : L("Göster"))
         }
         .padding(.horizontal, 12)
         .frame(height: 36)
@@ -168,7 +168,7 @@ struct ProgressOverlay: View {
                         .frame(maxWidth: 300)
                 }
                 if task.cancellable {
-                    Button("Durdur") { state.cancelTask() }.controlSize(.small)
+                    Button(L("Durdur")) { state.cancelTask() }.controlSize(.small)
                 }
             }
             .padding(28)
@@ -226,12 +226,12 @@ struct FieldRow<Value: View>: View {
             Spacer()
             if let copyValue, !copyValue.isEmpty {
                 Button {
-                    state.copy(copyValue, sensitive: sensitive, label: "\(label) kopyalandı")
+                    state.copy(copyValue, sensitive: sensitive, label: L("{0} kopyalandı", label))
                 } label: {
                     Image(systemName: "doc.on.doc")
                 }
                 .buttonStyle(.borderless)
-                .help("Kopyala")
+                .help(L("Kopyala"))
             }
         }
         .padding(.vertical, 10)

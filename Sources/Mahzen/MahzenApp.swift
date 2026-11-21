@@ -1,4 +1,5 @@
 import AppKit
+import MahzenCore
 import SwiftUI
 
 @main
@@ -16,33 +17,33 @@ struct MahzenApp: App {
         .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .newItem) {}
-            CommandMenu("Kasa") {
-                Button("Kilitle") { state.lock() }
+            CommandMenu(L("Kasa")) {
+                Button(L("Kilitle")) { state.lock() }
                     .keyboardShortcut("l", modifiers: .command)
                     .disabled(state.phase != .unlocked)
                 Divider()
-                Button("Dosya Ekle…") {
+                Button(L("Dosya Ekle…")) {
                     state.section = .files
                     state.presentImportPanel()
                 }
                 .keyboardShortcut("o", modifiers: .command)
                 .disabled(state.phase != .unlocked)
-                Button("Yeni Not") {
+                Button(L("Yeni Not")) {
                     state.section = .notes
                     state.addNote()
                 }
                 .keyboardShortcut("n", modifiers: .command)
                 .disabled(state.phase != .unlocked)
-                Button("Anahtar Dosyası İçe Aktar…") { state.importKeyfile() }
+                Button(L("Anahtar Dosyası İçe Aktar…")) { state.importKeyfile() }
                     .disabled(state.phase != .locked)
                 Divider()
-                Button("Şimdi Yedekle") { state.backupNow() }
+                Button(L("Şimdi Yedekle")) { state.backupNow() }
                     .keyboardShortcut("b", modifiers: .command)
                     .disabled(state.phase != .unlocked || state.task != nil)
-                Button("Bütünlük Taraması…") { state.runIntegrityScan() }
+                Button(L("Bütünlük Taraması…")) { state.runIntegrityScan() }
                     .disabled(state.phase != .unlocked || state.task != nil)
                 Divider()
-                Button("Yeni Parola Kaydı") {
+                Button(L("Yeni Parola Kaydı")) {
                     state.section = .secrets
                     state.newSecretRequested = true
                 }

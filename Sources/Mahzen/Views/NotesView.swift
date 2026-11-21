@@ -27,23 +27,23 @@ struct NotesView: View {
                 } else {
                     EmptyState(
                         symbol: "note.text",
-                        title: notes.isEmpty && search.isEmpty ? "Henüz not yok" : "Bir not seç",
-                        message: "Notların başlıkları ve içerikleriyle birlikte şifrelenir.",
-                        actionTitle: "Yeni Not",
+                        title: notes.isEmpty && search.isEmpty ? L("Henüz not yok") : L("Bir not seç"),
+                        message: L("Notların başlıkları ve içerikleriyle birlikte şifrelenir."),
+                        actionTitle: L("Yeni Not"),
                         action: newNote
                     )
                 }
             }
             .frame(minWidth: 380, maxWidth: .infinity, maxHeight: .infinity)
         }
-        .navigationTitle("Notlar")
-        .navigationSubtitle("\(state.index.notes.filter { $0.deletedAt == nil }.count) not")
-        .searchable(text: $search, placement: .toolbar, prompt: "Notlarda ara")
+        .navigationTitle(L("Notlar"))
+        .navigationSubtitle(LN("{0} not", state.index.notes.filter { $0.deletedAt == nil }.count))
+        .searchable(text: $search, placement: .toolbar, prompt: L("Notlarda ara"))
         .toolbar {
             ToolbarItemGroup {
                 if let note = selected {
                     Menu {
-                        Button("Renk yok") { state.updateNote(note.id) { $0.color = nil } }
+                        Button(L("Renk yok")) { state.updateNote(note.id) { $0.color = nil } }
                         Divider()
                         ForEach(AccentChoice.allCases) { choice in
                             Button {
@@ -53,24 +53,24 @@ struct NotesView: View {
                             }
                         }
                     } label: {
-                        Label("Renk", systemImage: "paintpalette")
+                        Label(L("Renk"), systemImage: "paintpalette")
                     }
-                    .help("Not rengi")
+                    .help(L("Not rengi"))
                     Button {
                         state.updateNote(note.id) { $0.pinned.toggle() }
                     } label: {
-                        Label(note.pinned ? "Sabitlemeyi kaldır" : "Sabitle", systemImage: note.pinned ? "pin.slash" : "pin")
+                        Label(note.pinned ? L("Sabitlemeyi kaldır") : L("Sabitle"), systemImage: note.pinned ? "pin.slash" : "pin")
                     }
-                    .help(note.pinned ? "Sabitlemeyi kaldır" : "Üste sabitle")
-                    Button { confirmDelete = true } label: { Label("Sil", systemImage: "trash") }
-                        .help("Notu sil")
+                    .help(note.pinned ? L("Sabitlemeyi kaldır") : L("Üste sabitle"))
+                    Button { confirmDelete = true } label: { Label(L("Sil"), systemImage: "trash") }
+                        .help(L("Notu sil"))
                 }
-                Button(action: newNote) { Label("Yeni Not", systemImage: "square.and.pencil") }
-                    .help("Yeni not (⌘N)")
+                Button(action: newNote) { Label(L("Yeni Not"), systemImage: "square.and.pencil") }
+                    .help(L("Yeni not (⌘N)"))
             }
         }
-        .confirmationDialog("Bu not Çöp Kutusu'na taşınsın mı?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Çöp Kutusu'na Taşı", role: .destructive) {
+        .confirmationDialog(L("Bu not Çöp Kutusu'na taşınsın mı?"), isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button(L("Çöp Kutusu'na Taşı"), role: .destructive) {
                 if let id = selectedID { state.deleteNote(id) }
                 selectedID = notes.first?.id
             }
@@ -111,7 +111,7 @@ private struct NoteRow: View {
                 .padding(.top, 6)
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
-                    Text(note.title.isEmpty ? "Başlıksız not" : note.title)
+                    Text(note.title.isEmpty ? L("Başlıksız not") : note.title)
                         .font(.headline)
                         .lineLimit(1)
                         .foregroundStyle(note.title.isEmpty ? .secondary : .primary)
@@ -132,7 +132,7 @@ private struct NoteRow: View {
 
     private var preview: String {
         let text = note.body.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\n", with: " ")
-        return text.isEmpty ? "Ek metin yok" : text
+        return text.isEmpty ? L("Ek metin yok") : text
     }
 }
 
@@ -153,13 +153,13 @@ private struct NoteEditor: View {
     var body: some View {
         let design = NoteFontDesign(rawValue: state.prefs.noteFontDesign)?.design ?? .default
         VStack(alignment: .leading, spacing: 0) {
-            TextField("Başlık", text: title)
+            TextField(L("Başlık"), text: title)
                 .textFieldStyle(.plain)
                 .font(.system(size: state.prefs.noteFontSize + 11, weight: .bold, design: design))
                 .padding(.horizontal, 28)
                 .padding(.top, 24)
             if let note {
-                Text("Düzenlendi: \(Format.date(note.updatedAt))  ·  \(note.body.count) karakter")
+                Text(L("Düzenlendi: {0}", Format.date(note.updatedAt)) + "  ·  " + LN("{0} karakter", note.body.count))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 28)

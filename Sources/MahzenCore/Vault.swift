@@ -22,9 +22,9 @@ public struct KDFParams: Codable, Sendable, Equatable {
 
     public var summary: String {
         if algorithm == Self.argon2id, let memoryKiB, let parallelism {
-            return "Argon2id · \(memoryKiB / 1024) MB · \(iterations) geçiş · \(parallelism) iş parçacığı"
+            return L("Argon2id · {0} MB · {1} geçiş · {2} iş parçacığı", memoryKiB / 1024, iterations, parallelism)
         }
-        return "PBKDF2-HMAC-SHA512 · \(iterations.formatted()) tur"
+        return L("PBKDF2-HMAC-SHA512 · {0} tur", iterations.formatted())
     }
 }
 
@@ -140,7 +140,7 @@ public final class Vault: @unchecked Sendable {
         do {
             header = try decoder().decode(VaultHeader.self, from: data)
         } catch {
-            throw VaultError.corrupted("vault.json okunamadı")
+            throw VaultError.corrupted(L("vault.json okunamadı"))
         }
         guard header.format == "mahzen-vault" else { throw VaultError.notAVault }
         guard header.version <= currentVersion else { throw VaultError.unsupportedVersion(header.version) }
@@ -169,7 +169,7 @@ public final class Vault: @unchecked Sendable {
     /// Anahtar dosyası zorunluluğunu açar (`newKeyfile` dolu) veya kapatır (`nil`). Parola doğrulanır.
     /// Ana anahtar değişmez; dosyaların yeniden şifrelenmesi gerekmez.
     public func setKeyfile(_ newKeyfile: Data?, password: String, kdf: KDFSettings = .recommended) throws {
-        if let newKeyfile, newKeyfile.count < 32 { throw VaultError.corrupted("anahtar dosyası çok kısa") }
+        if let newKeyfile, newKeyfile.count < 32 { throw VaultError.corrupted(L("anahtar dosyası çok kısa")) }
         _ = try Vault.unlock(at: folder, password: password, keyfile: keyfile)
         try rewrap(password: password, kdf: kdf, keyfile: newKeyfile)
         keyfile = newKeyfile
@@ -231,12 +231,12 @@ public final class Vault: @unchecked Sendable {
     }
 
     private func readIndex(_ url: URL) throws -> VaultIndex {
-        guard let data = try? Data(contentsOf: url) else { throw VaultError.corrupted("dizin dosyası bulunamadı") }
+        guard let data = try? Data(contentsOf: url) else { throw VaultError.corrupted(L("dizin dosyası bulunamadı")) }
         let plain: Data
         do {
             plain = try Crypto.open(data, key: indexKey, aad: indexAAD)
         } catch {
-            throw VaultError.corrupted("dizin doğrulanamadı")
+            throw VaultError.corrupted(L("dizin doğrulanamadı"))
         }
         return try Self.decoder().decode(VaultIndex.self, from: plain)
     }
@@ -328,5 +328,15 @@ public final class Vault: @unchecked Sendable {
     • Klasördeki dosyaları elle değiştirmeyin, silmeyin veya yeniden adlandırmayın.
     • Yedek almak için bu klasörün tamamını başka bir diske kopyalayın.
     • Parola unutulursa veriler kurtarılamaz; parolanın bir kopyasını güvenli bir yerde saklayın.
+
+    ---
+
+    This folder is a Mahzen encrypted vault.
+
+    • Everything in it (files, file names, notes, passwords) is encrypted with AES-256-GCM.
+    • To open it, use the Mahzen app and the vault password.
+    • Don't edit, delete, or rename the files in this folder by hand.
+    • To back it up, copy this entire folder to another disk.
+    • If the password is forgotten, the data can't be recovered; keep a copy of the password somewhere safe.
     """
 }

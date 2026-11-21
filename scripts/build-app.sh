@@ -28,6 +28,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Mahzen"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"
+# Dil klasörleri: sistem menüleri ve izin metinleri kullanıcının diline göre gelir.
+cp -R Resources/tr.lproj Resources/en.lproj "$APP/Contents/Resources/"
 
 xattr -cr "$APP"
 echo "→ İmzalanıyor (ad-hoc)"
