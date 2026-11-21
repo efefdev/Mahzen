@@ -34,6 +34,9 @@ cd Mahzen/linux
 ./install.sh
 ```
 
+Git olmadan: [son sürümden](https://github.com/efefdev/Mahzen/releases/latest) `Mahzen-<sürüm>-Linux.tar.gz` dosyasını indirip
+açın ve açılan klasörde `./install.sh` çalıştırın.
+
 `install.sh` bağımlılıkları dağıtımın paket yöneticisiyle (apt, dnf, pacman, zypper) kurar ve uygulamayı
 `~/.local` altına yerleştirir; yönetici parolası yalnızca bağımlılıklar için istenir. Ardından Mahzen uygulama
 menüsünde görünür, terminalden de `mahzen` ile açılır. Bağımlılıklar zaten kuruluysa: `./install.sh --no-deps`.
