@@ -1,32 +1,32 @@
-**Türkçe** · [English](README.en.md)
+**English** · [Türkçe](README.tr.md)
 
-# Mahzen — Linux sürümü
+# Mahzen — Linux version
 
-Mahzen'in Linux uygulaması: GTK 4 + libadwaita arayüzü, Python ile yazılmış şifreleme çekirdeği.
-**macOS sürümüyle aynı kasa biçimini kullanır.** Bir SSD'deki `Mahzen Kasası` klasörü hem Mac'te hem Linux'ta açılır;
-iki uygulama da aynı kasaya dosya, not ve parola ekleyebilir.
+The Linux app for Mahzen: a GTK 4 + libadwaita interface with an encryption core written in Python.
+**It uses the same vault format as the macOS version.** A `Mahzen Kasası` folder on an SSD opens on both a Mac and
+Linux; both apps can add files, notes and passwords to the same vault.
 
 <p align="center">
-  <img src="../Resources/Logo/mahzen-logo.svg" width="128" alt="Mahzen logosu">
+  <img src="../Resources/Logo/mahzen-logo.svg" width="128" alt="Mahzen logo">
 </p>
 
 <p align="center">
-  <img src="../docs/ekran/linux/kilit.png" width="49%" alt="Kilit ekranı">
-  <img src="../docs/ekran/linux/dosyalar.png" width="49%" alt="Dosyalar">
+  <img src="../docs/ekran/linux/kilit.png" width="49%" alt="Lock screen">
+  <img src="../docs/ekran/linux/dosyalar.png" width="49%" alt="Files">
 </p>
 <p align="center">
-  <img src="../docs/ekran/linux/notlar.png" width="49%" alt="Notlar">
-  <img src="../docs/ekran/linux/parolalar.png" width="49%" alt="Parolalar">
+  <img src="../docs/ekran/linux/notlar.png" width="49%" alt="Notes">
+  <img src="../docs/ekran/linux/parolalar.png" width="49%" alt="Passwords">
 </p>
 <p align="center">
-  <img src="../docs/ekran/linux/ayarlar.png" width="49%" alt="Ayarlar: yanlış parola sınırı">
-  <img src="../docs/ekran/linux/acik-dosyalar.png" width="49%" alt="Açık tema">
+  <img src="../docs/ekran/linux/ayarlar.png" width="49%" alt="Settings: wrong-password limit">
+  <img src="../docs/ekran/linux/acik-dosyalar.png" width="49%" alt="Light theme">
 </p>
 
-## Kurulum
+## Installation
 
-Gereksinimler: Python 3.10+, GTK 4, **libadwaita 1.5+**, PyGObject, `cryptography`, `argon2-cffi`.
-Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch ve openSUSE Tumbleweed'de bunların hepsi dağıtım paketi olarak gelir.
+Requirements: Python 3.10+, GTK 4, **libadwaita 1.5+**, PyGObject, `cryptography`, `argon2-cffi`.
+On Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch and openSUSE Tumbleweed, all of these are available as distribution packages.
 
 ```bash
 git clone https://github.com/efefdev/Mahzen.git
@@ -34,162 +34,172 @@ cd Mahzen/linux
 ./install.sh
 ```
 
-`install.sh` bağımlılıkları dağıtımın paket yöneticisiyle (apt, dnf, pacman, zypper) kurar ve uygulamayı
-`~/.local` altına yerleştirir; yönetici parolası yalnızca bağımlılıklar için istenir. Ardından Mahzen uygulama
-menüsünde görünür, terminalden de `mahzen` ile açılır. Bağımlılıklar zaten kuruluysa: `./install.sh --no-deps`.
-Kaldırmak için `./uninstall.sh` (kasalara ve anahtar dosyalarına dokunmaz).
+`install.sh` installs the dependencies with the distribution's package manager (apt, dnf, pacman, zypper) and places
+the app under `~/.local`; the administrator password is requested only for the dependencies. After that Mahzen appears
+in the application menu and can also be started from a terminal with `mahzen`. If the dependencies are already
+installed: `./install.sh --no-deps`. To remove it, run `./uninstall.sh` (it does not touch vaults or keyfiles).
 
-### Kurmadan, diskten çalıştırma (taşınabilir)
+### Running from a disk without installing (portable)
 
 ```bash
 ./mahzen.sh
 ```
 
-`mahzen.sh` kasayı kendi klasöründe ya da bir üst klasörde `Mahzen Kasası` adıyla arar. Böylece bir SSD'nin kökünde
-şöyle bir düzen kurulabilir:
+`mahzen.sh` looks for the vault under the name `Mahzen Kasası` in its own folder or one folder up. That makes a layout
+like this possible at the root of an SSD:
 
 ```
 SSD/
-├── Mahzen.app        macOS uygulaması
-├── Mahzen-Linux/     bu klasörün (linux/) kopyası → ./mahzen.sh
-└── Mahzen Kasası/    ortak şifreli kasa
+├── Mahzen.app        macOS app
+├── Mahzen-Linux/     a copy of this folder (linux/) → ./mahzen.sh
+└── Mahzen Kasası/    shared encrypted vault
 ```
 
-Linux bilgisayarda yalnızca bağımlılıkların kurulu olması gerekir (`./install.sh` yerine dağıtımın paketleri).
+The Linux computer only needs the dependencies installed (the distribution's packages instead of `./install.sh`).
 
-## Özellikler
+## Features
 
-macOS sürümündeki özelliklerin çoğu Linux'ta da var:
+Most of the features of the macOS version are available on Linux too:
 
-- **Dosyalar:** sürükle-bırak veya dosya seçiciyle ekleme (klasör yapısı korunur), iç içe klasörler, etiketler,
-  favoriler, arama, ızgara/liste görünümü, kasa içinde sürükleyerek taşıma, görsel ve metin önizleme
-  (← / → tuşları ya da yatay kaydırmayla önceki/sonraki dosya, "n / toplam" sayacı), ızgarada boş alandan
-  sürükleyerek dikdörtgenle toplu seçim (Ctrl/Shift ile mevcut seçime ekler; kenara gelince ızgara kendiliğinden
-  kayar), geçici açma, dışa aktarma, mükerrer dosya tespiti, ekledikten sonra orijinalleri çöpe taşıma önerisi
-- **Telefonda Göster:** seçili fotoğraf ve videoları ya da bir klasörü aynı Wi-Fi'deki telefonda QR kodla,
-  uçtan uca şifreli gösterir (aşağıda)
-- **Notlar:** renkli, sabitlenebilir notlar; yazı tipi ve boyutu ayarlanabilir
-- **Parolalar:** hesap, kart, Wi-Fi, sunucu kayıtları; parola üretici ve güç ölçer; kopyalanan parola seçilen süre
-  sonunda panodan silinir
-- **Güvenlik:** hareketsizlikte, uykuda, ekran kilitlenince ve kasa diski çıkarılınca otomatik kilit;
-  isteğe bağlı anahtar dosyası; isteğe bağlı **yanlış parola sınırı** (art arda N yanlış parolada kasa kalıcı olarak
-  silinir; Ayarlar'dan açılıp kapatılır, sayı 3–99 arası; ayrıntılar ana [README](../README.md#yanlış-parola-sınırı)'de);
-  eski (PBKDF2) kasaları açılışta Argon2id'ye yükseltme
-- **Bakım:** çöp kutusu (ayarlanabilir süre), artımlı yedek ve hatırlatma, bütünlük taraması ve yedekten geri yükleme
-- **Görünüm:** varsayılan olarak turuncu-siyah; açık / koyu / sistem teması, 9 vurgu rengi (ayarlar kasada saklanır, iki sistemde ortaktır)
-- **Dil:** Sistem / Türkçe / English, Ayarlar'dan seçilir (sistem dili Türkçe değilse uygulama İngilizce açılır)
+- **Files:** add by drag and drop or with the file chooser (folder structure is preserved), nested folders, tags,
+  favorites, search, grid/list view, move by dragging inside the vault, image and text preview
+  (previous/next file with ← / → or a horizontal scroll, with an "n / total" counter), rubber-band selection by
+  dragging from an empty spot in the grid (Ctrl/Shift adds to the current selection; the grid scrolls by itself at
+  the edge), temporary opening, export, duplicate detection, an offer to move the originals to the trash after adding
+- **Show on Phone:** shows the selected photos and videos, or a folder, on a phone on the same Wi-Fi through a QR
+  code, end-to-end encrypted (see below)
+- **Notes:** colored, pinnable notes; adjustable font and size
+- **Passwords:** account, card, Wi-Fi and server entries; password generator and strength meter; a copied password is
+  cleared from the clipboard after the time you choose
+- **Security:** auto-lock when idle, on sleep, when the screen locks and when the vault's disk is removed;
+  optional keyfile; optional **wrong-password limit** (after N consecutive wrong passwords the vault is permanently
+  erased; turned on and off in Settings, 3–99 attempts; details in the main [README](../README.md#wrong-password-limit));
+  upgrading old (PBKDF2) vaults to Argon2id when they are opened
+- **Maintenance:** trash (adjustable retention), incremental backup and reminder, integrity check and restore from backup
+- **Appearance:** orange-and-black by default; light / dark / system theme, 9 accent colors (settings are stored in the vault and shared by both systems)
+- **Language:** System / Türkçe / English, chosen in Settings (if the system language isn't Turkish, the app opens in English)
 
-### Telefonda Göster
+### Show on Phone
 
-Fotoğraf/video seçip sağ tıklayın (ya da seçim çubuğundaki telefon düğmesi) → **Telefonda Göster…**; bir klasörde
-aynı komut klasörü alt klasörleriyle birlikte gösterir. Açılan penceredeki QR kodu telefonun kamerasıyla okutun.
-Telefonda ızgara, tam ekran, kaydırma, yakınlaştırma ve video oynatma sunan bir sayfa açılır; uygulama kurmak gerekmez.
+Select photos/videos and right-click (or use the phone button in the selection bar) → **Show on Phone…**; on a folder
+the same command shows the folder together with its subfolders. Scan the QR code in the window with the phone's
+camera. A page opens on the phone with a grid, full screen, swiping, zooming and video playback; nothing needs to be
+installed.
 
-- **Uçtan uca şifreli:** dosyalar her paylaşım için üretilen 256 bitlik bir anahtarla (ChaCha20-Poly1305) şifreli
-  gider. Anahtar yalnızca QR koddaki adresin `#` kısmındadır; tarayıcı bu kısmı sunucuya göndermez, ağda yalnızca
-  şifreli bayt dolaşır. Dosya adları da şifreli listeyle gider. Şifre çözme telefondaki tarayıcıda yapılır.
-- **Yalnızca yerel ağ:** bilgisayar, Wi-Fi (ya da kablolu) yerel adresinde rastgele bir portta dinler; internete
-  çıkmaz. Adres tahmin edilemeyen bir jeton içerir, başka her istek reddedilir.
-- **Süreli:** paylaşım 10 dakika sonra, **Durdur**'a basınca, pencere kapanınca ya da kasa kilitlenince hemen kapanır.
-  Telefondaki sayfa paylaşım bitince çözülmüş içeriği siler. Pencerede kalan süre ve bağlanan cihaz sayısı görünür.
-- Akış biçimi ve telefon sayfası macOS sürümüyle aynıdır.
+- **End-to-end encrypted:** files travel encrypted with a 256-bit key created for each share (ChaCha20-Poly1305).
+  The key is only in the `#` part of the address in the QR code; the browser never sends that part to the server, so
+  only encrypted bytes cross the network. File names travel in the encrypted list too. Decryption happens in the
+  phone's browser.
+- **Local network only:** the computer listens on a random port of its Wi-Fi (or wired) local address; nothing goes
+  to the internet. The address contains an unguessable token; every other request is refused.
+- **Time-limited:** sharing ends after 10 minutes, as soon as you press **Stop**, close the window or the vault
+  locks. The page on the phone deletes the decrypted content when sharing ends. The window shows the time left and
+  how many devices have connected.
+- The stream format and the phone page are the same as in the macOS version.
+- **In a virtual machine:** if Linux runs in a virtual machine with NAT networking (the default in VirtualBox, UTM,
+  VMware, Parallels, virt-manager and WSL2), the address stays on a private network inside the host and the phone
+  can't reach it. Mahzen detects this and shows a warning in the sharing window. Fix: switch the virtual machine's
+  network to bridged mode; on WSL2, set `networkingMode=mirrored` in `.wslconfig`.
 
-Telefon sayfayı açamıyorsa: iki cihaz aynı ağda mı, ağ "misafir/istemci yalıtımı" kullanıyor mu, bilgisayarın
-güvenlik duvarı gelen bağlantıları engelliyor mu bakın (ör. `ufw` açıksa geçici olarak yerel ağdan gelen
-bağlantılara izin verin; Fedora'nın varsayılan *FedoraWorkstation* bölgesi yüksek portlara zaten izin verir).
+If the phone can't open the page: check that both devices are on the same network, whether the network uses
+"guest/client isolation", and whether the computer's firewall blocks incoming connections (e.g. if `ufw` is enabled,
+temporarily allow incoming connections from the local network; Fedora's default *FedoraWorkstation* zone already
+allows high ports).
 
-### Linux'a özgü farklar
+### Linux-specific differences
 
-| Konu | Linux'ta |
+| Topic | On Linux |
 |---|---|
-| Video ve ses | Uygulama içinde oynatılmaz; "Geçici Olarak Aç" ile sistemin oynatıcısında açılır. |
-| PDF ve belge önizleme | Aynı şekilde geçici açma ile. Uygulama içi önizleme görseller ve metin dosyaları içindir. |
-| Küçük resimler | Yalnızca görseller için üretilir (macOS ayrıca PDF/video için de üretir). |
-| Geçici açma | Şifresiz kopya `$XDG_RUNTIME_DIR` altına (oturuma özel, çoğu sistemde bellekte) yazılır; kilitte ve çıkışta silinir. |
-| Ekran görüntüsünden gizleme | Wayland/X11'de uygulamalar bunu engelleyemez; bu ayar Linux'ta etkisizdir. |
-| Anahtar dosyaları | `~/.local/share/Mahzen/Anahtarlar` (izinler 700/600). Mac'teki anahtar dosyasını taşımak için Mac'te "Dışa aktar", Linux'ta kilit ekranındaki menüden "Anahtar Dosyası İçe Aktar". |
+| Video and audio | Not played inside the app; opened in the system's player with "Open Temporarily". |
+| PDF and document preview | Likewise, through temporary opening. In-app preview is for images and text files. |
+| Thumbnails | Generated for images only (macOS also generates them for PDFs/videos). |
+| Temporary opening | The unencrypted copy is written under `$XDG_RUNTIME_DIR` (per-session, in memory on most systems); it is deleted on lock and on exit. |
+| Hiding from screenshots | Apps cannot prevent this on Wayland/X11; the setting has no effect on Linux. |
+| Keyfiles | `~/.local/share/Mahzen/Anahtarlar` (permissions 700/600). To bring over a keyfile from a Mac, use "Export" on the Mac and "Import Keyfile" from the menu on the Linux lock screen. |
 
-## Test etme (ilk kurulumdan sonra)
+## Trying it out (after the first install)
 
-Gerçek kasanızla değil, **deneme amaçlı yeni bir kasayla** başlayın:
+Start with **a new vault made for testing**, not your real one:
 
-1. `mahzen` → **Yeni Kasa Oluştur** → konum olarak örneğin `~/Mahzen Deneme` seçin, bir parola belirleyin.
-   Kasa oluşturma birkaç saniye sürer (Argon2id 1 GB bellek kullanır).
-2. **Dosyalar:** birkaç görsel ve bir klasör sürükleyip bırakın ya da `+` ile ekleyin. Küçük resimler oluşmalı,
-   klasör yapısı korunmalı. Bir görsele ve bir `.txt` dosyasına çift tıklayıp önizleyin; birini **Geçici Olarak Aç**,
-   birini **Dışa Aktar** ile deneyin.
-3. **Notlar ve Parolalar:** bir not ve bir parola kaydı ekleyin; parola üreticiyi ve **Kopyala**'yı deneyin
-   (kopyalanan parola 30 sn sonra panodan silinmeli).
-4. **Kilit:** `Ctrl+L` ile kilitleyin, yanlış sonra doğru parola girin. Ekran kilidinde/uykuda da kilitlenmeli.
-5. **Yanlış parola sınırı:** Ayarlar → *Yanlış parola sınırı*'nı açın, deneme sayısını 3 yapın, kilitleyin ve
-   3 kez yanlış parola girin: kasa kalıcı olarak silinmeli. (Bunu yalnızca deneme kasasında yapın!)
-6. **macOS ile ortak kasa (isteğe bağlı):** Mac'te oluşturulmuş bir kasayı (ör. SSD'deki `Mahzen Kasası`)
-   kilit ekranındaki menüden **Başka Kasa Aç…** ile seçin; Mac'teki dosya, not ve parolalar görünmeli.
-   Linux'ta eklediğiniz bir dosya da Mac'te görünmeli.
-7. **Yedek ve bakım:** Ayarlar'dan bir yedek konumu seçip **Şimdi Yedekle**, ardından **Bütünlük taraması**.
-8. **Önizlemede gezinme ve toplu seçim:** bir görseli önizleyip ← / → ile (ya da dokunmatik yüzeyde iki parmakla
-   yatay kaydırarak) diğer dosyalara geçin; başlıktaki sayaç "n / toplam" göstermeli. Izgarada boş bir yerden
-   sürükleyerek birkaç öğeyi dikdörtgenle seçin, Ctrl basılıyken bir dikdörtgen daha çizip seçime ekleyin;
-   pencerenin altına doğru sürüklerken ızgara kendiliğinden kaymalı.
-9. **Telefonda Göster:** birkaç görsel seçip sağ tık → **Telefonda Göster…**; QR kodu aynı Wi-Fi'deki telefonla
-   okutun. Görseller telefonda açılmalı, penceredeki cihaz sayısı artmalı; **Durdur**'dan sonra en geç yarım
-   dakika içinde telefondaki sayfa paylaşımın kapandığını göstermeli ve içeriği silmeli.
+1. `mahzen` → **Create New Vault** → pick a location such as `~/Mahzen Test` and set a password.
+   Creating the vault takes a few seconds (Argon2id uses 1 GB of memory).
+2. **Files:** drag and drop a few images and a folder, or add them with `+`. Thumbnails should appear and the
+   folder structure should be preserved. Double-click an image and a `.txt` file to preview them; try
+   **Open Temporarily** on one and **Export** on another.
+3. **Notes and Passwords:** add a note and a password entry; try the password generator and **Copy**
+   (the copied password should be cleared from the clipboard after 30 s).
+4. **Lock:** lock with `Ctrl+L`, then enter a wrong password followed by the right one. It should also lock on screen lock/sleep.
+5. **Wrong-password limit:** go to Settings → *Wrong-password limit*, turn it on, set the number of attempts to 3,
+   lock, and enter a wrong password 3 times: the vault should be permanently erased. (Only do this on the test vault!)
+6. **Shared vault with macOS (optional):** select a vault created on a Mac (e.g. the `Mahzen Kasası` on the SSD) with
+   **Open Another Vault…** from the menu on the lock screen; the files, notes and passwords from the Mac should
+   show up. A file you add on Linux should show up on the Mac too.
+7. **Backup and maintenance:** choose a backup location in Settings and click **Back Up Now**, then run the **Integrity check**.
+8. **Preview navigation and rubber-band selection:** preview an image and move to the other files with ← / → (or a
+   two-finger horizontal swipe on the touchpad); the counter in the header should show "n / total". In the grid, drag
+   from an empty spot to select a few items with a rectangle, then hold Ctrl and draw another one to add to the
+   selection; while dragging toward the bottom of the window the grid should scroll by itself.
+9. **Show on Phone:** select a few images, right-click → **Show on Phone…** and scan the QR code with a phone on the
+   same Wi-Fi. The images should open on the phone and the device count in the window should go up; within half a
+   minute of **Stop** the page on the phone should show that sharing has ended and clear its content.
 
-Bir sorun görürseniz terminalden `mahzen` ile başlatıp çıktıyı da ekleyerek
-[bir konu açın](https://github.com/efefdev/Mahzen/issues).
+If you run into a problem, start the app from a terminal with `mahzen` and
+[open an issue](https://github.com/efefdev/Mahzen/issues) with the output attached.
 
-## Komut satırı
+## Command line
 
-Arayüzü olmayan sunucular için `mahzen-cli` (kurulumsuz: `./mahzen.sh cli`):
+For headless servers there is `mahzen-cli` (without installing: `./mahzen.sh cli`):
 
 ```bash
-mahzen-cli bilgi   "/media/ssd/Mahzen Kasası"              # başlık bilgisi, parola istemez
-mahzen-cli listele "/media/ssd/Mahzen Kasası"
-mahzen-cli disari  "/media/ssd/Mahzen Kasası" fatura.pdf ~/İndirilenler
-mahzen-cli ekle    "/media/ssd/Mahzen Kasası" belge.pdf Fotoğraflar/
-mahzen-cli dogrula "/media/ssd/Mahzen Kasası"
-mahzen-cli yedekle "/media/ssd/Mahzen Kasası" "/media/yedek/Mahzen Kasası Yedek"
+mahzen-cli info   "/media/ssd/Mahzen Kasası"              # header info, no password needed
+mahzen-cli list   "/media/ssd/Mahzen Kasası"
+mahzen-cli export "/media/ssd/Mahzen Kasası" invoice.pdf ~/Downloads
+mahzen-cli add    "/media/ssd/Mahzen Kasası" document.pdf Photos/
+mahzen-cli verify "/media/ssd/Mahzen Kasası"
+mahzen-cli backup "/media/ssd/Mahzen Kasası" "/media/backup/Mahzen Kasası Backup"
 ```
 
-Parola her seferinde sorulur (`--parola-stdin` ile standart girdiden okunabilir); anahtar dosyası gerekiyorsa
-`--anahtar dosya.mahzenkey`. Yanlış parola sınırı açıksa komut satırındaki yanlış denemeler de sayılır.
+The password is asked for every time (it can be read from standard input with `--password-stdin`); if a keyfile is needed,
+pass `--keyfile file.mahzenkey`. If the wrong-password limit is on, wrong attempts on the command line are counted too.
+The Turkish command and option names (`bilgi`, `listele`, `disari`, `ekle`, `dogrula`, `yedekle`, `--parola-stdin`,
+`--anahtar`) work in either language.
 
-## Şifreleme
+## Encryption
 
-Çekirdek, macOS'taki `MahzenCore` ile birebir aynıdır (ayrıntılar ana [README](../README.md)'de):
-AES-256-GCM (`cryptography`/OpenSSL), Argon2id 1 GB · 3 geçiş · 4 iş parçacığı (`argon2-cffi`, resmi Argon2
-uygulaması), HKDF-SHA256 alt anahtarlar, 1 MB'lık parçalara bağlı nonce'lar. Parolalar Unicode NFC biçimine
-getirilir; Türkçe karakterli parolalar iki sistemde aynı anahtarı üretir.
+The core is identical to `MahzenCore` on macOS (details in the main [README](../README.md)):
+AES-256-GCM (`cryptography`/OpenSSL), Argon2id 1 GB · 3 passes · 4 threads (`argon2-cffi`, the official Argon2
+implementation), HKDF-SHA256 subkeys, nonces bound to 1 MB chunks. Passwords are normalized to Unicode NFC;
+passwords with Turkish characters produce the same key on both systems.
 
-Dizin JSON'unda bu sürümün tanımadığı alanlar (macOS'un ileride ekleyeceği alanlar dahil) okunup aynen geri yazılır.
+Fields in the index JSON that this version doesn't recognize (including fields macOS may add in the future) are read and written back unchanged.
 
-## Testler
+## Tests
 
 ```bash
 python3 -m unittest discover -s linux/tests
 ```
 
-`tests/fixtures/` altındaki kasalar macOS sürümüyle oluşturulmuştur (Argon2id, anahtar dosyalı ve eski PBKDF2
-kasalar); testler Linux sürümünün bunları açabildiğini doğrular. Ters yönde, `tests/fixtures/python-vault` bu
-sürümle oluşturulur ve macOS tarafındaki `swift test` (LinuxCompatibilityTests) onu açar. Biçim değişirse:
+The vaults under `tests/fixtures/` were created with the macOS version (Argon2id, keyfile-protected and old PBKDF2
+vaults); the tests verify that the Linux version can open them. In the other direction, `tests/fixtures/python-vault`
+is created with this version, and `swift test` on the macOS side (LinuxCompatibilityTests) opens it. If the format changes:
 `python3 linux/tests/make_python_fixture.py`.
 
-`tests/test_phoneshare.py` Telefonda Göster'i sınar: şifreli akışın macOS sürümüyle bayt bayt aynı olduğunu
-(sabit anahtarlı çapraz denetim), gerçek bir kasadan yerel sunucuya HTTP istekleriyle uçtan uca aktarımı, güvenlik
-başlıklarını, jeton ve süre denetimini, QR üreticisini ve Node.js kuruluysa telefon sayfasındaki JavaScript
-çözücünün Python akışını açtığını. macOS testinin yazdığı akış da verilebilir:
-`MAHZEN_PHONE_FIXTURE=/yol/onek swift test --filter PhoneShareTests` sonra aynı değişkenle Python testleri.
-Telefon sayfası (`mahzen/core/phone_viewer.html`) macOS kaynağından aktarılır; macOS'ta sayfa değişirse:
+`tests/test_phoneshare.py` tests Show on Phone: that the encrypted stream is byte-for-byte identical to the macOS
+version's (a fixed-key cross-check), an end-to-end transfer from a real vault to the local server over HTTP, the
+security headers, the token and time-limit checks, the QR encoder and, if Node.js is installed, that the JavaScript
+decoder in the phone page opens the Python stream. The stream written by the macOS test can be passed in as well:
+`MAHZEN_PHONE_FIXTURE=/path/prefix swift test --filter PhoneShareTests`, then the Python tests with the same variable.
+The phone page (`mahzen/core/phone_viewer.html`) is carried over from the macOS source; if the page changes on macOS:
 `python3 linux/tests/sync_phone_viewer.py`.
 
-## Proje yapısı
+## Project layout
 
 ```
 linux/
-├── mahzen/core/   şifreleme, kasa biçimi, dizin işlemleri, yedekleme (arayüzden bağımsız)
-├── mahzen/ui/     GTK 4 / libadwaita arayüzü
-├── mahzen/cli.py  komut satırı
-├── data/          simgeler ve .desktop dosyası
-├── tests/         çekirdek ve uyumluluk testleri
+├── mahzen/core/   encryption, vault format, index operations, backup (UI-independent)
+├── mahzen/ui/     GTK 4 / libadwaita interface
+├── mahzen/cli.py  command line
+├── data/          icons and the .desktop file
+├── tests/         core and compatibility tests
 ├── install.sh, uninstall.sh, mahzen.sh
 ```

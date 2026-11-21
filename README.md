@@ -1,141 +1,150 @@
-**Türkçe** · [English](README.en.md)
+**English** · [Türkçe](README.tr.md)
 
 <p align="center">
-  <img src="Resources/Logo/mahzen-logo.svg" width="160" alt="Mahzen logosu">
+  <img src="Resources/Logo/mahzen-logo.svg" width="160" alt="Mahzen logo">
 </p>
 
 # Mahzen
 
-**Dosyaların, notların ve parolaların için şifreli, taşınabilir bir kasa.**
+**An encrypted, portable vault for your files, notes and passwords.**
 
 <p align="center">
-  <a href="https://mahzen.efef.dev"><b>🌐 mahzen.efef.dev</b></a>
-  &nbsp;·&nbsp; <a href="#kurulum">Kurulum</a>
+  <a href="https://mahzen.efef.dev/en/"><b>🌐 mahzen.efef.dev</b></a>
+  &nbsp;·&nbsp; <a href="#installation">Installation</a>
   &nbsp;·&nbsp; <a href="linux/README.md">Linux</a>
-  &nbsp;·&nbsp; <a href="SECURITY.md">Güvenlik</a>
+  &nbsp;·&nbsp; <a href="SECURITY.md">Security</a>
 </p>
 
 <p align="center">
-  <a href="https://mahzen.efef.dev"><img src="site/img/og.png" width="720" alt="Mahzen tanıtım sitesi: Sırların, kendi mahzeninde."></a>
+  <a href="https://mahzen.efef.dev/en/"><img src="site/img/og-en.png" width="720" alt="Mahzen website: Your secrets, in your own vault."></a>
 </p>
 
-Mahzen'in nasıl çalıştığını görmenin en kısa yolu **[tanıtım sitesi](https://mahzen.efef.dev)**: şifrelemenin
-rakamlarla anlatımı, uygulamanın kısa bir turu, kendini silme özelliği ve macOS ile Linux'un aynı kasayı nasıl
-paylaştığı tek sayfada. Ayrıntılar, kurulum ve güvenlik sınırları bu README'de.
+The quickest way to see how Mahzen works is the **[website](https://mahzen.efef.dev/en/)**: the encryption explained
+in numbers, a short tour of the app, the self-wipe feature and how macOS and Linux share the same vault, all on a
+single page. The details, installation and security limitations are in this README.
 
-Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde saklayan yerel bir macOS ve Linux uygulamasıdır. Uygulama ile kasa yan yana bir SSD'de durabilir; aynı kasa her Mac'te ve her Linux bilgisayarda açılabilir. İnternete hiçbir şey gönderilmez, hesap gerekmez.
+Mahzen (Turkish for "cellar") is a local macOS and Linux app that keeps your files, notes and passwords in a single encrypted folder. The app and the vault can sit side by side on an SSD; the same vault opens on any Mac and any Linux computer. Nothing is sent to the internet, and no account is needed.
 
-> 🐧 **Linux sürümü:** [`linux/`](linux/) klasöründe (GTK 4 + libadwaita). macOS ile aynı kasa biçimini kullanır; bir kasa iki sistemde de açılır ve düzenlenir. Kurulum: `cd linux && ./install.sh` — ayrıntılar [linux/README.md](linux/README.md)'de.
+> 🌍 **Available in English and Turkish.** The app follows your system language and can be switched any time in Settings → Language. This README is also available in [Turkish (Türkçe)](README.tr.md).
+
+> 🐧 **Linux version:** in the [`linux/`](linux/) folder (GTK 4 + libadwaita). It uses the same vault format as macOS; one vault can be opened and edited on both systems. Install: `cd linux && ./install.sh` — details in [linux/README.md](linux/README.md).
 
 <p align="center">
-  <img src="docs/ekran/kilit.png" width="49%" alt="Kilit ekranı">
-  <img src="docs/ekran/dosyalar.png" width="49%" alt="Dosyalar">
+  <img src="docs/ekran/en/kilit.webp" width="49%" alt="Lock screen">
+  <img src="docs/ekran/en/dosyalar.webp" width="49%" alt="Files">
 </p>
 <p align="center">
-  <img src="docs/ekran/parolalar.png" width="49%" alt="Parolalar">
-  <img src="docs/ekran/notlar.png" width="49%" alt="Notlar">
+  <img src="docs/ekran/en/parolalar.webp" width="49%" alt="Passwords">
+  <img src="docs/ekran/en/notlar.webp" width="49%" alt="Notes">
 </p>
 
-**Linux sürümü** (GTK 4 + libadwaita):
+**Linux version** (GTK 4 + libadwaita):
 
 <p align="center">
-  <img src="docs/ekran/linux/dosyalar.png" width="49%" alt="Linux: Dosyalar">
-  <img src="docs/ekran/linux/parolalar.png" width="49%" alt="Linux: Parolalar">
+  <img src="docs/ekran/linux/dosyalar.png" width="49%" alt="Linux: Files">
+  <img src="docs/ekran/linux/parolalar.png" width="49%" alt="Linux: Passwords">
 </p>
 
-## Özellikler
+## Features
 
-**Dosyalar**
-- Sürükle-bırak ile ekleme; sürüklenen klasörlerin yapısı korunur
-- Kasa içinde iç içe klasörler, etiketler, favoriler, arama ve filtreler
-- Görsel, PDF ve metinleri uygulama içinde önizleme
-- Video ve sesleri **diske şifresiz kopya yazmadan** oynatma (şifre bellekte, parça parça çözülür)
-- Finder'a sürükleyerek dışa aktarma, aynı dosyanın iki kez eklenmesini önleme
-- Ekledikten sonra orijinalleri Mac'in Çöp Kutusu'na taşıma seçeneği
+**Files**
+- Add by drag and drop; the structure of dropped folders is preserved
+- Nested folders inside the vault, tags, favorites, search and filters
+- Preview images, PDFs and text inside the app; ← / → in the preview move to the previous/next file
+- Drag from an empty area of the grid to select with a rectangle (⌘/⇧ adds to the selection)
+- Play video and audio **without writing an unencrypted copy to disk** (decrypted in memory, chunk by chunk)
+- Export by dragging to Finder; the same file is never added twice
+- Option to move the originals to the Mac's Trash after adding
 
-**Notlar ve parolalar**
-- Renkli, sabitlenebilir notlar; yazı tipi ve boyutu ayarlanabilir
-- Hesap, kart, Wi-Fi ve sunucu kayıtları; parola üretici ve güç ölçer
-- Kopyalanan parola, seçilen süre sonunda panodan otomatik silinir
+**Show on Phone**
+- Show the selected photos and videos, or a folder, on a phone on the same Wi-Fi through a QR code; nothing needs to be installed on the phone
+- **End-to-end encrypted:** a fresh 256-bit key for every share (ChaCha20-Poly1305). The key is only in the `#` part of the address in the QR code, which the browser never sends to the server; decryption happens in the phone's browser
+- **Local network only, time-limited:** nothing goes to the internet; sharing ends after 10 minutes, when you press Stop, or when the vault locks
+- Works the same on macOS and Linux ([Linux details](linux/README.md#show-on-phone))
 
-**Güvenlik ve bakım**
-- Hareketsizlikte, uykuda, ekran kilidinde ve SSD çıkarıldığında otomatik kilit
-- İsteğe bağlı: kasayı bir Mac'e bağlayan **anahtar dosyası** (parola + o Mac'te saklanan rastgele dosya)
-- İsteğe bağlı: **yanlış parola sınırı** — art arda belirli sayıda (varsayılan 5, 3–99 arası ayarlanabilir) yanlış parola girilirse kasa kalıcı olarak silinir ([ayrıntılar](#yanlış-parola-sınırı))
-- Pencereyi ekran görüntüsü, kayıt ve ekran paylaşımında gizleme
-- Çöp Kutusu (ayarlanabilir süre), tek tıkla artımlı yedek, yedek hatırlatması
-- Bütünlük taraması: her dosyayı çözerek doğrular, bozuk olanları yedekten geri yükler
+**Notes and passwords**
+- Colored, pinnable notes; adjustable font and size
+- Account, card, Wi-Fi and server entries; password generator and strength meter
+- A copied password is automatically cleared from the clipboard after the time you choose
 
-**Görünüm**
-- Varsayılan olarak logoyla uyumlu turuncu-siyah görünüm; açık / koyu / sistem teması ve 9 vurgu rengi (eski çivit dahil) seçilebilir; ızgara veya liste görünümü
-- Saatli kilit ekranı, Caps Lock uyarısı
-- Arayüz dili: Sistem / Türkçe / English, Ayarlar'dan seçilir (sistem dili Türkçe değilse uygulama İngilizce açılır)
+**Security and maintenance**
+- Auto-lock when idle, on sleep, on screen lock and when the SSD is unplugged
+- Optional: a **keyfile** that ties the vault to a Mac (password + a random file stored on that Mac)
+- Optional: a **wrong-password limit** — after a set number of consecutive wrong passwords (5 by default, adjustable from 3 to 99) the vault is permanently erased ([details](#wrong-password-limit))
+- Hide the window from screenshots, recordings and screen sharing
+- Trash (adjustable retention), one-click incremental backup, backup reminder
+- Integrity check: verifies every file by decrypting it and restores corrupted ones from the backup
 
-## Şifreleme nasıl çalışıyor?
+**Appearance**
+- An orange-and-black look that matches the logo by default; light / dark / system theme and 9 accent colors (including the old indigo); grid or list view
+- Lock screen with a clock, Caps Lock warning
+- Interface language: System / Türkçe / English, chosen in Settings (if the system language isn't Turkish, the app opens in English)
 
-| Katman | Yöntem |
+## How does the encryption work?
+
+| Layer | Method |
 |---|---|
-| Veri şifreleme | **AES-256-GCM** (Apple CryptoKit). Her dosya kendi anahtarıyla, 1 MB'lık parçalar halinde şifrelenir. |
-| Paroladan anahtar | **Argon2id** — 1 GB bellek, 3 geçiş, 4 iş parçacığı (release derlemede, Apple Silicon'da deneme başına ~0,7 sn). Ekran kartıyla toplu tahmini pahalılaştırır. |
-| Anahtar hiyerarşisi | Rastgele 256 bitlik ana anahtar, paroladan türetilen anahtarla sarılır. Dosya, küçük resim ve dizin anahtarları ana anahtardan HKDF-SHA256 ile türetilir. |
-| Anahtar dosyası (isteğe bağlı) | Sarma anahtarı = HKDF(Argon2id(parola) ‖ 512 bit rastgele dosya). Kasa başlığında anahtar dosyasına dair hiçbir alan yoktur. |
-| Bütünlük | Parçaların sırası ve "son parça" bilgisi nonce'a bağlıdır; değiştirilen, yer değiştirilen, kesilen veya sonuna veri eklenen dosyalar — oynatıcının rastgele erişimli okumasında da — reddedilir. |
+| Data encryption | **AES-256-GCM** (Apple CryptoKit). Each file is encrypted with its own key, in 1 MB chunks. |
+| Key from password | **Argon2id** — 1 GB memory, 3 passes, 4 threads (in a release build on Apple Silicon, ~0.7 s per attempt). Makes bulk guessing on GPUs expensive. |
+| Key hierarchy | A random 256-bit master key is wrapped with the key derived from the password. File, thumbnail and index keys are derived from the master key with HKDF-SHA256. |
+| Keyfile (optional) | Wrapping key = HKDF(Argon2id(password) ‖ 512-bit random file). The vault header has no field that reveals a keyfile is in use. |
+| Integrity | The order of the chunks and the "last chunk" flag are bound to the nonce; files that have been modified, reordered, truncated or appended to are rejected, including during the player's random-access reads. |
 
-Kasa klasöründe yalnızca rastgele adlı şifreli dosyalar bulunur; **dosya adları, klasörler, etiketler, notlar ve parolalar da şifrelidir.**
+The vault folder contains only randomly named encrypted files; **file names, folders, tags, notes and passwords are encrypted too.**
 
 ```
 Mahzen Kasası/
-├── vault.json        şifresiz başlık: tuz, Argon2id ayarları, sarılmış ana anahtar, yanlış parola sınırı ve sayacı (sır içermez)
-├── index.enc         şifreli dizin (+ index.enc.bak: bir önceki sürüm)
-├── blobs/xx/<id>.mhz şifreli dosya içerikleri
-└── thumbs/<id>.mhz   şifreli küçük resimler
+├── vault.json        unencrypted header: salt, Argon2id settings, wrapped master key, wrong-password limit and counter (no secrets)
+├── index.enc         encrypted index (+ index.enc.bak: the previous version)
+├── blobs/xx/<id>.mhz encrypted file contents
+└── thumbs/<id>.mhz   encrypted thumbnails
 ```
 
-Uygulamada açık anahtarlı şifreleme (RSA/ECC) bulunmaz; bu yüzden kuantum bilgisayarların kırabildiği türden bir bileşen yoktur. Grover algoritması AES-256'nın etkin gücünü yaklaşık 128 bite indirir; bu hâlâ pratikte kırılamaz kabul edilir. Zayıf bir parolayı ise hiçbir algoritma kurtaramaz.
+The app uses no public-key cryptography (RSA/ECC), so it has no component of the kind quantum computers can break. Grover's algorithm reduces the effective strength of AES-256 to roughly 128 bits, which is still considered unbreakable in practice. No algorithm, however, can save a weak password.
 
-### Yanlış parola sınırı
+### Wrong-password limit
 
-**Ayarlar → Yanlış parola sınırı** bölümünden açılıp kapatılır; deneme sayısı 3 ile 99 arasında seçilir (açılırken 5). Açıkken:
+Turned on and off under **Settings → Wrong-password limit**; the number of attempts can be set between 3 and 99 (5 when first enabled). While it is on:
 
 <p align="center">
-  <img src="docs/ekran/sinir-ayar.png" width="100%" alt="Ayarlar: yanlış parola sınırı">
+  <img src="docs/ekran/en/sinir-ayar.webp" width="100%" alt="Settings: wrong-password limit">
 </p>
 <p align="center">
-  <img src="docs/ekran/sinir-son-hak.png" width="49%" alt="Kilit ekranı: son deneme hakkı">
-  <img src="docs/ekran/sinir-silindi.png" width="49%" alt="Kasa kalıcı olarak silindi">
+  <img src="docs/ekran/en/sinir-son-hak.webp" width="49%" alt="Lock screen: last attempt">
+  <img src="docs/ekran/en/sinir-silindi.webp" width="49%" alt="The vault has been permanently erased">
 </p>
 
-- Kilit ekranında her yanlış parola sayılır ve kalan deneme hakkı gösterilir. Doğru parolayla açılınca sayaç sıfırlanır.
-- Sınıra ulaşıldığında kasanın sarılmış ana anahtarını taşıyan `vault.json` (ve varsa `vault.json.bak`) rastgele baytlarla ezilip silinir. Ana anahtar başka hiçbir yerde olmadığından kasadaki dosyalar, notlar ve parolalar **doğru parolayla bile bir daha açılamaz; geri alınamaz.** Klasörde kalan şifreli dosyalar işe yaramaz hale gelir.
-- Ayar macOS ve Linux sürümlerinde ortaktır (kasa başlığında durur); `mahzen-cli` de denemeleri sayar.
+- Every wrong password on the lock screen is counted, and the number of attempts left is shown. Unlocking with the right password resets the counter.
+- When the limit is reached, `vault.json` (and `vault.json.bak`, if present), which holds the vault's wrapped master key, is overwritten with random bytes and deleted. Since the master key exists nowhere else, the files, notes and passwords in the vault **can never be opened again, not even with the right password; this cannot be undone.** The encrypted files left in the folder become useless.
+- The setting is shared by the macOS and Linux versions (it lives in the vault header); `mahzen-cli` counts attempts too.
 
-Bu özellik kilit ekranında parola deneyen birine karşıdır; bilinmesi gerekenler:
+This feature protects against someone trying passwords on the lock screen. What you should know:
 
-- Ayar ve sayaç kilitliyken okunabilmesi için şifresiz başlıkta durur. Kasa klasörünü önceden kopyalayan ya da `vault.json`'u elle düzenleyen biri sayaçtan etkilenmez; böyle bir saldırıya karşı asıl koruma güçlü parola ve Argon2id'dir.
-- Alınmış yedekler kendi başlıklarıyla açılmaya devam eder (bu bir güvence olarak da kullanılabilir).
-- Anahtar dosyalı bir kasayı anahtar dosyasının olmadığı bir bilgisayarda açmaya çalışmak da yanlış deneme sayılır.
-- SSD'lerde ezilen baytların fiziksel kopyası disk denetleyicisinde bir süre kalabilir.
+- The setting and the counter live in the unencrypted header so they can be read while the vault is locked. Someone who copied the vault folder beforehand, or who edits `vault.json` by hand, is not affected by the counter; the real protection against that kind of attack is a strong password and Argon2id.
+- Backups you have already made still open with their own headers (which can also serve as a safety net).
+- Trying to open a keyfile-protected vault on a computer that doesn't have the keyfile also counts as a wrong attempt.
+- On SSDs, a physical copy of the overwritten bytes may linger in the drive controller for a while.
 
-### Sınırlar — lütfen okuyun
+### Limitations — please read
 
-- **Bağımsız güvenlik denetiminden geçmedi.** Kullanılan yapı taşları (CryptoKit, Argon2 referans uygulaması) denetlenmiş kütüphanelerdir; ancak bunları birleştiren Mahzen kodu denetlenmemiştir. Hayati önemde veriler için VeraCrypt veya Cryptomator gibi denetlenmiş araçları değerlendirin.
-- **Güvenlik parolanızın gücüne bağlıdır.** Rastgele seçilmiş 5+ kelime veya 12+ rastgele karakter önerilir.
-- **Parola unutulursa veriler kurtarılamaz.** Anahtar dosyası kullanılıyorsa onun da yedeği alınmalıdır.
-- Dosya **boyutları ve sayısı** kasa klasörüne bakan biri tarafından görülebilir.
-- "Geçici Aç" ve Finder'a sürükleme, kasa dışında şifresiz kopya oluşturur (kilitte ve bir sonraki açılışta temizlenir).
-- Kasa klasörüne yazabilen biri dizin dosyasını eski bir kopyasıyla değiştirerek notları/parolaları eski hâline döndürebilir; bu henüz tespit edilmiyor.
-- Parola değiştirmek veya anahtar dosyası eklemek ana anahtarı yenilemez; eski bir başlık kopyası ile eski parola, verileri açmaya yeter.
+- **It has not been through an independent security audit.** The building blocks (CryptoKit, the Argon2 reference implementation) are audited libraries, but the Mahzen code that combines them is not. For data of critical importance, consider audited tools such as VeraCrypt or Cryptomator.
+- **Security depends on the strength of your password.** 5+ randomly chosen words or 12+ random characters are recommended.
+- **If the password is forgotten, the data cannot be recovered.** If you use a keyfile, back that up as well.
+- File **sizes and counts** are visible to anyone who looks at the vault folder.
+- "Open Temporarily" and dragging to Finder create unencrypted copies outside the vault (cleaned up on lock and at the next launch).
+- Someone who can write to the vault folder can replace the index file with an older copy and roll notes/passwords back to an earlier state; this is not detected yet.
+- Changing the password or adding a keyfile does not renew the master key; an old copy of the header plus the old password is enough to open the data.
 
-## Kurulum
+## Installation
 
-> Linux için: [linux/README.md](linux/README.md)
+> For Linux: [linux/README.md](linux/README.md)
 
-### Hazır uygulama
-[Sürümler](../../releases) sayfasına eklenecek. Şimdilik kaynaktan derleyin.
+### Prebuilt app
+Will be added to the [Releases](../../releases) page. For now, build from source.
 
-### Kaynaktan derleme
+### Building from source
 
-Gereksinimler: macOS 14+, **tam Xcode 15.3 veya üstü** (Swift 5.10+; Apple Silicon + Intel tek pakette derlendiği için yalnızca Komut Satırı Araçları yetmez)
+Requirements: macOS 14+, **full Xcode 15.3 or later** (Swift 5.10+; because Apple Silicon + Intel are built into a single package, the Command Line Tools alone are not enough)
 
 ```bash
 git clone https://github.com/efefdev/Mahzen.git
@@ -143,55 +152,55 @@ cd Mahzen
 ./scripts/build-app.sh      # dist/Mahzen.app (Apple Silicon + Intel)
 ```
 
-Uygulamayı SSD'ye taşımak için `dist/Mahzen.app` klasörünü SSD'nin köküne kopyalayın. İlk açılışta kasa, uygulamanın yanında `Mahzen Kasası` olarak oluşturulur.
+To move the app to an SSD, copy the `dist/Mahzen.app` folder to the root of the SSD. On first launch the vault is created next to the app as `Mahzen Kasası`.
 
-Uygulama ad-hoc imzalıdır (Apple tarafından noterize edilmemiştir). Kendi derlediğiniz kopya uyarısız açılır. İnternetten indirilmiş bir kopyayı açarken macOS uyarı verirse:
-- **macOS 15 ve sonrası:** Önce açmayı deneyin, sonra **Sistem Ayarları → Gizlilik ve Güvenlik** sayfasının altındaki **"Yine de Aç"** düğmesini kullanın.
-- **macOS 14:** Finder'da sağ tık → **Aç**.
+The app is ad-hoc signed (not notarized by Apple). A copy you built yourself opens without a warning. If macOS warns you when opening a copy downloaded from the internet:
+- **macOS 15 and later:** Try to open it first, then use the **"Open Anyway"** button at the bottom of **System Settings → Privacy & Security**.
+- **macOS 14:** Right-click in Finder → **Open**.
 
-### Testler
+### Tests
 
 ```bash
 swift test
 ```
 
-44 test; şifreleme, parça doğrulama, kurcalama/kesme tespiti, Argon2 referans test vektörleri, anahtar dosyası (arşivleme dahil), içe aktarma planı, yedekleme ve bütünlük taramasını kapsar. `LinuxCompatibilityTests`, Linux sürümüyle oluşturulmuş bir kasayı açarak iki sürümün aynı biçimi konuştuğunu doğrular.
+44 tests covering encryption, chunk verification, tamper/truncation detection, the Argon2 reference test vectors, keyfiles (including archiving), the import plan, backup and the integrity check. `LinuxCompatibilityTests` opens a vault created with the Linux version to verify that the two versions speak the same format.
 
-Linux çekirdeğinin testleri: `python3 -m unittest discover -s linux/tests`
+Tests for the Linux core: `python3 -m unittest discover -s linux/tests`
 
-## Proje yapısı
+## Project layout
 
 ```
 Sources/
-├── CArgon2/      Argon2 resmi referans uygulaması (değiştirilmeden, CC0/Apache-2.0)
-├── MahzenCore/   Şifreleme, kasa biçimi, yedekleme, bütünlük taraması (arayüzden bağımsız)
-└── Mahzen/       SwiftUI uygulaması
-Tests/            Çekirdek testleri
-scripts/          Uygulama paketleme ve simge üretme
-linux/            Linux uygulaması (Python, GTK 4 + libadwaita) ve aynı kasa biçiminin Python çekirdeği
-site/             Tanıtım sitesi (mahzen.efef.dev); main'e girince GitHub Pages'e otomatik yayınlanır
+├── CArgon2/      The official Argon2 reference implementation (unmodified, CC0/Apache-2.0)
+├── MahzenCore/   Encryption, vault format, backup, integrity check (UI-independent)
+└── Mahzen/       SwiftUI app
+Tests/            Core tests
+scripts/          App packaging and icon generation
+linux/            Linux app (Python, GTK 4 + libadwaita) and the Python core for the same vault format
+site/             Website (mahzen.efef.dev); published to GitHub Pages automatically when it lands on main
 ```
 
-## Yol haritası
+## Roadmap
 
-- [x] **Linux uygulaması** ([linux/](linux/))
-- [ ] Hazır derlenmiş sürümler
-- [ ] Markdown notlar, notlara dosya ekleme
-- [ ] Parola sağlığı ekranı (zayıf / tekrar kullanılan parolalar)
-- [ ] ⌘K hızlı arama, menü çubuğu simgesi
+- [x] **Linux app** ([linux/](linux/))
+- [ ] Prebuilt releases
+- [ ] Markdown notes, attaching files to notes
+- [ ] Password health screen (weak / reused passwords)
+- [ ] ⌘K quick search, menu bar icon
 
-## Lisans
+## License
 
-Mahzen, **[PolyForm Noncommercial 1.0.0](LICENSE)** lisansıyla yayımlanır. Kaynak kodu açıktır; **ticari olmayan** her amaçla kullanabilir, inceleyebilir, değiştirebilir ve paylaşabilirsiniz.
+Mahzen is released under the **[PolyForm Noncommercial 1.0.0](LICENSE)** license. The source code is open; you may use, study, modify and share it for any **noncommercial** purpose.
 
-| ✅ Serbest | ❌ İzin gerektirir |
+| ✅ Allowed | ❌ Requires permission |
 |---|---|
-| Kişisel kullanım, öğrenme, araştırma, deneme | Satmak, ücretli hizmete veya ürüne dahil etmek |
-| Okul, dernek, kâr amacı gütmeyen kuruluşlarda kullanım | Bir şirketin ticari faaliyetinde kullanmak |
-| Değiştirip ticari olmayan amaçla paylaşmak (lisans metni ve telif bildirimiyle) | |
+| Personal use, learning, research, experimentation | Selling it, or including it in a paid service or product |
+| Use in schools, associations and nonprofit organizations | Using it in a company's commercial activity |
+| Modifying and sharing it for noncommercial purposes (with the license text and copyright notice) | |
 
-Ticari kullanım için GitHub üzerinden iletişime geçin.
+For commercial use, get in touch via GitHub.
 
-> Not: Ticari kullanımı kısıtladığı için bu lisans, OSI tanımına göre "açık kaynak" değil, **kaynağı açık (source-available)** bir lisanstır.
+> Note: Because it restricts commercial use, this license is not "open source" by the OSI definition; it is a **source-available** license.
 
-`Sources/CArgon2` altındaki Argon2 kodu kendi lisansıyla (CC0 1.0 veya Apache 2.0) dağıtılır; ayrıntılar için [Sources/CArgon2/LICENSE](Sources/CArgon2/LICENSE) dosyasına bakın.
+The Argon2 code under `Sources/CArgon2` is distributed under its own license (CC0 1.0 or Apache 2.0); see [Sources/CArgon2/LICENSE](Sources/CArgon2/LICENSE) for details.

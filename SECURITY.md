@@ -1,36 +1,36 @@
-**Türkçe** · [English](SECURITY.en.md)
+**English** · [Türkçe](SECURITY.tr.md)
 
-# Güvenlik Politikası
+# Security Policy
 
-Mahzen bir şifreleme uygulamasıdır; güvenlik açıklarını bildirenlere teşekkür ederiz.
+Mahzen is an encryption app; we are grateful to anyone who reports a security vulnerability.
 
-## Desteklenen sürümler
+## Supported versions
 
-Yalnızca `main` dalındaki en güncel sürüm desteklenir.
+Only the latest version on the `main` branch is supported.
 
-## Açık bildirme
+## Reporting a vulnerability
 
-**Lütfen güvenlik açıklarını herkese açık bir Issue olarak paylaşmayın.**
+**Please do not share security vulnerabilities in a public Issue.**
 
-Bunun yerine GitHub'ın gizli bildirim özelliğini kullanın: depodaki **Security** sekmesi → **Report a vulnerability**. Bildirim yalnızca proje sahibi tarafından görülür.
+Use GitHub's private reporting feature instead: the **Security** tab of the repository → **Report a vulnerability**. The report is visible only to the project owner.
 
-Bildiriminizde mümkünse şunlara yer verin:
+If possible, include the following in your report:
 
-- Açığın kısa açıklaması ve etkisi
-- Yeniden üretme adımları (kavram kanıtı varsa ekleyin)
-- Etkilenen dosya/fonksiyon ve sürüm (commit)
-- Önerdiğiniz çözüm (isteğe bağlı)
+- A short description of the vulnerability and its impact
+- Steps to reproduce (attach a proof of concept if you have one)
+- The affected file/function and version (commit)
+- Your suggested fix (optional)
 
-## Süreç
+## Process
 
-- Bildirimler en geç **7 gün** içinde yanıtlanmaya çalışılır.
-- Doğrulanan açıklar düzeltildikten sonra, isterseniz adınızla birlikte duyurulur.
-- Düzeltme yayımlanana kadar ayrıntıların paylaşılmamasını rica ederiz.
+- We aim to respond to reports within **7 days** at the latest.
+- Once a confirmed vulnerability has been fixed, it is announced, with credit to you if you wish.
+- We ask that you do not share the details until the fix has been released.
 
-## Kapsam
+## Scope
 
-Kapsamda: şifreleme ve anahtar yönetimi (`Sources/MahzenCore`), kasa biçimi, uygulamanın veri sızdırabilecek davranışları (geçici dosyalar, pano, kilit).
+In scope: encryption and key management (`Sources/MahzenCore`), the vault format, and app behavior that could leak data (temporary files, clipboard, locking).
 
-Kapsam dışı: yerel olarak zaten yönetici yetkisine sahip bir saldırgan, fiziksel erişimle cihaza yüklenen kötü amaçlı yazılım, kullanıcının zayıf parola seçimi ve `Sources/CArgon2` altındaki değiştirilmemiş Argon2 referans kodu (bunlar için [P-H-C/phc-winner-argon2](https://github.com/P-H-C/phc-winner-argon2) deposuna bildirin).
+Out of scope: an attacker who already has local administrator privileges, malware installed on the device through physical access, the user's choice of a weak password, and the unmodified Argon2 reference code under `Sources/CArgon2` (report those to the [P-H-C/phc-winner-argon2](https://github.com/P-H-C/phc-winner-argon2) repository).
 
-Bilinen sınırlar README'nin **"Sınırlar"** bölümünde listelenmiştir.
+Known limitations are listed in the **"Limitations"** section of the README.

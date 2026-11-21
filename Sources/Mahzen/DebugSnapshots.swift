@@ -9,6 +9,11 @@ import SwiftUI
 /// her ekranın görüntüsünü PNG olarak kaydeder ve çıkar. Gerçek kasalara dokunmaz.
 @MainActor
 enum DebugSnapshots {
+    /// Örnek verinin dili arayüz diliyle aynı olsun (İngilizce ekran görüntüleri için).
+    private static func D(_ turkish: String, _ english: String) -> String {
+        Localization.language == .en ? english : turkish
+    }
+
     static func runIfRequested(_ state: AppState) async {
         guard let out = ProcessInfo.processInfo.environment["MAHZEN_SNAPSHOTS"] else { return }
         if ProcessInfo.processInfo.environment["MAHZEN_MARQUEE_TEST"] != nil {
@@ -18,7 +23,7 @@ enum DebugSnapshots {
         let outDir = URL(fileURLWithPath: out, isDirectory: true)
         try? FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
         let work = FileManager.default.temporaryDirectory.appendingPathComponent("MahzenDemo-\(UUID().uuidString)")
-        let vaultURL = work.appendingPathComponent("Mahzen Kasası")
+        let vaultURL = work.appendingPathComponent(D("Mahzen Kasası", "Mahzen Vault"))
         let password = "demo-parola-uzun-123"
         defer { try? FileManager.default.removeItem(at: work) }
 
@@ -31,7 +36,7 @@ enum DebugSnapshots {
         await snap("02-kilitli", outDir)
 
         _ = await state.unlock(password: password)
-        state.updatePreferences { $0.displayName = "Kişisel Kasa"; $0.askToTrashOriginals = false; $0.hideFromScreenCapture = false }
+        state.updatePreferences { $0.displayName = D("Kişisel Kasa", "Personal Vault"); $0.askToTrashOriginals = false; $0.hideFromScreenCapture = false }
 
         var report: [String] = []
         let header = try? Vault.readHeader(at: vaultURL)
@@ -42,7 +47,7 @@ enum DebugSnapshots {
         while state.task != nil { try? await Task.sleep(for: .milliseconds(100)) }
 
         // Klasör yapısıyla içe aktarma: Tatil/2026/... ve aynı dosyaların tekrar eklenmesi.
-        let trip = work.appendingPathComponent("Tatil")
+        let trip = work.appendingPathComponent(D("Tatil", "Vacation"))
         let year = trip.appendingPathComponent("2026")
         try? FileManager.default.createDirectory(at: year, withIntermediateDirectories: true)
         for (i, url) in samples.prefix(3).enumerated() {
@@ -53,26 +58,26 @@ enum DebugSnapshots {
         while state.task != nil { try? await Task.sleep(for: .milliseconds(100)) }
         report.append("Mükerrer uyarısı: \(state.alert?.title ?? "yok")")
         state.alert = nil
-        let tripID = state.index.childFolders(of: nil).first { $0.name == "Tatil" }?.id
+        let tripID = state.index.childFolders(of: nil).first { $0.name == D("Tatil", "Vacation") }?.id
         let yearID = tripID.flatMap { id in state.index.childFolders(of: id).first { $0.name == "2026" }?.id }
         report.append("Klasörler: \(state.index.folders.map(\.name).sorted()) · 2026 içinde \(state.index.liveFiles(in: yearID).map(\.name))")
-        state.createFolder(named: "Belgeler", in: nil)
+        state.createFolder(named: D("Belgeler", "Documents"), in: nil)
         if let doc = state.index.liveFiles.first(where: { $0.name.hasSuffix(".txt") }) {
-            state.setTags(["iş", "gizli"], for: [doc.id])
+            state.setTags([D("iş", "work"), D("gizli", "private")], for: [doc.id])
         }
         if let zip = state.index.liveFiles.first(where: { $0.name.hasSuffix(".zip") }) {
             state.trashFiles([zip.id])
         }
 
         state.mutate { idx in
-            var n1 = Note(); n1.title = "Pasaport bilgileri"; n1.body = "Seri no ve yenileme tarihi burada.\nKonsolosluk randevusu: Kasım."; n1.pinned = true; n1.color = "orange"
-            var n2 = Note(); n2.title = "Kripto kurtarma ifadesi"; n2.body = "Kağıt kopyası kasada, ikinci kopya ailede."; n2.color = "teal"
-            var n3 = Note(); n3.title = "Proje fikirleri"; n3.body = "Yeni uygulama için taslak notlar…"
+            var n1 = Note(); n1.title = D("Pasaport bilgileri", "Passport details"); n1.body = D("Seri no ve yenileme tarihi burada.\nKonsolosluk randevusu: Kasım.", "Serial number and renewal date are here.\nConsulate appointment: November."); n1.pinned = true; n1.color = "orange"
+            var n2 = Note(); n2.title = D("Kripto kurtarma ifadesi", "Crypto recovery phrase"); n2.body = D("Kağıt kopyası kasada, ikinci kopya ailede.", "Paper copy in the safe, a second copy with family."); n2.color = "teal"
+            var n3 = Note(); n3.title = D("Proje fikirleri", "Project ideas"); n3.body = D("Yeni uygulama için taslak notlar…", "Draft notes for a new app…")
             idx.notes = [n1, n2, n3]
-            var s1 = Secret(); s1.title = "Gmail"; s1.username = "ornek@gmail.com"; s1.password = "ornek-gmail-parolasi"; s1.url = "mail.google.com"; s1.favorite = true
-            var s2 = Secret(); s2.title = "Ev Wi-Fi"; s2.category = .wifi; s2.password = "kahve-masasi-2024"
-            var s3 = Secret(); s3.title = "Örnek sunucu"; s3.category = .server; s3.username = "kullanici"; s3.password = "ornek-sunucu-parolasi"; s3.url = "ornek.com"
-            var s4 = Secret(); s4.title = "Banka kartı"; s4.category = .card; s4.notes = "Son kullanma 08/29"
+            var s1 = Secret(); s1.title = "Gmail"; s1.username = D("ornek@gmail.com", "example@gmail.com"); s1.password = "ornek-gmail-parolasi"; s1.url = "mail.google.com"; s1.favorite = true
+            var s2 = Secret(); s2.title = D("Ev Wi-Fi", "Home Wi-Fi"); s2.category = .wifi; s2.password = "kahve-masasi-2024"
+            var s3 = Secret(); s3.title = D("Örnek sunucu", "Example server"); s3.category = .server; s3.username = D("kullanici", "admin"); s3.password = "ornek-sunucu-parolasi"; s3.url = "ornek.com"
+            var s4 = Secret(); s4.title = D("Banka kartı", "Bank card"); s4.category = .card; s4.notes = D("Son kullanma 08/29", "Expires 08/29")
             idx.secrets = [s1, s2, s3, s4]
         }
 
@@ -113,6 +118,10 @@ enum DebugSnapshots {
         await snap("07-ayarlar", outDir)
 
         state.updatePreferences { $0.appearance = "dark"; $0.accent = "orange" }
+        state.setAutoWipe(Vault.defaultAutoWipeAttempts)
+        state.section = .settings
+        await scrollSettings(toFraction: 0.40)
+        await snap("13-sinir-ayar", outDir)
         state.section = .secrets
         await snap("08-koyu-parolalar", outDir)
         state.section = .files
@@ -128,8 +137,9 @@ enum DebugSnapshots {
         await snap("12-acik-karsilama", outDir)
 
         // Kilitledikten sonra kasa klasöründe düz metin kalmadığını doğrula.
-        let leaks = scanForPlaintext(vaultURL, needles: ["Pasaport", "ornek-gmail-parolasi", "ornek@gmail.com", "manzara", "rapor", "Tatil", "gizli", "benzersiz"])
+        let leaks = scanForPlaintext(vaultURL, needles: [D("Pasaport", "Passport"), "ornek-gmail-parolasi", D("ornek@gmail.com", "example@gmail.com"), D("manzara", "sunset"), D("rapor", "report"), D("Tatil", "Vacation"), D("gizli", "private"), "benzersiz"])
         report.append(leaks.isEmpty ? "Düz metin taraması: TEMIZ" : "SIZINTI: \(leaks)")
+        report += await wipeScenes(state, vaultURL: vaultURL, outDir: outDir)
         try? report.joined(separator: "\n").write(to: outDir.appendingPathComponent("tarama.txt"), atomically: true, encoding: .utf8)
         NSApp.terminate(nil)
     }
@@ -174,7 +184,7 @@ enum DebugSnapshots {
 
         // Kasa içi sürükle-bırak: dosyayı Belgeler klasörüne taşı.
         out.append("Sürükleme verisindeki türler: \(provider.registeredTypeIdentifiers) (yalnızca dosya türü olmalı)")
-        let target = state.createFolder(named: "Videolar", in: nil)
+        let target = state.createFolder(named: D("Videolar", "Videos"), in: nil)
         _ = state.handleDrop([state.dragProvider(for: record, alongWith: [])], into: target)
         try? await Task.sleep(for: .milliseconds(500))
         out.append("Klasöre sürükleme: \(state.index.files.first { $0.id == record.id }?.folderID == target ? "taşındı" : "TAŞINMADI")")
@@ -305,6 +315,35 @@ enum DebugSnapshots {
         await snap("marquee-birakildi", out)
         try? "kaydırma: \(before) → \(after) (belge \(scroll.documentView?.bounds.height ?? 0), görünür \(scroll.documentVisibleRect.height))\n"
             .write(to: out.appendingPathComponent("marquee.txt"), atomically: true, encoding: .utf8)
+    }
+
+    /// Ayarlar formunu belgenin verilen oranına kaydırır (yanlış parola sınırı bölümünü göstermek için).
+    private static func scrollSettings(toFraction fraction: CGFloat) async {
+        try? await Task.sleep(for: .milliseconds(800))
+        guard let root = NSApp.windows.first(where: \.isVisible)?.contentView else { return }
+        let scrolls = allSubviews(root).compactMap { $0 as? NSScrollView }
+        guard let scroll = scrolls.max(by: { ($0.documentView?.bounds.height ?? 0) < ($1.documentView?.bounds.height ?? 0) }),
+              let doc = scroll.documentView else { return }
+        let maxY = max(0, doc.bounds.height - scroll.contentView.bounds.height)
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: maxY * fraction))
+        scroll.reflectScrolledClipView(scroll.contentView)
+    }
+
+    /// Yanlış parola sınırı: kilit ekranında son deneme uyarısı, ardından kasanın silinmesi.
+    private static func wipeScenes(_ state: AppState, vaultURL: URL, outDir: URL) async -> [String] {
+        UserDefaults.standard.set("dark", forKey: "lockAppearance")
+        state.applyAppearance()
+        state.selectVault(vaultURL)
+        var message: String?
+        for _ in 1..<Vault.defaultAutoWipeAttempts {
+            message = await state.unlock(password: "yanlis-parola")
+        }
+        state.debugUnlockError = message
+        await snap("14-sinir-son-hak", outDir)
+        state.debugUnlockError = nil
+        _ = await state.unlock(password: "yanlis-parola")
+        await snap("15-sinir-silindi", outDir)
+        return ["Son hak mesajı: \(message ?? "-") · silindi: \(!Vault.exists(at: vaultURL)) · uyarı: \(state.alert?.title ?? "-")"]
     }
 
     private static func allSubviews(_ view: NSView) -> [NSView] {
@@ -479,10 +518,10 @@ enum DebugSnapshots {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         var urls: [URL] = []
         let palettes: [(String, [NSColor])] = [
-            ("manzara-gun-batimi.png", [.systemOrange, .systemPink, .systemPurple]),
-            ("deniz.png", [.systemTeal, .systemBlue, .systemIndigo]),
-            ("orman.png", [.systemGreen, .systemMint, .systemTeal]),
-            ("kimlik-tarama.png", [.systemGray, .white, .systemGray]),
+            (D("manzara-gun-batimi.png", "sunset-landscape.png"), [.systemOrange, .systemPink, .systemPurple]),
+            (D("deniz.png", "sea.png"), [.systemTeal, .systemBlue, .systemIndigo]),
+            (D("orman.png", "forest.png"), [.systemGreen, .systemMint, .systemTeal]),
+            (D("kimlik-tarama.png", "id-scan.png"), [.systemGray, .white, .systemGray]),
         ]
         for (name, colors) in palettes {
             let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 800, pixelsHigh: 600, bitsPerSample: 8, samplesPerPixel: 4,
@@ -495,10 +534,10 @@ enum DebugSnapshots {
             try? rep.representation(using: .png, properties: [:])?.write(to: url)
             urls.append(url)
         }
-        let text = dir.appendingPathComponent("rapor-2026.txt")
-        try? String(repeating: "Gizli rapor satırı.\n", count: 200).write(to: text, atomically: true, encoding: .utf8)
+        let text = dir.appendingPathComponent(D("rapor-2026.txt", "report-2026.txt"))
+        try? String(repeating: D("Gizli rapor satırı.\n", "Private report line.\n"), count: 200).write(to: text, atomically: true, encoding: .utf8)
         urls.append(text)
-        let zip = dir.appendingPathComponent("yedek-arsiv.zip")
+        let zip = dir.appendingPathComponent(D("yedek-arsiv.zip", "backup-archive.zip"))
         try? Crypto.randomBytes(2_500_000).write(to: zip)
         urls.append(zip)
         return urls
