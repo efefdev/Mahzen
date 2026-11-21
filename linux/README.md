@@ -34,6 +34,9 @@ cd Mahzen/linux
 ./install.sh
 ```
 
+Without git: download `Mahzen-<version>-Linux.tar.gz` from the [latest release](https://github.com/efefdev/Mahzen/releases/latest),
+extract it and run `./install.sh` in the extracted folder.
+
 `install.sh` installs the dependencies with the distribution's package manager (apt, dnf, pacman, zypper) and places
 the app under `~/.local`; the administrator password is requested only for the dependencies. After that Mahzen appears
 in the application menu and can also be started from a terminal with `mahzen`. If the dependencies are already
