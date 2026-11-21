@@ -50,6 +50,7 @@ BASE_CSS = """
 .drop-target { box-shadow: inset 0 0 0 3px @accent_bg_color; border-radius: 12px; }
 .color-dot { border-radius: 999px; min-width: 10px; min-height: 10px; }
 .task-bar { padding: 6px 12px; }
+.qr-frame { background-color: #ffffff; border-radius: 14px; padding: 12px; }
 .shake { animation: shake 0.4s; }
 @keyframes shake { 0% { margin-left: 0; } 25% { margin-left: 8px; } 50% { margin-left: -8px; }
                    75% { margin-left: 4px; } 100% { margin-left: 0; } }
@@ -475,6 +476,7 @@ class MahzenApp(Adw.Application):
                 (tr("Ara"), "<Control>f"),
                 (tr("Seçileni çöpe taşı"), "Delete"),
                 (tr("Üst klasör"), "<Alt>BackSpace"),
+                (tr("Önizlemede önceki / sonraki dosya"), "Left Right"),
             ]),
             (tr("Notlar ve parolalar"), [
                 (tr("Yeni not / kayıt"), "<Control>n"),

@@ -561,4 +561,39 @@ ENGLISH = {
          "Run an integrity check.",
          "The encrypted content of {n} files was not found in the vault; their copies in the backup were kept. "
          "Run an integrity check."),
+
+    # Telefonda Göster
+    "Telefonda Göster": "Show on Phone",
+    "Telefonda Göster…": "Show on Phone…",
+    "Telefonda göster": "Show on phone",
+    "{n} öğe": ("{n} item", "{n} items"),
+    "{n} fotoğraf": ("{n} photo", "{n} photos"),
+    "{n} video": ("{n} video", "{n} videos"),
+    "Gösterilecek fotoğraf ya da video yok": "No photos or videos to show",
+    "Telefonda yalnızca fotoğraflar ve videolar gösterilebilir.": "Only photos and videos can be shown on the phone.",
+    "Başlatılıyor…": "Starting…",
+    "Paylaşım QR kodu": "Sharing QR code",
+    "Telefonun kamerasıyla okutun": "Scan with your phone's camera",
+    "Telefon bu bilgisayarla aynı Wi-Fi ağında olmalı. Dosyalar şifreli gelir, anahtar yalnızca bu QR kodda bulunur.":
+        "The phone must be on the same Wi-Fi network as this computer. Files arrive encrypted; the key exists only "
+        "in this QR code.",
+    "{time} kaldı": "{time} left",
+    "Henüz bağlanan yok": "No one connected yet",
+    "{n} cihaz bağlandı": ("{n} device connected", "{n} devices connected"),
+    "Uçtan uca şifreli · internete çıkmaz": "End-to-end encrypted · never leaves your network",
+    "Paylaşım başlatılamadı": "Couldn't start sharing",
+    "Paylaşım başlatılamadı: {error}": "Couldn't start sharing: {error}",
+    "Bu bilgisayar bir Wi-Fi ya da yerel ağa bağlı görünmüyor. Telefonla aynı ağa bağlanıp yeniden deneyin.":
+        "This computer doesn't appear to be on Wi-Fi or a local network. Join the same network as the phone and "
+        "try again.",
+    "Paylaşım sona erdi": "Sharing ended",
+    "Telefondaki sayfa artık açılmaz. Yeniden göstermek için yeni bir QR kod oluşturun.":
+        "The page on the phone no longer opens. Create a new QR code to show the files again.",
+    "akış kesik": "stream is truncated",
+    "akış boş": "stream is empty",
+
+    # Önizlemede gezinme
+    "Önceki (←)": "Previous (←)",
+    "Sonraki (→)": "Next (→)",
+    "Önizlemede önceki / sonraki dosya": "Previous / next file in preview",
 }

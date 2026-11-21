@@ -21,13 +21,13 @@ msg() { if [ "$UI_LANG" = tr ]; then printf '%s\n' "$1"; else printf '%s\n' "$2"
 
 install_deps() {
     if command -v apt-get >/dev/null 2>&1; then
-        sudo apt-get install -y python3 python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 python3-cryptography python3-argon2
+        sudo apt-get install -y python3 python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 python3-gi-cairo python3-cryptography python3-argon2
     elif command -v dnf >/dev/null 2>&1; then
         sudo dnf install -y python3 python3-gobject gtk4 libadwaita python3-cryptography python3-argon2-cffi
     elif command -v pacman >/dev/null 2>&1; then
-        sudo pacman -S --needed --noconfirm python python-gobject gtk4 libadwaita python-cryptography python-argon2-cffi
+        sudo pacman -S --needed --noconfirm python python-gobject python-cairo gtk4 libadwaita python-cryptography python-argon2-cffi
     elif command -v zypper >/dev/null 2>&1; then
-        sudo zypper install -y python3 python3-gobject python3-gobject-Gdk typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1 \
+        sudo zypper install -y python3 python3-gobject python3-gobject-Gdk python3-gobject-cairo typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1 \
             python3-cryptography python3-argon2-cffi
     else
         msg "Paket yöneticisi tanınmadı. Şunları kurun: Python 3.10+, PyGObject, GTK 4, libadwaita 1.5+," \
