@@ -904,6 +904,22 @@ let englishStrings: [String: String] = [
         "permanently deleted in {0} day|permanently deleted in {0} days",
     "\"{0}\" geri alındı":
         "“{0}” put back",
+    "Dışa aktarılamadı":
+        "Couldn't export",
+    "“{0}” dışa aktarıldı":
+        "“{0}” exported",
+    "{0} öğe dışa aktarıldı":
+        "{0} item exported|{0} items exported",
+    "{0} Öğeyi Dışa Aktar…":
+        "Export {0} Items…",
+    "{0} Klasörü Dışa Aktar…":
+        "Export {0} Folders…",
+    "Favorilere Ekle (F)":
+        "Add to Favorites (F)",
+    "Favorilerden Çıkar (F)":
+        "Remove from Favorites (F)",
+    "Çöp Kutusu'na Taşı (⌘⌫)":
+        "Move to Trash (⌘⌫)",
     // Telefondan Ekle
     "Telefondan Ekle":
         "Add from Phone",

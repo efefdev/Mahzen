@@ -50,10 +50,10 @@ Mahzen (Turkish for "cellar") is a local macOS and Linux app that keeps your fil
 **Files**
 - Add by drag and drop; the structure of dropped folders is preserved
 - Nested folders inside the vault, tags, favorites, search and filters
-- Preview images, PDFs and text inside the app; ← / → in the preview move to the previous/next file
+- Preview images, PDFs and text inside the app; ← / → in the preview move to the previous/next file, and the buttons at the bottom of the preview add the file to favorites (F) or move it to the Trash (⌘⌫)
 - Drag from an empty area of the grid to select with a rectangle (⌘/⇧ adds to the selection)
 - Play video and audio **without writing an unencrypted copy to disk** (decrypted in memory, chunk by chunk)
-- Export by dragging to Finder; the same file is never added twice
+- Export files or whole folders (subfolders included, structure preserved) from the right-click menu, or by dragging files to Finder; the same file is never added twice
 - Option to move the originals to the Mac's Trash after adding
 
 **Show on Phone**

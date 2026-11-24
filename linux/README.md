@@ -65,7 +65,8 @@ Most of the features of the macOS version are available on Linux too:
   favorites, search, grid/list view, move by dragging inside the vault, image and text preview
   (previous/next file with ← / → or a horizontal scroll, with an "n / total" counter), rubber-band selection by
   dragging from an empty spot in the grid (Ctrl/Shift adds to the current selection; the grid scrolls by itself at
-  the edge), temporary opening, export, duplicate detection, an offer to move the originals to the trash after adding
+  the edge), favorite (F) and trash (Delete) buttons at the bottom of the preview, temporary opening, export of files
+  and whole folders (subfolders included, structure preserved), duplicate detection, an offer to move the originals to the trash after adding
 - **Show on Phone:** shows the selected photos and videos, or a folder, on a phone on the same Wi-Fi through a QR
   code, end-to-end encrypted (see below)
 - **Add from Phone:** the reverse; files picked in the phone's browser are encrypted on the phone and added to the

@@ -21,7 +21,7 @@ from ..core import paths  # noqa: E402
 from ..core import vault as vaultmod  # noqa: E402
 from ..core.errors import Cancelled, WrongPassword  # noqa: E402
 from ..core.importplan import ImportPlan  # noqa: E402
-from ..core.index import VaultIndex, format_date, new_file_record, new_id, new_note, now  # noqa: E402
+from ..core.index import VaultIndex, format_date, new_file_record, new_id, new_note, now, safe_file_name  # noqa: E402
 from ..core.keyfiles import KeyfileStore  # noqa: E402
 from ..core.vault import Vault  # noqa: E402
 from ..core.filetypes import IMAGE_PREVIEWABLE, content_type_for, extension  # noqa: E402
@@ -542,21 +542,41 @@ class AppState(GObject.Object):
         self.run_background(lambda: vault.read_file(fid), lambda d, e: done(d, e) if self.is_current(token) else None)
 
     def export_files(self, records: list[dict], directory: str) -> None:
+        self.export_items({r["id"] for r in records}, set(), directory)
+
+    def export_items(self, file_ids: set[str], folder_ids: set[str], directory: str) -> None:
+        """Seçili dosyaları ve klasörleri (içindekilerle, klasör yapısı korunarak) şifresiz olarak dışarı çıkarır."""
         vault, token = self.vault, self._session
         if not vault or self.task:
             return
+        plan = self.index.export_plan(file_ids, folder_ids)
+        if not plan["roots"] and not plan["loose"]:
+            return
+        # Her dosya için hedef klasör; seçili klasörler hedefte aynı adlı bir şey varsa "Ad 2" olur.
+        jobs: list[tuple[dict, str]] = [(r, directory) for r in plan["loose"]]
+        try:
+            for root in plan["roots"]:
+                root_path = _unique_path(directory, root["name"])
+                os.makedirs(root_path)
+                for sub in root["directories"]:
+                    os.makedirs(os.path.join(root_path, *sub), exist_ok=True)
+                jobs += [(r, os.path.join(root_path, *sub)) for r, sub in root["files"]]
+        except OSError as e:
+            self.alert(tr("Dışa aktarılamadı"), _error_text(e))
+            return
+
         flag = CancelFlag()
         self._cancel = flag
-        total = max(sum(int(r.get("size", 0)) for r in records), 1)
+        total = max(sum(int(r.get("size", 0)) for r, _ in jobs), 1)
         self.set_task(TaskProgress(tr("Dışa aktarılıyor"), fraction=0, cancellable=True))
 
         def work():
             done_bytes = 0
             failures = []
-            for r in records:
+            for r, target in jobs:
                 if flag.value:
                     break
-                dest = _unique_path(directory, r["name"])
+                dest = _unique_path(target, safe_file_name(r["name"]))
                 GLib.idle_add(self._update_task, token, None, r["name"], None)
 
                 def progress(n: int) -> None:
@@ -578,10 +598,17 @@ class AppState(GObject.Object):
             if not self.is_current(token):
                 return
             self.set_task(None)
+            items = len(plan["roots"]) + len(plan["loose"])
             if error or failures:
                 self.alert(tr("Bazı dosyalar aktarılamadı"), _error_text(error) if error else "\n".join(failures[:8]))
+            elif flag.value:
+                self.toast(tr("Dışa aktarma durduruldu"))
+            elif not plan["roots"]:
+                self.toast(tr("{n} dosya dışa aktarıldı", n=len(jobs)))
+            elif items == 1:
+                self.toast(tr("“{name}” dışa aktarıldı", name=plan["roots"][0]["name"]))
             else:
-                self.toast(tr("{n} dosya dışa aktarıldı", n=len(records)))
+                self.toast(tr("{n} öğe dışa aktarıldı", n=items))
 
         self.run_background(work, finished)
 

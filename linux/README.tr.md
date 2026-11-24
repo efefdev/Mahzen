@@ -65,7 +65,8 @@ macOS sürümündeki özelliklerin çoğu Linux'ta da var:
   favoriler, arama, ızgara/liste görünümü, kasa içinde sürükleyerek taşıma, görsel ve metin önizleme
   (← / → tuşları ya da yatay kaydırmayla önceki/sonraki dosya, "n / toplam" sayacı), ızgarada boş alandan
   sürükleyerek dikdörtgenle toplu seçim (Ctrl/Shift ile mevcut seçime ekler; kenara gelince ızgara kendiliğinden
-  kayar), geçici açma, dışa aktarma, mükerrer dosya tespiti, ekledikten sonra orijinalleri çöpe taşıma önerisi
+  kayar), önizlemenin altında favori (F) ve çöp kutusu (Delete) düğmeleri, geçici açma, dosya ve klasörleri
+  (alt klasörleriyle, yapısı korunarak) dışa aktarma, mükerrer dosya tespiti, ekledikten sonra orijinalleri çöpe taşıma önerisi
 - **Telefonda Göster:** seçili fotoğraf ve videoları ya da bir klasörü aynı Wi-Fi'deki telefonda QR kodla,
   uçtan uca şifreli gösterir (aşağıda)
 - **Telefondan Ekle:** tersi; telefonun tarayıcısında seçilen dosyalar telefonda şifrelenip açık klasöre eklenir
