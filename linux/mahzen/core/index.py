@@ -62,6 +62,13 @@ def new_id() -> str:
     return str(uuid.uuid4()).upper()
 
 
+def safe_file_name(name: str) -> str:
+    """Dosya sisteminde güvenle kullanılabilecek tek bir yol bileşeni."""
+    cleaned = name.replace("/", "-").replace("\0", "")
+    trimmed = cleaned.strip()
+    return "_" if trimmed in ("", ".", "..") else cleaned
+
+
 def same_id(a: str | None, b: str | None) -> bool:
     if a is None or b is None:
         return a is None and b is None
@@ -311,6 +318,42 @@ class VaultIndex:
     def restore_secret(self, sid: str) -> None:
         if (s := self._find(self.secrets, sid)):
             s.pop("deletedAt", None)
+
+    # MARK: Dışa aktarma planı
+
+    def export_plan(self, file_ids: set[str], folder_ids: set[str]) -> dict:
+        """Seçili dosya ve klasörlerin diske hangi yapıyla çıkarılacağı (macOS'taki `exportPlan` ile aynı kurallar).
+
+        Dönüş: {"roots": [{"name", "directories": [[...]], "files": [(kayıt, [...])]}], "loose": [kayıt]}.
+        Klasörler içindekilerle (alt ve boş klasörler dahil) çıkarılır; çöp kutusundakiler atlanır. Seçili başka bir
+        klasörün içinde kalan klasör ve dosyalar ikinci kez çıkarılmaz."""
+        wanted_folders = {i.upper() for i in folder_ids}
+        wanted_files = {i.upper() for i in file_ids}
+        selected = [f for f in self.folders if f["id"].upper() in wanted_folders and not f.get("deletedAt")]
+        covered: set[str] = set()
+        for f in selected:
+            covered |= self.descendant_folder_ids(f["id"])
+        tops = sorted((f for f in selected if f["id"].upper() not in covered), key=lambda f: sort_key(f["name"]))
+        covered |= {f["id"].upper() for f in tops}
+
+        roots = []
+        for top in tops:
+            directories: list[list[str]] = []
+            files: list[tuple[dict, list[str]]] = []
+
+            def walk(fid: str, path: list[str]) -> None:
+                for rec in sorted(self.live_files_in(fid), key=lambda r: sort_key(r["name"])):
+                    files.append((rec, path))
+                for child in self.child_folders(fid):
+                    child_path = path + [safe_file_name(child["name"])]
+                    directories.append(child_path)
+                    walk(child["id"], child_path)
+
+            walk(top["id"], [])
+            roots.append({"name": safe_file_name(top["name"]), "directories": directories, "files": files})
+        loose = [f for f in self.files
+                 if f["id"].upper() in wanted_files and not f.get("deletedAt") and not self._in(covered, f.get("folderID"))]
+        return {"roots": roots, "loose": loose}
 
     @property
     def trashed_folders(self) -> list[dict]:

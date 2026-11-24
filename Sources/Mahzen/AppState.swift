@@ -67,6 +67,8 @@ final class AppState: ObservableObject {
     #if DEBUG
     /// Ekran görüntüsü aracının kilit ekranında bir hata mesajı göstermesi için.
     @Published var debugUnlockError: String?
+    /// Ekran görüntüsü aracının dosya önizlemesini açması için.
+    @Published var debugPreview: FileRecord?
     #endif
     @Published var recoveredFromBackup = false
     @Published var newSecretRequested = false
@@ -875,7 +877,14 @@ final class AppState: ObservableObject {
     }
 
     func exportFiles(_ files: [FileRecord]) {
-        guard let vault, !files.isEmpty, task == nil else { return }
+        export(files: Set(files.map(\.id)), folders: [])
+    }
+
+    /// Seçili dosyaları ve klasörleri (içindekilerle, klasör yapısı korunarak) şifresiz olarak dışarı çıkarır.
+    func export(files fileIDs: Set<UUID>, folders folderIDs: Set<UUID>) {
+        guard let vault, task == nil else { return }
+        let plan = index.exportPlan(files: fileIDs, folders: folderIDs)
+        guard !plan.roots.isEmpty || !plan.looseFiles.isEmpty else { return }
         let panel = NSOpenPanel()
         panel.title = L("Şifresi çözülmüş kopyaların kaydedileceği klasör")
         panel.prompt = L("Dışa Aktar")
@@ -884,18 +893,47 @@ final class AppState: ObservableObject {
         panel.canCreateDirectories = true
         let token = session
         guard panel.runModal() == .OK, let dir = panel.url, isCurrent(token) else { return }
-        let total = max(files.reduce(0) { $0 + $1.size }, 1)
+        performExport(plan, to: dir)
+    }
+
+    /// Planı `dir` içine çıkarır (klasör seçimi yapılmış olmalı).
+    func performExport(_ plan: ExportPlan, to dir: URL) {
+        guard let vault, task == nil else { return }
+        let token = session
+        // Her dosya için hedef klasör; seçili klasörler hedefte aynı adlı bir şey varsa "Ad 2" olur.
+        var jobs: [(file: FileRecord, dir: URL)] = plan.looseFiles.map { ($0, dir) }
+        var revealed: [URL] = []
+        do {
+            for root in plan.roots {
+                let rootURL = Self.uniqueURL(in: dir, name: root.name)
+                try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+                revealed.append(rootURL)
+                for path in root.directories {
+                    let sub = path.reduce(rootURL) { $0.appendingPathComponent($1, isDirectory: true) }
+                    try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+                }
+                for item in root.files {
+                    jobs.append((item.record, item.directory.reduce(rootURL) { $0.appendingPathComponent($1, isDirectory: true) }))
+                }
+            }
+        } catch {
+            alert = AlertItem(title: L("Dışa aktarılamadı"), message: error.localizedDescription)
+            return
+        }
+
+        let total = max(plan.totalSize, 1)
         let flag = CancelFlag()
         cancelFlag = flag
         task = TaskProgress(title: L("Dışa aktarılıyor"), fraction: 0, cancellable: true)
         Task {
             let counter = ProgressCounter()
             var failures: [String] = []
-            for file in files {
+            var exported: [URL] = []
+            for job in jobs {
                 guard !flag.value, isCurrent(token) else { break }
-                task?.detail = file.name
-                let dest = Self.uniqueURL(in: dir, name: file.name)
-                let id = file.id
+                task?.detail = job.file.name
+                let dest = Self.uniqueURL(in: job.dir, name: VaultIndex.safeFileName(job.file.name))
+                let id = job.file.id
                 do {
                     try await Task.detached(priority: .userInitiated) {
                         try vault.exportFile(id, to: dest) { n in
@@ -905,10 +943,11 @@ final class AppState: ObservableObject {
                             DispatchQueue.main.async { self.task?.fraction = fraction }
                         }
                     }.value
+                    if job.dir == dir { exported.append(dest) }
                 } catch is MaintenanceCancelled {
                     break
                 } catch {
-                    failures.append("\(file.name): \(error.localizedDescription)")
+                    failures.append("\(job.file.name): \(error.localizedDescription)")
                 }
             }
             guard isCurrent(token) else { return }
@@ -916,8 +955,14 @@ final class AppState: ObservableObject {
             if flag.value {
                 showToast(L("Dışa aktarma durduruldu"))
             } else if failures.isEmpty {
-                showToast(LN("{0} dosya dışa aktarıldı", files.count))
-                NSWorkspace.shared.activateFileViewerSelecting([dir])
+                if plan.roots.isEmpty {
+                    showToast(LN("{0} dosya dışa aktarıldı", jobs.count))
+                } else {
+                    let items = plan.roots.count + plan.looseFiles.count
+                    showToast(items == 1 ? L("“{0}” dışa aktarıldı", plan.roots[0].name) : LN("{0} öğe dışa aktarıldı", items))
+                }
+                let selectable = revealed + exported
+                NSWorkspace.shared.activateFileViewerSelecting(selectable.isEmpty ? [dir] : selectable)
             } else {
                 alert = AlertItem(title: L("Bazı dosyalar aktarılamadı"), message: failures.prefix(8).joined(separator: "\n"))
             }

@@ -223,3 +223,65 @@ extension VaultIndex {
         return removed
     }
 }
+
+// MARK: - Dışa aktarma planı
+
+/// Seçili dosya ve klasörlerin diske hangi yapıyla çıkarılacağı. Disk işi yapmaz.
+public struct ExportPlan: Sendable {
+    /// Seçili bir klasör: adı ve içindeki her şey, klasöre göre göreli yollarla.
+    public struct Root: Sendable {
+        public var name: String
+        /// Oluşturulacak alt klasörler (üst klasör önce gelir); boş klasörler de dahildir.
+        public var directories: [[String]]
+        public var files: [(record: FileRecord, directory: [String])]
+    }
+
+    public var roots: [Root]
+    /// Seçili klasörlerin dışında kalan, doğrudan seçilmiş dosyalar.
+    public var looseFiles: [FileRecord]
+
+    public var allFiles: [FileRecord] { looseFiles + roots.flatMap { $0.files.map(\.record) } }
+    public var totalSize: Int64 { allFiles.reduce(0) { $0 + $1.size } }
+}
+
+extension VaultIndex {
+    /// Dosya sisteminde güvenle kullanılabilecek tek bir yol bileşeni.
+    public static func safeFileName(_ name: String) -> String {
+        let cleaned = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: "\0", with: "")
+        let trimmed = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || trimmed == "." || trimmed == ".." ? "_" : cleaned
+    }
+
+    /// Klasörler içindekilerle birlikte (alt klasörler ve boş klasörler dahil) çıkarılır; çöp kutusundakiler atlanır.
+    /// Seçili başka bir klasörün içinde kalan klasör ve dosyalar ikinci kez çıkarılmaz.
+    public func exportPlan(files fileIDs: Set<UUID>, folders folderIDs: Set<UUID>) -> ExportPlan {
+        let selected = folders.filter { folderIDs.contains($0.id) && $0.deletedAt == nil }
+        var covered = Set<UUID>()
+        for f in selected { covered.formUnion(descendantFolderIDs(of: f.id)) }
+        let tops = selected
+            .filter { !covered.contains($0.id) }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        covered.formUnion(tops.map(\.id))
+
+        let roots = tops.map { top -> ExportPlan.Root in
+            var directories: [[String]] = []
+            var files: [(record: FileRecord, directory: [String])] = []
+            func walk(_ id: UUID, _ path: [String]) {
+                for file in liveFiles(in: id).sorted(by: { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) {
+                    files.append((file, path))
+                }
+                for child in childFolders(of: id) {
+                    let childPath = path + [Self.safeFileName(child.name)]
+                    directories.append(childPath)
+                    walk(child.id, childPath)
+                }
+            }
+            walk(top.id, [])
+            return ExportPlan.Root(name: Self.safeFileName(top.name), directories: directories, files: files)
+        }
+        let loose = self.files.filter { file in
+            fileIDs.contains(file.id) && file.deletedAt == nil && !(file.folderID.map(covered.contains) ?? false)
+        }
+        return ExportPlan(roots: roots, looseFiles: loose)
+    }
+}

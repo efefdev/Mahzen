@@ -14,6 +14,27 @@ enum DebugSnapshots {
         Localization.language == .en ? english : turkish
     }
 
+    /// Klasörü (alt klasörü ve boş bir alt klasörüyle) dışa aktarır ve diske çıkan yapıyı raporlar.
+    private static func folderExportCheck(_ state: AppState, folder: UUID?, work: URL) async -> [String] {
+        guard let folder else { return ["Klasör dışa aktarma: klasör yok"] }
+        state.createFolder(named: D("Boş", "Empty"), in: folder)
+        let out = work.appendingPathComponent("disari")
+        try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        // Aynı adlı bir şey varken ikinci kopya "Ad 2" olmalı.
+        for _ in 0..<2 {
+            state.performExport(state.index.exportPlan(files: [], folders: [folder]), to: out)
+            while state.task != nil { try? await Task.sleep(for: .milliseconds(100)) }
+        }
+        let paths = (FileManager.default.enumerator(atPath: out.path)?.allObjects as? [String] ?? []).sorted()
+        let expected = state.index.liveFileCount(inTree: folder)
+        let firstRoot = paths.first.map { String($0.split(separator: "/")[0]) } ?? ""
+        let exportedFiles = paths.filter { p in
+            var dir: ObjCBool = false
+            return p.hasPrefix(firstRoot + "/") && FileManager.default.fileExists(atPath: out.appendingPathComponent(p).path, isDirectory: &dir) && !dir.boolValue
+        }
+        return ["Klasör dışa aktarma: \(paths)", "  ilk kopyada \(exportedFiles.count)/\(expected) dosya · toast: \(state.toast ?? "-")"]
+    }
+
     static func runIfRequested(_ state: AppState) async {
         guard let out = ProcessInfo.processInfo.environment["MAHZEN_SNAPSHOTS"] else { return }
         if ProcessInfo.processInfo.environment["MAHZEN_MARQUEE_TEST"] != nil {
@@ -94,6 +115,41 @@ enum DebugSnapshots {
         await snap("03-dosyalar", outDir)
         state.currentFolder = tripID
         await snap("03b-klasor-ici", outDir)
+        report += await folderExportCheck(state, folder: tripID, work: work)
+        state.currentFolder = nil
+        try? await Task.sleep(for: .milliseconds(300))
+        if let photo = state.index.liveFiles(in: nil).first(where: { $0.utType.conforms(to: .image) }) {
+            state.debugPreview = photo
+            try? await Task.sleep(for: .milliseconds(900))
+            await snap("03d-onizleme", outDir)
+            let before = state.index.files.first { $0.id == photo.id }?.favorite ?? false
+            NSApp.keyWindow?.sendEvent(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                                                         windowNumber: NSApp.keyWindow?.windowNumber ?? 0, context: nil,
+                                                         characters: "f", charactersIgnoringModifiers: "f", isARepeat: false, keyCode: 3)!)
+            try? await Task.sleep(for: .milliseconds(500))
+            let after = state.index.files.first { $0.id == photo.id }?.favorite ?? false
+            report.append("Önizleme favori (F): \(before) → \(after)")
+            await snap("03e-onizleme-favori", outDir)
+            NSApp.keyWindow?.sendEvent(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.command], timestamp: 0,
+                                                         windowNumber: NSApp.keyWindow?.windowNumber ?? 0, context: nil,
+                                                         characters: "\u{8}", charactersIgnoringModifiers: "\u{8}", isARepeat: false, keyCode: 51)!)
+            try? await Task.sleep(for: .milliseconds(700))
+            let trashed = state.index.files.first { $0.id == photo.id }?.deletedAt != nil
+            report.append("Önizleme çöp (⌘⌫): çöpte=\(trashed)")
+            let second = state.index.liveFiles(in: nil).first { $0.utType.conforms(to: .image) }
+            NSApp.keyWindow?.sendEvent(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                                                         windowNumber: NSApp.keyWindow?.windowNumber ?? 0, context: nil,
+                                                         characters: "f", charactersIgnoringModifiers: "f", isARepeat: false, keyCode: 3)!)
+            try? await Task.sleep(for: .milliseconds(500))
+            report.append("Önizleme favori ikinci deneme (F) \(second?.name ?? "-"): \(state.index.files.first { $0.id == second?.id }?.favorite ?? false) · anahtar pencere: \(NSApp.keyWindow?.className ?? "-")")
+            await snap("03f-onizleme-sonraki", outDir)
+            NSApp.keyWindow?.sendEvent(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                                                         windowNumber: NSApp.keyWindow?.windowNumber ?? 0, context: nil,
+                                                         characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}", isARepeat: false, keyCode: 53)!)
+            try? await Task.sleep(for: .milliseconds(500))
+            if trashed { state.mutate { idx in idx.restoreFile(photo.id) } }
+        }
+        state.currentFolder = tripID
         if let trip = state.index.folder(tripID), let yearID {
             // Alt klasörü de kapsadığını görmek için bir fotoğrafı Tatil/2026 içine taşı.
             if let photo = state.index.liveFiles.first(where: { $0.utType.conforms(to: .image) && $0.folderID == nil }) {

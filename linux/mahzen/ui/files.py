@@ -412,6 +412,7 @@ class FilesPage(Adw.Bin):
             menu.append(tr("Aç"), "item.open")
             menu.append(tr("Yeniden Adlandır…"), "item.rename")
             menu.append(tr("Taşı…"), "item.move")
+            menu.append(tr("Dışa Aktar…"), "item.export")
             menu.append(tr("Telefonda Göster…"), "item.phone")
             section = Gio.Menu()
             section.append(tr("Çöp Kutusuna Taşı"), "item.trash")
@@ -645,8 +646,10 @@ class FilesPage(Adw.Bin):
         dialog.present(self)
 
     def export_selected(self) -> None:
-        records = [r for k, r in self.selected() if k == "file"]
-        if not records:
+        items = self.selected()
+        file_ids = {r["id"] for k, r in items if k == "file"}
+        folder_ids = {r["id"] for k, r in items if k == "folder"}
+        if not file_ids and not folder_ids:
             return
         dialog = Gtk.FileDialog(title=tr("Şifresi çözülmüş kopyaların kaydedileceği klasör"),
                                 accept_label=tr("Dışa Aktar"), modal=True)
@@ -657,7 +660,7 @@ class FilesPage(Adw.Bin):
             except GLib.Error:
                 return
             if folder and folder.get_path():
-                self.state.export_files(records, folder.get_path())
+                self.state.export_items(file_ids, folder_ids, folder.get_path())
 
         dialog.select_folder(self.get_root(), None, done)
 
@@ -891,9 +894,18 @@ class PreviewDialog(Adw.Dialog):
         self.stack.add_named(spinner, "loading")
         toolbar.set_content(self.stack)
 
-        self.footer = Gtk.Label(css_classes=["caption", "dim-label"], margin_top=6, margin_bottom=6,
+        # Alt çubuk: favori, dosya bilgisi, çöp kutusu.
+        bottom = Gtk.Box(spacing=6, margin_start=6, margin_end=6, margin_top=4, margin_bottom=4)
+        self.favorite_btn = Gtk.Button(css_classes=["flat"])
+        self.favorite_btn.connect("clicked", lambda *_: self._toggle_favorite())
+        self.footer = Gtk.Label(css_classes=["caption", "dim-label"], hexpand=True,
                                 ellipsize=Pango.EllipsizeMode.END)
-        toolbar.add_bottom_bar(self.footer)
+        trash_btn = Gtk.Button(css_classes=["flat", "destructive-action"], tooltip_text=tr("Çöp kutusuna taşı (Delete)"),
+                               child=Adw.ButtonContent(icon_name="user-trash-symbolic", label=tr("Çöp Kutusuna Taşı")))
+        trash_btn.connect("clicked", lambda *_: self._trash_current())
+        for w in (self.favorite_btn, self.footer, trash_btn):
+            bottom.append(w)
+        toolbar.add_bottom_bar(bottom)
         self.set_child(toolbar)
 
         keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
@@ -925,7 +937,40 @@ class PreviewDialog(Adw.Dialog):
         if target is not None:
             self._load(self.siblings[target])
 
+    def _is_favorite(self) -> bool:
+        current = self.state.index.file(self.record["id"])
+        return bool((current or self.record).get("favorite"))
+
+    def _update_favorite(self) -> None:
+        on = self._is_favorite()
+        self.favorite_btn.set_child(Adw.ButtonContent(
+            icon_name="starred-symbolic" if on else "non-starred-symbolic",
+            label=tr("Favorilerden Çıkar") if on else tr("Favorilere Ekle")))
+        self.favorite_btn.set_tooltip_text(tr("Favorilerden çıkar (F)") if on else tr("Favorilere ekle (F)"))
+
+    def _toggle_favorite(self) -> None:
+        self.state.toggle_favorite({self.record["id"]})
+        self._update_favorite()
+
+    def _trash_current(self) -> None:
+        """Dosyayı çöpe atar ve sıradaki dosyaya geçer; başka dosya yoksa önizlemeyi kapatır."""
+        position, trashed = self.position, self.record
+        self.state.trash_files({trashed["id"]})
+        remaining = [s for s in self.siblings if s["id"] != trashed["id"]]
+        if not remaining:
+            self.close()
+            return
+        self.siblings = remaining
+        self._load(remaining[min(position, len(remaining) - 1)])
+
     def _on_key(self, _ctrl, keyval, _code, mods) -> bool:
+        plain = not mods & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK | Gdk.ModifierType.SUPER_MASK)
+        if plain and keyval in (Gdk.KEY_Delete, Gdk.KEY_KP_Delete):
+            self._trash_current()
+            return True
+        if plain and keyval in (Gdk.KEY_f, Gdk.KEY_F) and not mods & Gdk.ModifierType.SHIFT_MASK:
+            self._toggle_favorite()
+            return True
         # Metinde ok tuşları imlece kalır.
         if self._kind == "text" or mods & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK |
                                            Gdk.ModifierType.SHIFT_MASK | Gdk.ModifierType.SUPER_MASK):
@@ -977,6 +1022,7 @@ class PreviewDialog(Adw.Dialog):
         self.counter.set_label(f"{position + 1} / {count}")
         self.prev_btn.set_sensitive(position > 0)
         self.next_btn.set_sensitive(position < count - 1)
+        self._update_favorite()
         self.footer.set_label(" · ".join(x for x in [
             format_size(int(record.get("size", 0))), tr("Eklendi: {date}", date=format_date(record.get("addedAt"))),
             " ".join(f"#{t}" for t in record.get("tags", []))] if x))
