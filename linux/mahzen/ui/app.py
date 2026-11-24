@@ -15,6 +15,7 @@ from .. import APP_ID, __version__  # noqa: E402
 from ..core.index import parse_date  # noqa: E402
 from ..i18n import tr  # noqa: E402
 from .common import alert, confirm  # noqa: E402
+from .dbus import DBusService  # noqa: E402
 from .files import FilesPage  # noqa: E402
 from .lock import CreatePage, LockPage, WelcomePage  # noqa: E402
 from .notes import NotesPage  # noqa: E402
@@ -330,6 +331,21 @@ class MahzenApp(Adw.Application):
         self.window: MainWindow | None = None
         self._accent_css = Gtk.CssProvider()
         self._dbus_subscriptions = []
+        self.dbus_service = DBusService(self.state)
+
+    def do_dbus_register(self, connection, object_path):
+        # Kendi adımız (dev.efef.Mahzen) üzerinde masaüstü kabuğu için dev.efef.Mahzen1 arayüzü.
+        if not Adw.Application.do_dbus_register(self, connection, object_path):
+            return False
+        try:
+            self.dbus_service.register(connection)
+        except GLib.Error as e:
+            print(f"D-Bus arayüzü kaydedilemedi: {e.message}", file=sys.stderr)
+        return True
+
+    def do_dbus_unregister(self, connection, object_path):
+        self.dbus_service.unregister(connection)
+        Adw.Application.do_dbus_unregister(self, connection, object_path)
 
     def do_startup(self):
         Adw.Application.do_startup(self)

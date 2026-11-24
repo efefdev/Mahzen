@@ -118,6 +118,26 @@ allows high ports).
 | Hiding from screenshots | Apps cannot prevent this on Wayland/X11; the setting has no effect on Linux. |
 | Keyfiles | `~/.local/share/Mahzen/Anahtarlar` (permissions 700/600). To bring over a keyfile from a Mac, use "Export" on the Mac and "Import Keyfile" from the menu on the Linux lock screen. |
 
+### Desktop shell integration (D-Bus)
+
+While running, the app exposes the `dev.efef.Mahzen1` interface on the session bus, under the name
+`dev.efef.Mahzen` at `/dev/efef/Mahzen1`. It never opens a vault or reads contents; it only reports
+and changes the lock state:
+
+| Member | Type | Meaning |
+|---|---|---|
+| `Locked` | property `b` | Whether the vault is locked (also `true` when no vault is open) |
+| `Vaults` | property `as` | Folder name of the selected vault (not the full path) |
+| `Lock()` | method `→ b` | Locks immediately; `true` if a vault was open and this call locked it |
+| `LockedChanged` | signal `b` | The lock state changed (`PropertiesChanged` is emitted too) |
+
+```sh
+gdbus call --session -d dev.efef.Mahzen -o /dev/efef/Mahzen1 -m dev.efef.Mahzen1.Lock
+```
+
+When the app is not running the name does not exist; it is not D-Bus activated. The efefOS lock screen
+and panic key lock the vault this way.
+
 ## Trying it out (after the first install)
 
 Start with **a new vault made for testing**, not your real one:
