@@ -50,10 +50,10 @@ Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde 
 **Dosyalar**
 - Sürükle-bırak ile ekleme; sürüklenen klasörlerin yapısı korunur
 - Kasa içinde iç içe klasörler, etiketler, favoriler, arama ve filtreler
-- Görsel, PDF ve metinleri uygulama içinde önizleme; önizlemede ← / → ile önceki/sonraki dosya
+- Görsel, PDF ve metinleri uygulama içinde önizleme; önizlemede ← / → ile önceki/sonraki dosya, alttaki düğmelerle favorilere ekleme (F) ve Çöp Kutusu'na taşıma (⌘⌫)
 - Izgarada boş alandan sürükleyerek dikdörtgenle toplu seçim (⌘/⇧ ile seçime ekleme)
 - Video ve sesleri **diske şifresiz kopya yazmadan** oynatma (şifre bellekte, parça parça çözülür)
-- Finder'a sürükleyerek dışa aktarma, aynı dosyanın iki kez eklenmesini önleme
+- Dosyaları ya da klasörleri bütün halinde (alt klasörleriyle, yapısı korunarak) sağ tık menüsünden veya dosyaları Finder'a sürükleyerek dışa aktarma; aynı dosyanın iki kez eklenmesini önleme
 - Ekledikten sonra orijinalleri Mac'in Çöp Kutusu'na taşıma seçeneği
 
 **Telefonda Göster**

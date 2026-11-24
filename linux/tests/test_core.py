@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from mahzen.core import blob, crypto, passwords  # noqa: E402
 from mahzen.core.errors import Corrupted, PasswordTooShort, WrongPassword  # noqa: E402
 from mahzen.core.importplan import ImportPlan  # noqa: E402
-from mahzen.core.index import VaultIndex, new_file_record, new_note, new_secret  # noqa: E402
+from mahzen.core.index import VaultIndex, new_file_record, new_note, new_secret, safe_file_name  # noqa: E402
 from mahzen.core.keyfiles import KeyfileStore  # noqa: E402
 from mahzen.core.vault import (Vault, destroy_keys, read_header, record_failed_attempt,  # noqa: E402
                                remaining_attempts)
@@ -285,6 +285,27 @@ class IndexTests(unittest.TestCase):
         idx.set_tags([" b ", "a", "a", ""], {"F"})
         self.assertEqual(idx.all_tags, ["a", "b"])
 
+
+    def test_export_plan(self):
+        idx = VaultIndex()
+        tatil = idx.create_folder("Tatil", None)
+        deniz = idx.create_folder("Deniz", tatil)
+        idx.create_folder("Boş", tatil)
+        silinmis = idx.create_folder("Silinmiş", tatil)
+        for fid, name, folder in (("A", "a.jpg", tatil), ("B", "b.jpg", deniz), ("C", "c.jpg", deniz),
+                                  ("D", "d.jpg", silinmis), ("E", "e.txt", None)):
+            idx.files.append(new_file_record(fid, name, 10, None, None, False, folder, None))
+        idx.trash_files({"C"})
+        idx.trash_folder(silinmis)
+        plan = idx.export_plan({"B", "E"}, {tatil, deniz})
+        self.assertEqual(len(plan["roots"]), 1)
+        root = plan["roots"][0]
+        self.assertEqual(root["name"], "Tatil")
+        self.assertEqual(sorted(root["directories"]), [["Boş"], ["Deniz"]])
+        self.assertEqual([(r["name"], d) for r, d in root["files"]], [("a.jpg", []), ("b.jpg", ["Deniz"])])
+        self.assertEqual([r["name"] for r in plan["loose"]], ["e.txt"])
+        self.assertEqual(safe_file_name("a/b"), "a-b")
+        self.assertEqual(safe_file_name(".."), "_")
 
 class OtherTests(unittest.TestCase):
     def test_generator(self):

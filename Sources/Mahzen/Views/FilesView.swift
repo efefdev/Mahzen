@@ -118,6 +118,11 @@ struct FilesView: View {
         .onDeleteCommand(perform: trashSelection)
         .onChange(of: state.currentFolder) { _, _ in selection.removeAll() }
         .sheet(item: $previewing) { FilePreviewSheet(file: $0, siblings: items.compactMap(\.file)) }
+        #if DEBUG
+        .onChange(of: state.debugPreview) { _, file in
+            if let file { previewing = file; state.debugPreview = nil }
+        }
+        #endif
         .sheet(item: Binding(get: { state.phoneShare }, set: { if $0 == nil { state.stopPhoneShare() } })) {
             PhoneShareSheet(session: $0)
         }
@@ -459,6 +464,7 @@ struct FilesView: View {
                 ForEach(AccentChoice.allCases) { c in Button(c.title) { setFolderColor(folder.id, c.rawValue) } }
             }
             moveMenu(files: [], folder: folder)
+            Button(L("Dışa Aktar…")) { state.export(files: [], folders: [folder.id]) }
             Button(L("Telefonda Göster…")) { state.showOnPhone(folder: folder) }
             Divider()
             Button(L("Çöp Kutusu'na Taşı"), role: .destructive) { state.trashFolder(folder.id) }
@@ -478,7 +484,13 @@ struct FilesView: View {
             Button(L("Etiketler…")) { tagging = Set(files.map(\.id)) }
             Button(files.allSatisfy(\.favorite) ? L("Favorilerden Çıkar") : L("Favorilere Ekle")) { state.toggleFavorite(Set(files.map(\.id))) }
             moveMenu(files: Set(files.map(\.id)), folder: nil)
-            Button(files.count == 1 ? L("Dışa Aktar…") : L("{0} Dosyayı Dışa Aktar…", files.count)) { state.exportFiles(files) }
+            if folders.isEmpty {
+                Button(files.count == 1 ? L("Dışa Aktar…") : L("{0} Dosyayı Dışa Aktar…", files.count)) { state.exportFiles(files) }
+            } else {
+                Button(L("{0} Öğeyi Dışa Aktar…", files.count + folders.count)) {
+                    state.export(files: Set(files.map(\.id)), folders: Set(folders.map(\.id)))
+                }
+            }
             if files.contains(where: PhoneShareSession.isShareable) {
                 Button(L("Telefonda Göster…")) { state.showOnPhone(files: files) }
             }
@@ -487,6 +499,8 @@ struct FilesView: View {
                 state.trashFiles(Set(files.map(\.id)))
                 selection.subtract(files.map(\.id))
             }
+        } else if folders.count > 1 {
+            Button(L("{0} Klasörü Dışa Aktar…", folders.count)) { state.export(files: [], folders: Set(folders.map(\.id))) }
         }
     }
 
@@ -768,14 +782,14 @@ struct FileTile: View {
 struct FilePreviewSheet: View {
     /// Önizlenen dosya; ok tuşları ya da izleme dörtgeninde kaydırma ile kardeşleri arasında gezilir.
     @State private var file: FileRecord
-    /// Aynı ekranda görünen dosyalar, görünen sırayla.
-    let siblings: [FileRecord]
+    /// Aynı ekranda görünen dosyalar, görünen sırayla. Çöpe atılan dosya listeden çıkar.
+    @State private var siblings: [FileRecord]
     @EnvironmentObject private var state: AppState
     @Environment(\.dismiss) private var dismiss
 
     init(file: FileRecord, siblings: [FileRecord] = []) {
         _file = State(initialValue: file)
-        self.siblings = siblings.contains(where: { $0.id == file.id }) ? siblings : [file]
+        _siblings = State(initialValue: siblings.contains(where: { $0.id == file.id }) ? siblings : [file])
     }
 
     private var position: Int? { siblings.firstIndex { $0.id == file.id } }
@@ -869,6 +883,8 @@ struct FilePreviewSheet: View {
             .transition(.asymmetric(insertion: .move(edge: lastStep < 0 ? .leading : .trailing).combined(with: .opacity),
                                     removal: .opacity))
             .clipped()
+            Divider()
+            bottomBar
         }
         .frame(minWidth: 720, idealWidth: 900, minHeight: 520, idealHeight: 680)
         .background(WindowReader { window = $0 })
@@ -880,6 +896,48 @@ struct FilePreviewSheet: View {
             monitor = nil
         }
         .onChange(of: state.phase) { _, phase in if phase != .unlocked { stopMedia(); dismiss() } }
+    }
+
+    /// Favori durumu dizinden okunur; önizleme açıkken değişince düğme hemen güncellenir.
+    private var isFavorite: Bool {
+        state.index.files.first { $0.id == file.id }?.favorite ?? file.favorite
+    }
+
+    private var bottomBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                state.toggleFavorite([file.id])
+            } label: {
+                Label(isFavorite ? L("Favorilerden Çıkar") : L("Favorilere Ekle"),
+                      systemImage: isFavorite ? "star.fill" : "star")
+            }
+            .keyboardShortcut("f", modifiers: [])
+            .help(isFavorite ? L("Favorilerden Çıkar (F)") : L("Favorilere Ekle (F)"))
+            Spacer()
+            Button(role: .destructive) {
+                trashCurrent()
+            } label: { Label(L("Çöp Kutusu'na Taşı"), systemImage: "trash") }
+            .keyboardShortcut(.delete, modifiers: [.command])
+            .help(L("Çöp Kutusu'na Taşı (⌘⌫)"))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    /// Dosyayı çöpe atar ve sıradaki dosyaya geçer; başka dosya yoksa önizlemeyi kapatır.
+    private func trashCurrent() {
+        guard let position else { return }
+        let trashed = file
+        state.trashFiles([trashed.id])
+        guard siblings.count > 1 else { dismiss(); return }
+        stopMedia()
+        let next = position < siblings.count - 1 ? position + 1 : position - 1
+        lastStep = next > position ? 1 : -1
+        withAnimation(.easeOut(duration: 0.22)) {
+            content = .loading
+            file = siblings[next]
+            siblings.removeAll { $0.id == trashed.id }
+        }
     }
 
     private func stopMedia() {
