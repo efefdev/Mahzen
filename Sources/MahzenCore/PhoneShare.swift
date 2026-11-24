@@ -87,6 +87,64 @@ public enum PhoneShare {
         guard chunk > 0 else { throw VaultError.corrupted(L("akış boş")) }
         return out
     }
+
+    /// Parça parça gelen bir akışı çözer ("Telefondan Ekle": telefonun yüklediği dosyalar).
+    ///
+    /// Bir çerçevenin son çerçeve olup olmadığı ancak arkasından yenisi gelince ya da akış bitince bellidir;
+    /// bu yüzden her çerçeve bir sonraki gelene kadar bekletilir. Bellekte en fazla iki çerçeve tutulur.
+    public final class StreamDecoder {
+        public static let maxFrameLength = chunkSize + tagSize
+
+        private let key: SymmetricKey
+        private let streamID: UInt32
+        private var buffer = Data()
+        private var pending: Data?
+        private var chunk: UInt64 = 0
+
+        public init(key: SymmetricKey, streamID: UInt32) {
+            self.key = key
+            self.streamID = streamID
+        }
+
+        /// Gelen baytları ekler; doğrulanıp çözülen (son olmayan) parçaları döndürür.
+        public func push(_ bytes: Data) throws -> [Data] {
+            buffer.append(bytes)
+            var produced: [Data] = []
+            var offset = buffer.startIndex
+            while buffer.endIndex - offset >= 4 {
+                let length = buffer[offset..<offset + 4].reduce(0) { ($0 << 8) | Int($1) }
+                guard length >= tagSize, length <= Self.maxFrameLength else { throw VaultError.corrupted(L("akış bozuk")) }
+                guard buffer.endIndex - offset - 4 >= length else { break }
+                let frame = Data(buffer[offset + 4..<offset + 4 + length])
+                offset += 4 + length
+                if let previous = pending { produced.append(try decrypt(previous, final: false)) }
+                pending = frame
+            }
+            if offset != buffer.startIndex { buffer = Data(buffer[offset...]) }
+            return produced
+        }
+
+        /// Akışın bittiğini bildirir: bekleyen çerçeve "son" olarak doğrulanır. Yarım çerçeve kalmışsa,
+        /// hiç çerçeve gelmemişse ya da akış sondan kesilmişse hata verir.
+        public func finish() throws -> Data {
+            guard buffer.isEmpty, let last = pending else { throw VaultError.corrupted(L("akış kesik")) }
+            pending = nil
+            return try decrypt(last, final: true)
+        }
+
+        private func decrypt(_ frame: Data, final: Bool) throws -> Data {
+            let box = try ChaChaPoly.SealedBox(nonce: nonce(stream: streamID, chunk: chunk),
+                                               ciphertext: frame.prefix(frame.count - tagSize),
+                                               tag: frame.suffix(tagSize))
+            do {
+                let plain = try ChaChaPoly.open(box, using: key, authenticating: aad(final: final))
+                chunk += 1
+                return plain
+            } catch {
+                throw VaultError.corrupted(L("içerik doğrulanamadı"))
+            }
+        }
+    }
 }
 
 /// Telefona gönderilen içerik listesi. Şifreli gider; dosya adları da ağda görünmez.

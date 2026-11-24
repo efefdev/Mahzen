@@ -11,6 +11,7 @@ from ..i18n import tr
 from .common import (alert, ask_text, clear_box, fill_rect, format_date, format_size, icon_for, kind_of, rgba,
                      widget_bounds, widget_point)
 from .phoneshare import PhoneShareDialog
+from .phoneupload import PhoneUploadDialog
 
 TEXT_PREVIEW_LIMIT = 4 * 1024 * 1024
 IMAGE_PREVIEW_LIMIT = 80 * 1024 * 1024
@@ -27,9 +28,21 @@ class FilesPage(Adw.Bin):
 
         toolbar = Adw.ToolbarView()
         header = make_header(tr("Dosyalar"))
-        add_btn = Gtk.Button(icon_name="list-add-symbolic", tooltip_text=tr("Dosya ekle (Ctrl+O)"))
+        # "+": tıklayınca dosya seçimi; yanındaki ok menüsünde "Telefondan Ekle…".
+        add_menu = Gio.Menu()
+        add_menu.append(tr("Dosya Seç…"), "files.import")
+        add_menu.append(tr("Telefondan Ekle…"), "files.from-phone")
+        add_btn = Adw.SplitButton(icon_name="list-add-symbolic", tooltip_text=tr("Dosya ekle (Ctrl+O)"),
+                                  menu_model=add_menu, dropdown_tooltip=tr("Diğer ekleme yolları"))
         add_btn.connect("clicked", lambda *_: self.present_import())
         header.pack_start(add_btn)
+        page_actions = Gio.SimpleActionGroup()
+        for name, cb in (("import", lambda: self.present_import()),
+                         ("from-phone", lambda: self.add_from_phone(self.state.current_folder))):
+            action = Gio.SimpleAction.new(name, None)
+            action.connect("activate", lambda *_, c=cb: c())
+            page_actions.add_action(action)
+        self.insert_action_group("files", page_actions)
         add_folder_btn = Gtk.Button(icon_name="folder-new-symbolic", tooltip_text=tr("Kasaya klasör ekle"))
         add_folder_btn.connect("clicked", lambda *_: self.present_import(folders=True))
         header.pack_start(add_folder_btn)
@@ -414,6 +427,7 @@ class FilesPage(Adw.Bin):
             menu.append(tr("Taşı…"), "item.move")
             menu.append(tr("Dışa Aktar…"), "item.export")
             menu.append(tr("Telefonda Göster…"), "item.phone")
+            menu.append(tr("Telefondan Ekle…"), "item.from-phone")
             section = Gio.Menu()
             section.append(tr("Çöp Kutusuna Taşı"), "item.trash")
             menu.append_section(None, section)
@@ -444,6 +458,7 @@ class FilesPage(Adw.Bin):
             "move": self.move_selected,
             "trash": self.trash_selected,
             "phone": lambda: self.show_on_phone(item),
+            "from-phone": lambda: self.add_from_phone(record["id"]),
         }
         for name, cb in actions.items():
             action = Gio.SimpleAction.new(name, None)
@@ -679,6 +694,12 @@ class FilesPage(Adw.Bin):
             return
         if session is not None:
             PhoneShareDialog(self.state, session).present(self)
+
+    def add_from_phone(self, folder_id: str | None) -> None:
+        """Telefondan dosya alır; dosyalar verilen klasöre (None = kök) şifreli olarak eklenir."""
+        session = self.state.start_phone_upload(folder_id)
+        if session is not None:
+            PhoneUploadDialog(self.state, session).present(self)
 
     def open_temporarily(self, record: dict) -> None:
         if self.state.settings.get("tempOpenWarned"):

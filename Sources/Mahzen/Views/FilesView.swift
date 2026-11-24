@@ -126,6 +126,9 @@ struct FilesView: View {
         .sheet(item: Binding(get: { state.phoneShare }, set: { if $0 == nil { state.stopPhoneShare() } })) {
             PhoneShareSheet(session: $0)
         }
+        .sheet(item: Binding(get: { state.phoneUpload }, set: { if $0 == nil { state.stopPhoneUpload() } })) {
+            PhoneUploadSheet(session: $0)
+        }
         .sheet(item: $renamingFile) { file in
             RenameSheet(name: file.name) { state.renameFile(file.id, to: $0) }
         }
@@ -254,8 +257,13 @@ struct FilesView: View {
             .help(L("Yeni klasör"))
             .disabled(isGlobal)
 
-            Button(action: state.presentImportPanel) {
+            Menu {
+                Button(L("Dosya Seç…"), action: state.presentImportPanel)
+                Button(L("Telefondan Ekle…")) { state.addFromPhone(into: current) }
+            } label: {
                 Label(L("Ekle"), systemImage: "plus")
+            } primaryAction: {
+                state.presentImportPanel()
             }
             .help(L("Dosya ekle (⌘O)"))
         }
@@ -466,6 +474,7 @@ struct FilesView: View {
             moveMenu(files: [], folder: folder)
             Button(L("Dışa Aktar…")) { state.export(files: [], folders: [folder.id]) }
             Button(L("Telefonda Göster…")) { state.showOnPhone(folder: folder) }
+            Button(L("Telefondan Ekle…")) { state.addFromPhone(into: folder.id) }
             Divider()
             Button(L("Çöp Kutusu'na Taşı"), role: .destructive) { state.trashFolder(folder.id) }
         } else if !files.isEmpty {
@@ -772,7 +781,7 @@ struct FileTile: View {
         .scaleEffect(hovering ? 1.02 : 1)
         .animation(.snappy(duration: 0.18), value: hovering)
         .onHover { hovering = $0 }
-        .task(id: file.id) { thumbnail = await state.thumbnail(for: file) }
+        .task(id: "\(file.id)\(file.hasThumbnail)") { thumbnail = await state.thumbnail(for: file) }
         .help(file.name)
     }
 }

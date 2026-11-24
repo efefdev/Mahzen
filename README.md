@@ -62,6 +62,12 @@ Mahzen (Turkish for "cellar") is a local macOS and Linux app that keeps your fil
 - **Local network only, time-limited:** nothing goes to the internet; sharing ends after 10 minutes, when you press Stop, or when the vault locks
 - Works the same on macOS and Linux ([Linux details](linux/README.md#show-on-phone))
 
+**Add from Phone**
+- The reverse of Show on Phone: scan a QR code, pick photos, videos or any files in the phone's browser, and they land in the current vault folder; nothing needs to be installed on the phone
+- **Encrypted on the phone:** each file is encrypted in the phone's browser with the session key from the QR code (same ChaCha20-Poly1305 stream format) before it is sent. The computer decrypts it in memory and encrypts it straight into the vault; no unencrypted copy is ever written to disk
+- Up to 8 GB per file; cancelled or interrupted uploads leave nothing behind; the same file is never added twice
+- **Local network only, time-limited:** ends after 10 minutes, when you press Stop, or when the vault locks. Files toolbar `+` menu, or right-click a folder → **Add from Phone…** ([Linux details](linux/README.md#add-from-phone))
+
 **Notes and passwords**
 - Colored, pinnable notes; adjustable font and size
 - Account, card, Wi-Fi and server entries; password generator and strength meter

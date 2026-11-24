@@ -117,6 +117,58 @@ def open_stream(data: bytes, key: bytes, stream: int) -> bytes:
     return bytes(out)
 
 
+class StreamDecoder:
+    """Parça parça gelen bir akışı çözer ("Telefondan Ekle": telefonun yüklediği dosyalar).
+
+    Bir çerçevenin son çerçeve olup olmadığı ancak arkasından yenisi gelince ya da akış bitince bellidir; bu yüzden
+    her çerçeve bir sonraki gelene kadar bekletilir. macOS'taki `PhoneShare.StreamDecoder` ile aynı.
+    """
+
+    MAX_FRAME = CHUNK_SIZE + TAG_SIZE
+
+    def __init__(self, key: bytes, stream: int):
+        self._aead = ChaCha20Poly1305(key)
+        self._stream = stream
+        self._buffer = bytearray()
+        self._pending: bytes | None = None
+        self._chunk = 0
+
+    def push(self, data: bytes) -> list[bytes]:
+        """Gelen baytları ekler; doğrulanıp çözülen (son olmayan) parçaları döndürür."""
+        self._buffer += data
+        produced = []
+        offset = 0
+        while len(self._buffer) - offset >= 4:
+            (length,) = struct.unpack(">I", self._buffer[offset:offset + 4])
+            if length < TAG_SIZE or length > self.MAX_FRAME:
+                raise Corrupted(tr("akış bozuk"))
+            if len(self._buffer) - offset - 4 < length:
+                break
+            frame = bytes(self._buffer[offset + 4:offset + 4 + length])
+            offset += 4 + length
+            if self._pending is not None:
+                produced.append(self._decrypt(self._pending, False))
+            self._pending = frame
+        if offset:
+            del self._buffer[:offset]
+        return produced
+
+    def finish(self) -> bytes:
+        """Akışın bittiğini bildirir; bekleyen çerçeve "son" olarak doğrulanır."""
+        if self._buffer or self._pending is None:
+            raise Corrupted(tr("akış kesik"))
+        last, self._pending = self._pending, None
+        return self._decrypt(last, True)
+
+    def _decrypt(self, frame: bytes, final: bool) -> bytes:
+        try:
+            plain = self._aead.decrypt(_nonce(self._stream, self._chunk), frame, _aad(final))
+        except InvalidTag:
+            raise Corrupted(tr("içerik doğrulanamadı")) from None
+        self._chunk += 1
+        return plain
+
+
 def base64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
 

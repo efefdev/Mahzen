@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0b0d">
+<title>Mahzen</title>
+<style>:root {
+  --bg: #0b0b0d; --panel: rgba(22,22,26,.78); --card: #17171b; --line: rgba(255,255,255,.08);
+  --text: #f5f5f7; --dim: #9a9aa3; --accent: #ff9f0a; --accent-dim: rgba(255,159,10,.16); --danger: #ff453a; --ok: #32d74b;
+  --top: env(safe-area-inset-top); --bottom: env(safe-area-inset-bottom);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body {
+  font: 15px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased; min-height: 100vh;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+svg { display: block; }
+[hidden] { display: none !important; }
+
+.screen {
+  position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 32px; text-align: center; background: var(--bg); z-index: 50;
+}
+.mark {
+  width: 68px; height: 68px; border-radius: 20px; display: grid; place-items: center;
+  background: linear-gradient(145deg, #ffb340, #ff7a00); box-shadow: 0 10px 40px rgba(255,140,0,.35);
+}
+.mark svg { width: 34px; height: 34px; color: #1a1000; }
+.screen.error .mark { background: #2a2a30; box-shadow: none; }
+.screen.error .mark svg { color: var(--dim); }
+.screen h1 { margin: 6px 0 0; font-size: 21px; font-weight: 650; letter-spacing: -.01em; }
+.screen p { margin: 0; color: var(--dim); max-width: 320px; }
+.spinner {
+  width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid var(--accent-dim); border-top-color: var(--accent);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+header {
+  position: sticky; top: 0; z-index: 10; padding: calc(var(--top) + 12px) 16px 12px;
+  background: var(--panel); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px;
+}
+header .titles { flex: 1; min-width: 0; }
+header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+header .sub { color: var(--dim); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header .sub b { color: var(--text); font-weight: 600; }
+.pill {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px;
+  background: var(--accent-dim); color: var(--accent); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.pill svg { width: 14px; height: 14px; }
+.pill.low { background: rgba(255,69,58,.16); color: var(--danger); }
+
+main { max-width: 560px; margin: 0 auto; padding: 18px 16px calc(var(--bottom) + 28px); }
+.pick {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  min-height: 150px; padding: 22px; border-radius: 20px; text-align: center; cursor: pointer;
+  background: linear-gradient(160deg, rgba(255,159,10,.20), rgba(255,122,0,.08)); border: 1.5px dashed rgba(255,159,10,.55);
+}
+.pick:active { filter: brightness(.85); }
+.pick input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.pick .plus {
+  width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
+  background: linear-gradient(145deg, #ffb340, #ff7a00); color: #1a1000;
+}
+.pick .plus svg { width: 26px; height: 26px; }
+.pick strong { font-size: 17px; font-weight: 650; }
+.pick span { color: var(--dim); font-size: 13px; }
+.ended { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-radius: 16px; background: var(--card); }
+.ended span { color: var(--dim); font-size: 13px; }
+.hint { display: flex; gap: 10px; margin: 14px 2px 0; color: var(--dim); font-size: 13px; }
+.hint svg { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--accent); }
+
+.list-head { display: flex; align-items: center; justify-content: space-between; margin: 24px 2px 8px; font-size: 13px; color: var(--dim); }
+.list-head button { color: var(--accent); font-weight: 600; }
+ul { list-style: none; margin: 0; padding: 0; border-radius: 16px; background: var(--card); overflow: hidden; }
+li { display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; border-top: 1px solid var(--line); }
+li:first-child { border-top: 0; }
+li .ic { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: rgba(255,255,255,.06); color: var(--dim); }
+li .ic svg { width: 18px; height: 18px; }
+li.done .ic { background: rgba(50,215,75,.14); color: var(--ok); }
+li.error .ic { background: rgba(255,69,58,.14); color: var(--danger); }
+li .info { flex: 1; min-width: 0; }
+li .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+li .meta { color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+li.error .meta { color: var(--danger); }
+li .track { height: 4px; margin-top: 7px; border-radius: 2px; background: rgba(255,255,255,.09); overflow: hidden; }
+li .track i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 2px; transition: width .2s; }
+li .act { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.07); color: var(--dim); }
+li .act svg { width: 15px; height: 15px; }</style>
+</head><body>
+<div id="splash" class="screen">
+  <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg></div>
+  <h1>Mahzen</h1>
+  <p data-t>Bağlanılıyor…</p>
+  <div class="spinner"></div>
+</div>
+<div id="error" class="screen error" hidden>
+  <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg></div>
+  <h1 id="error-title"></h1>
+  <p id="error-text"></p>
+</div>
+<div id="app" hidden>
+  <header>
+    <div class="titles"><h1 data-t>Kasaya ekle</h1><div class="sub"><span data-t>Klasör:</span> <b id="folder"></b></div></div>
+    <div class="pill" id="timer" title="Oturumun bitmesine kalan süre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2h4"/></svg><span id="timer-text"></span></div>
+  </header>
+  <main>
+    <label class="pick" id="pick">
+      <input type="file" id="input" multiple>
+      <div class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+      <strong data-t>Fotoğraf, video ya da dosya seç</strong>
+      <span id="limit"></span>
+    </label>
+    <div class="ended" id="ended" hidden><strong id="ended-title"></strong><span id="ended-text"></span></div>
+    <p class="hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg><span data-t>Dosyalar bu telefonda şifrelenir ve bilgisayardaki kasaya şifreli olarak yazılır. Yükleme bitene kadar bu sayfayı açık tutun.</span></p>
+    <section id="list-wrap" hidden>
+      <div class="list-head"><span id="summary"></span><button id="stop-all" data-t hidden>Tümünü durdur</button></div>
+      <ul id="list"></ul>
+    </section>
+  </main>
+</div>
+<script>// ChaCha20-Poly1305 (RFC 8439) — telefondaki tarayıcıda çözme için. Web Crypto, yerel ağdaki HTTP
+// sayfalarında kullanılamadığından saf JavaScript. Yalnızca 32 bit tamsayı ve kesin (2^53 altı) kayan nokta
+// aritmetiği kullanır; Poly1305 birikimcisi 13 bitlik 10 parça hâlinde tutulur.
+const MahzenCrypto = (() => {
+  function le32(b, i) { return (b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | (b[i + 3] << 24)) >>> 0; }
+
+  // ChaCha20: `data` üzerine anahtar akışını XOR'lar (yeni dizi döner). Durum yerel değişkenlerde tutulur;
+  // tam bloklar 32 bitlik kelimeler hâlinde işlenir (iPhone ve Mac küçük-sonludur).
+  function chacha20(key, nonce, counter, data) {
+    const k0 = le32(key, 0), k1 = le32(key, 4), k2 = le32(key, 8), k3 = le32(key, 12);
+    const k4 = le32(key, 16), k5 = le32(key, 20), k6 = le32(key, 24), k7 = le32(key, 28);
+    const n0 = le32(nonce, 0), n1 = le32(nonce, 4), n2 = le32(nonce, 8);
+    const out = new Uint8Array(data.length);
+    const fullBlocks = Math.floor(data.length / 64);
+    const aligned = (data.byteOffset % 4) === 0;
+    const in32 = aligned ? new Uint32Array(data.buffer, data.byteOffset, fullBlocks * 16) : null;
+    const out32 = new Uint32Array(out.buffer, 0, fullBlocks * 16);
+    const ks = new Uint32Array(16), ks8 = new Uint8Array(ks.buffer);
+    for (let blockIndex = 0, pos = 0; pos < data.length; blockIndex++, pos += 64, counter++) {
+      let x0 = 0x61707865, x1 = 0x3320646e, x2 = 0x79622d32, x3 = 0x6b206574;
+      let x4 = k0, x5 = k1, x6 = k2, x7 = k3, x8 = k4, x9 = k5, x10 = k6, x11 = k7;
+      let x12 = counter >>> 0, x13 = n0, x14 = n1, x15 = n2;
+      for (let r = 0; r < 10; r++) {
+        x0 = (x0 + x4) | 0; x12 ^= x0; x12 = (x12 << 16) | (x12 >>> 16);
+        x8 = (x8 + x12) | 0; x4 ^= x8; x4 = (x4 << 12) | (x4 >>> 20);
+        x0 = (x0 + x4) | 0; x12 ^= x0; x12 = (x12 << 8) | (x12 >>> 24);
+        x8 = (x8 + x12) | 0; x4 ^= x8; x4 = (x4 << 7) | (x4 >>> 25);
+        x1 = (x1 + x5) | 0; x13 ^= x1; x13 = (x13 << 16) | (x13 >>> 16);
+        x9 = (x9 + x13) | 0; x5 ^= x9; x5 = (x5 << 12) | (x5 >>> 20);
+        x1 = (x1 + x5) | 0; x13 ^= x1; x13 = (x13 << 8) | (x13 >>> 24);
+        x9 = (x9 + x13) | 0; x5 ^= x9; x5 = (x5 << 7) | (x5 >>> 25);
+        x2 = (x2 + x6) | 0; x14 ^= x2; x14 = (x14 << 16) | (x14 >>> 16);
+        x10 = (x10 + x14) | 0; x6 ^= x10; x6 = (x6 << 12) | (x6 >>> 20);
+        x2 = (x2 + x6) | 0; x14 ^= x2; x14 = (x14 << 8) | (x14 >>> 24);
+        x10 = (x10 + x14) | 0; x6 ^= x10; x6 = (x6 << 7) | (x6 >>> 25);
+        x3 = (x3 + x7) | 0; x15 ^= x3; x15 = (x15 << 16) | (x15 >>> 16);
+        x11 = (x11 + x15) | 0; x7 ^= x11; x7 = (x7 << 12) | (x7 >>> 20);
+        x3 = (x3 + x7) | 0; x15 ^= x3; x15 = (x15 << 8) | (x15 >>> 24);
+        x11 = (x11 + x15) | 0; x7 ^= x11; x7 = (x7 << 7) | (x7 >>> 25);
+        x0 = (x0 + x5) | 0; x15 ^= x0; x15 = (x15 << 16) | (x15 >>> 16);
+        x10 = (x10 + x15) | 0; x5 ^= x10; x5 = (x5 << 12) | (x5 >>> 20);
+        x0 = (x0 + x5) | 0; x15 ^= x0; x15 = (x15 << 8) | (x15 >>> 24);
+        x10 = (x10 + x15) | 0; x5 ^= x10; x5 = (x5 << 7) | (x5 >>> 25);
+        x1 = (x1 + x6) | 0; x12 ^= x1; x12 = (x12 << 16) | (x12 >>> 16);
+        x11 = (x11 + x12) | 0; x6 ^= x11; x6 = (x6 << 12) | (x6 >>> 20);
+        x1 = (x1 + x6) | 0; x12 ^= x1; x12 = (x12 << 8) | (x12 >>> 24);
+        x11 = (x11 + x12) | 0; x6 ^= x11; x6 = (x6 << 7) | (x6 >>> 25);
+        x2 = (x2 + x7) | 0; x13 ^= x2; x13 = (x13 << 16) | (x13 >>> 16);
+        x8 = (x8 + x13) | 0; x7 ^= x8; x7 = (x7 << 12) | (x7 >>> 20);
+        x2 = (x2 + x7) | 0; x13 ^= x2; x13 = (x13 << 8) | (x13 >>> 24);
+        x8 = (x8 + x13) | 0; x7 ^= x8; x7 = (x7 << 7) | (x7 >>> 25);
+        x3 = (x3 + x4) | 0; x14 ^= x3; x14 = (x14 << 16) | (x14 >>> 16);
+        x9 = (x9 + x14) | 0; x4 ^= x9; x4 = (x4 << 12) | (x4 >>> 20);
+        x3 = (x3 + x4) | 0; x14 ^= x3; x14 = (x14 << 8) | (x14 >>> 24);
+        x9 = (x9 + x14) | 0; x4 ^= x9; x4 = (x4 << 7) | (x4 >>> 25);
+      }
+      ks[0] = x0 + 0x61707865; ks[1] = x1 + 0x3320646e; ks[2] = x2 + 0x79622d32; ks[3] = x3 + 0x6b206574;
+      ks[4] = x4 + k0; ks[5] = x5 + k1; ks[6] = x6 + k2; ks[7] = x7 + k3;
+      ks[8] = x8 + k4; ks[9] = x9 + k5; ks[10] = x10 + k6; ks[11] = x11 + k7;
+      ks[12] = x12 + (counter >>> 0); ks[13] = x13 + n0; ks[14] = x14 + n1; ks[15] = x15 + n2;
+      if (blockIndex < fullBlocks && in32) {
+        const w = blockIndex * 16;
+        for (let i = 0; i < 16; i++) out32[w + i] = in32[w + i] ^ ks[i];
+      } else {
+        const end = Math.min(64, data.length - pos);
+        for (let i = 0; i < end; i++) out[pos + i] = data[pos + i] ^ ks8[i];
+      }
+    }
+    return out;
+  }
+
+  // Poly1305: 130 bitlik sayılar 13 bitlik 10 parçada. 2^130 ≡ 5 (mod p) olduğundan taşan parçalar 5 ile çarpılır.
+  const M13 = 0x1fff;
+
+  // 16 baytlık bloğu (ya da son kısa bloğu) 13 bitlik 10 parçaya böler; `hibit` 2^(8·len) bitini ekler.
+  const blk = new Uint8Array(20);
+  function bytesToLimbs(b, off, len, hibit, out) {
+    blk.fill(0);
+    for (let i = 0; i < len; i++) blk[i] = b[off + i];
+    if (hibit) blk[len] = 1;
+    for (let i = 0, bit = 0; i < 10; i++, bit += 13) {
+      const by = bit >>> 3;
+      out[i] = ((blk[by] | (blk[by + 1] << 8) | (blk[by + 2] << 16)) >>> (bit & 7)) & M13;
+    }
+  }
+
+  function poly1305(key, msg) {
+    const rb = key.slice(0, 16);
+    rb[3] &= 15; rb[7] &= 15; rb[11] &= 15; rb[15] &= 15;
+    rb[4] &= 252; rb[8] &= 252; rb[12] &= 252;
+    const r = new Float64Array(10), r5 = new Float64Array(10), h = new Float64Array(10), m = new Float64Array(10);
+    bytesToLimbs(rb, 0, 16, false, r);
+    for (let i = 0; i < 10; i++) r5[i] = 5 * r[i];
+    let h0 = 0, h1 = 0, h2 = 0, h3 = 0, h4 = 0, h5 = 0, h6 = 0, h7 = 0, h8 = 0, h9 = 0;
+    const r0 = r[0], r1 = r[1], r2 = r[2], r3 = r[3], r4 = r[4], r5_ = r[5], r6 = r[6], r7 = r[7], r8 = r[8], r9 = r[9];
+    const s1 = r5[1], s2 = r5[2], s3 = r5[3], s4 = r5[4], s5 = r5[5], s6 = r5[6], s7 = r5[7], s8 = r5[8], s9 = r5[9];
+    for (let off = 0; off < msg.length; off += 16) {
+      bytesToLimbs(msg, off, Math.min(16, msg.length - off), true, m);
+      h0 += m[0]; h1 += m[1]; h2 += m[2]; h3 += m[3]; h4 += m[4]; h5 += m[5]; h6 += m[6]; h7 += m[7]; h8 += m[8]; h9 += m[9];
+      const d0 = h0 * r0 + h1 * s9 + h2 * s8 + h3 * s7 + h4 * s6 + h5 * s5 + h6 * s4 + h7 * s3 + h8 * s2 + h9 * s1;
+      const d1 = h0 * r1 + h1 * r0 + h2 * s9 + h3 * s8 + h4 * s7 + h5 * s6 + h6 * s5 + h7 * s4 + h8 * s3 + h9 * s2;
+      const d2 = h0 * r2 + h1 * r1 + h2 * r0 + h3 * s9 + h4 * s8 + h5 * s7 + h6 * s6 + h7 * s5 + h8 * s4 + h9 * s3;
+      const d3 = h0 * r3 + h1 * r2 + h2 * r1 + h3 * r0 + h4 * s9 + h5 * s8 + h6 * s7 + h7 * s6 + h8 * s5 + h9 * s4;
+      const d4 = h0 * r4 + h1 * r3 + h2 * r2 + h3 * r1 + h4 * r0 + h5 * s9 + h6 * s8 + h7 * s7 + h8 * s6 + h9 * s5;
+      const d5 = h0 * r5_ + h1 * r4 + h2 * r3 + h3 * r2 + h4 * r1 + h5 * r0 + h6 * s9 + h7 * s8 + h8 * s7 + h9 * s6;
+      const d6 = h0 * r6 + h1 * r5_ + h2 * r4 + h3 * r3 + h4 * r2 + h5 * r1 + h6 * r0 + h7 * s9 + h8 * s8 + h9 * s7;
+      const d7 = h0 * r7 + h1 * r6 + h2 * r5_ + h3 * r4 + h4 * r3 + h5 * r2 + h6 * r1 + h7 * r0 + h8 * s9 + h9 * s8;
+      const d8 = h0 * r8 + h1 * r7 + h2 * r6 + h3 * r5_ + h4 * r4 + h5 * r3 + h6 * r2 + h7 * r1 + h8 * r0 + h9 * s9;
+      const d9 = h0 * r9 + h1 * r8 + h2 * r7 + h3 * r6 + h4 * r5_ + h5 * r4 + h6 * r3 + h7 * r2 + h8 * r1 + h9 * r0;
+      // Taşıma: her parçayı 13 bite indir; en üstten taşanı 5 ile çarpıp en alta ekle.
+      let c, v;
+      v = d0; c = Math.floor(v / 8192); h0 = v - c * 8192;
+      v = d1 + c; c = Math.floor(v / 8192); h1 = v - c * 8192;
+      v = d2 + c; c = Math.floor(v / 8192); h2 = v - c * 8192;
+      v = d3 + c; c = Math.floor(v / 8192); h3 = v - c * 8192;
+      v = d4 + c; c = Math.floor(v / 8192); h4 = v - c * 8192;
+      v = d5 + c; c = Math.floor(v / 8192); h5 = v - c * 8192;
+      v = d6 + c; c = Math.floor(v / 8192); h6 = v - c * 8192;
+      v = d7 + c; c = Math.floor(v / 8192); h7 = v - c * 8192;
+      v = d8 + c; c = Math.floor(v / 8192); h8 = v - c * 8192;
+      v = d9 + c; c = Math.floor(v / 8192); h9 = v - c * 8192;
+      h0 += c * 5; c = Math.floor(h0 / 8192); h0 -= c * 8192; h1 += c;
+    }
+    h[0] = h0; h[1] = h1; h[2] = h2; h[3] = h3; h[4] = h4; h[5] = h5; h[6] = h6; h[7] = h7; h[8] = h8; h[9] = h9;
+    // Son indirgeme ve s eklemesi BigInt ile (blok başına değil, bir kez).
+    let acc = 0n;
+    for (let i = 9; i >= 0; i--) acc = (acc << 13n) + BigInt(h[i]);
+    const p = (1n << 130n) - 5n;
+    acc %= p;
+    let s = 0n;
+    for (let i = 31; i >= 16; i--) s = (s << 8n) + BigInt(key[i]);
+    let tag = (acc + s) & ((1n << 128n) - 1n);
+    const out = new Uint8Array(16);
+    for (let i = 0; i < 16; i++) { out[i] = Number(tag & 0xffn); tag >>= 8n; }
+    return out;
+  }
+
+  function pad16(n) { return (16 - (n % 16)) % 16; }
+
+  function macData(aad, ct) {
+    const len = aad.length + pad16(aad.length) + ct.length + pad16(ct.length) + 16;
+    const buf = new Uint8Array(len);
+    let o = 0;
+    buf.set(aad, o); o += aad.length + pad16(aad.length);
+    buf.set(ct, o); o += ct.length + pad16(ct.length);
+    const dv = new DataView(buf.buffer);
+    dv.setUint32(o, aad.length, true); dv.setUint32(o + 4, Math.floor(aad.length / 2 ** 32), true);
+    dv.setUint32(o + 8, ct.length >>> 0, true); dv.setUint32(o + 12, Math.floor(ct.length / 2 ** 32), true);
+    return buf;
+  }
+
+  // AEAD açma: doğrulanamazsa hata fırlatır.
+  function open(key, nonce, aad, sealed) {
+    if (sealed.length < 16) throw new Error("kısa");
+    const ct = sealed.subarray(0, sealed.length - 16), tag = sealed.subarray(sealed.length - 16);
+    const otk = chacha20(key, nonce, 0, new Uint8Array(32));
+    const expect = poly1305(otk, macData(aad, ct));
+    let diff = 0;
+    for (let i = 0; i < 16; i++) diff |= expect[i] ^ tag[i];
+    if (diff !== 0) throw new Error("doğrulanamadı");
+    return chacha20(key, nonce, 1, ct);
+  }
+
+  // Testler için: mühürleme.
+  function seal(key, nonce, aad, plain) {
+    const ct = chacha20(key, nonce, 1, plain);
+    const otk = chacha20(key, nonce, 0, new Uint8Array(32));
+    const tag = poly1305(otk, macData(aad, ct));
+    const out = new Uint8Array(ct.length + 16);
+    out.set(ct); out.set(tag, ct.length);
+    return out;
+  }
+
+  return { chacha20, poly1305, open, seal };
+})();
+
+// Mahzen telefon akışı: [uzunluk (UInt32 BE)][şifreli metin + etiket]...; nonce = akış (UInt32 BE) + parça (UInt64 BE);
+// AAD = "mahzen.phone.v1|" + son parça bayrağı ("1"/"0").
+const MahzenStream = (() => {
+  const C = MahzenCrypto;
+  const enc = new TextEncoder();
+  const AAD0 = enc.encode("mahzen.phone.v1|0"), AAD1 = enc.encode("mahzen.phone.v1|1");
+  const MAX_FRAME = (1 << 20) + 16;
+  function nonce(stream, chunk) {
+    const n = new Uint8Array(12), dv = new DataView(n.buffer);
+    dv.setUint32(0, stream); dv.setUint32(4, Math.floor(chunk / 2 ** 32)); dv.setUint32(8, chunk >>> 0);
+    return n;
+  }
+  // Parça parça gelen baytları çözer. push(bytes) çözülmüş parçaları döndürür; finish() akışın bütün olduğunu doğrular.
+  // Gelen parçalar bir listede biriktirilir; her çerçeve yalnızca bir kez kopyalanır.
+  function decoder(key, stream) {
+    let parts = [], total = 0, chunk = 0, pending = null;
+    function take(n) {
+      const out = new Uint8Array(n);
+      let filled = 0;
+      while (filled < n) {
+        const p = parts[0], need = n - filled;
+        if (p.length <= need) { out.set(p, filled); filled += p.length; parts.shift(); }
+        else { out.set(p.subarray(0, need), filled); parts[0] = p.subarray(need); filled += need; }
+      }
+      total -= n;
+      return out;
+    }
+    function peekLength() {
+      const b = new Uint8Array(4);
+      let filled = 0;
+      for (const p of parts) {
+        const n = Math.min(4 - filled, p.length);
+        b.set(p.subarray(0, n), filled); filled += n;
+        if (filled === 4) break;
+      }
+      return new DataView(b.buffer).getUint32(0);
+    }
+    function decrypt(frame, final) {
+      const plain = C.open(key, nonce(stream, chunk), final ? AAD1 : AAD0, frame);
+      chunk++;
+      return plain;
+    }
+    return {
+      push(bytes) {
+        if (bytes.length) { parts.push(bytes); total += bytes.length; }
+        const produced = [];
+        while (total >= 4) {
+          const len = peekLength();
+          if (len < 16 || len > MAX_FRAME) throw new Error("akış bozuk");
+          if (total < 4 + len) break;
+          take(4);
+          const frame = take(len);
+          // Bir önceki çerçeve "son değil" demekti; ancak arkasından yeni çerçeve gelince çözebiliriz.
+          if (pending) produced.push(decrypt(pending, false));
+          pending = frame;
+        }
+        return produced;
+      },
+      finish() {
+        if (total || !pending) throw new Error("akış kesik");
+        const last = decrypt(pending, true);
+        pending = null;
+        return last;
+      },
+    };
+  }
+  return { decoder };
+})();
+// Mahzen yükleme akışı: telefondaki dosya parça parça okunur, her parça çerçeve olarak şifrelenir
+// (MahzenStream ile aynı biçim) ve birkaç çerçevelik isteklerle bilgisayara gönderilir.
+const MahzenUpload = (() => {
+  const C = MahzenCrypto;
+  const enc = new TextEncoder();
+  const AAD0 = enc.encode("mahzen.phone.v1|0"), AAD1 = enc.encode("mahzen.phone.v1|1");
+  const CHUNK = 1 << 20;
+  function nonce(stream, chunk) {
+    const n = new Uint8Array(12), dv = new DataView(n.buffer);
+    dv.setUint32(0, stream); dv.setUint32(4, Math.floor(chunk / 2 ** 32)); dv.setUint32(8, chunk >>> 0);
+    return n;
+  }
+  // Tek çerçeve: uzunluk (UInt32 BE) + şifreli metin + etiket.
+  function frame(key, stream, chunk, final, plain) {
+    const sealed = C.seal(key, nonce(stream, chunk), final ? AAD1 : AAD0, plain);
+    const out = new Uint8Array(4 + sealed.length);
+    new DataView(out.buffer).setUint32(0, sealed.length);
+    out.set(sealed, 4);
+    return out;
+  }
+  function concat(parts) {
+    const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let o = 0;
+    for (const p of parts) { out.set(p, o); o += p.length; }
+    return out;
+  }
+  const chunkCount = (size) => Math.max(1, Math.ceil(size / CHUNK));
+  // Bellekteki küçük bir içeriği tek akış olarak şifreler.
+  function seal(key, stream, bytes) {
+    const n = chunkCount(bytes.length), parts = [];
+    for (let i = 0; i < n; i++) parts.push(frame(key, stream, i, i === n - 1, bytes.subarray(i * CHUNK, (i + 1) * CHUNK)));
+    return concat(parts);
+  }
+  // Bir dosyanın `first` sırasından başlayan en fazla `count` çerçevesi (Blob/File'dan okunarak).
+  async function fileFrames(key, stream, file, first, count) {
+    const n = chunkCount(file.size), parts = [];
+    for (let i = first; i < Math.min(n, first + count); i++) {
+      const plain = new Uint8Array(await file.slice(i * CHUNK, Math.min(file.size, (i + 1) * CHUNK)).arrayBuffer());
+      parts.push(frame(key, stream, i, i === n - 1, plain));
+    }
+    return concat(parts);
+  }
+  return { CHUNK, frame, seal, fileFrames, chunkCount };
+})();
+
+(() => {
+  "use strict";
+
+  // Arayüz dili telefonun dil tercihine göre: Türkçe tercih ediliyorsa Türkçe, değilse İngilizce.
+  const EN = {
+    "Bağlanılıyor…": "Connecting…",
+    "Kasaya ekle": "Add to vault",
+    "Klasör:": "Folder:",
+    "Oturumun bitmesine kalan süre": "Time left until the session ends",
+    "Fotoğraf, video ya da dosya seç": "Choose photos, videos or files",
+    "Dosya başına en fazla {0}": "Up to {0} per file",
+    "Dosyalar bu telefonda şifrelenir ve bilgisayardaki kasaya şifreli olarak yazılır. Yükleme bitene kadar bu sayfayı açık tutun.":
+      "Files are encrypted on this phone and written to the vault on the computer encrypted. Keep this page open until the upload finishes.",
+    "Tümünü durdur": "Stop all",
+    "İptal": "Cancel",
+    "Yeniden dene": "Try again",
+    "Kaldır": "Remove",
+    "Sırada": "Waiting",
+    "Şifreleniyor ve gönderiliyor": "Encrypting and sending",
+    "Kasaya eklendi": "Added to the vault",
+    "Kasada zaten vardı": "Already in the vault",
+    "Durduruldu": "Stopped",
+    "{0} dosya eklendi": "{0} file added|{0} files added",
+    "{0} dosya gönderiliyor": "Sending {0} file|Sending {0} files",
+    "Dosya çok büyük (en fazla {0})": "File is too large (up to {0})",
+    "Bilgisayarda yeterli boş alan yok": "Not enough free space on the computer",
+    "Dosya doğrulanamadı": "The file failed verification",
+    "Bilgisayara ulaşılamadı": "Couldn't reach the computer",
+    "Aynı anda çok fazla yükleme var": "Too many uploads at once",
+    "Dosya okunamadı": "The file couldn't be read",
+    "Sunucu hatası": "Server error",
+    "Oturum sona erdi": "Session ended",
+    "Yeniden eklemek için bilgisayardaki Mahzen'de yeni bir QR kod oluşturun.": "To add more, create a new QR code in Mahzen on the computer.",
+    "Oturum durduruldu": "Session stopped",
+    "Bilgisayardaki Mahzen oturumu kapattı.": "Mahzen on the computer ended the session.",
+    "Bağlantı kesildi": "Connection lost",
+    "Bilgisayardaki oturum kapandı ya da telefon aynı Wi-Fi ağında değil.": "The session ended on the computer, or the phone isn't on the same Wi-Fi network.",
+    "Anahtar bulunamadı": "Key not found",
+    "QR kodu bilgisayardaki Mahzen'den yeniden okutun. Bağlantıyı kopyalamak yerine kamerayla açın.": "Scan the QR code from Mahzen on the computer again. Open it with the camera rather than copying the link.",
+    "Anahtar uyuşmuyor": "Key doesn't match",
+    "Bu bağlantı eski bir oturuma ait olabilir. QR kodu yeniden okutun.": "This link may belong to an earlier session. Scan the QR code again.",
+    "Oturum bulunamadı": "Session not found",
+    "Oturumun süresi dolmuş ya da bilgisayarda durdurulmuş.": "The session has expired or was stopped on the computer.",
+    "Telefon ile bilgisayar aynı Wi-Fi ağında olmalı ve Mahzen'de oturum açık kalmalı.": "The phone and the computer must be on the same Wi-Fi network, and the session must stay open in Mahzen.",
+  };
+  const english = (() => {
+    for (const l of navigator.languages || [navigator.language || ""]) {
+      if (/^tr\b/i.test(l)) return false;
+      if (/^en\b/i.test(l)) return true;
+    }
+    return true;
+  })();
+  const t = (s, a) => { const x = (english && EN[s]) || s; return a === undefined ? x : x.replace("{0}", a); };
+  const tn = (s, n) => { const f = t(s).split("|"); return (f.length === 2 ? f[n === 1 ? 0 : 1] : f[0]).replace("{0}", n); };
+  if (english) {
+    document.documentElement.lang = "en";
+    for (const n of document.querySelectorAll("[data-t]")) n.textContent = t(n.textContent);
+    for (const n of document.querySelectorAll("[title]")) n.setAttribute("title", t(n.getAttribute("title")));
+  }
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  };
+  const ICONS = {
+    file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4"/></svg>',
+    image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 8.5"/></svg>',
+    video: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="3" y="5.5" width="13" height="13" rx="3"/><path d="M16 10l5-3v10l-5-3z"/></svg>',
+    done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    retry: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v5h5"/></svg>',
+  };
+
+  // ---------- Anahtar: adresin # kısmından alınır, sonra adresten silinir ----------
+  const KEY_SLOT = "mahzen.u" + location.pathname;
+  function fromB64url(s) {
+    s = s.replace(/-/g, "+").replace(/_/g, "/");
+    while (s.length % 4) s += "=";
+    const bin = atob(s), out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  let key = null;
+  try {
+    const frag = location.hash.slice(1);
+    if (frag) {
+      key = fromB64url(frag);
+      history.replaceState(null, "", location.pathname + location.search);
+      try { sessionStorage.setItem(KEY_SLOT, frag); } catch (_) {}
+    } else {
+      const saved = sessionStorage.getItem(KEY_SLOT);
+      if (saved) key = fromB64url(saved);
+    }
+  } catch (_) { key = null; }
+
+  const nf = new Intl.NumberFormat(english ? "en" : "tr-TR", { maximumFractionDigits: 1 });
+  function fmtSize(n) {
+    if (n < 1000) return n + " B";
+    const units = ["KB", "MB", "GB", "TB"];
+    let v = n, u = -1;
+    do { v /= 1000; u++; } while (v >= 1000 && u < units.length - 1);
+    return nf.format(v) + " " + units[u];
+  }
+
+  // ---------- Ağ ----------
+  class UploadError extends Error {
+    constructor(kind) { super(kind); this.kind = kind; }
+  }
+  async function post(path, body, signal) {
+    let res;
+    try {
+      res = await fetch(path, { method: "POST", body, cache: "no-store", credentials: "omit", signal,
+                                headers: { "Content-Type": "application/octet-stream" } });
+    } catch (e) {
+      throw new UploadError(signal && signal.aborted ? "abort" : "net");
+    }
+    let data = null;
+    try { data = await res.json(); } catch (_) {}
+    if (res.status === 404) throw new UploadError("gone");
+    if (!res.ok) throw new UploadError((data && data.error) || "http");
+    return data || {};
+  }
+  function errorText(kind) {
+    switch (kind) {
+      case "too-large": return t("Dosya çok büyük (en fazla {0})", fmtSize(status.maxFileSize));
+      case "no-space": return t("Bilgisayarda yeterli boş alan yok");
+      case "crypto": return t("Dosya doğrulanamadı");
+      case "net": return t("Bilgisayara ulaşılamadı");
+      case "busy": return t("Aynı anda çok fazla yükleme var");
+      case "read": return t("Dosya okunamadı");
+      default: return t("Sunucu hatası");
+    }
+  }
+
+  // ---------- Durum ----------
+  let status = null, ended = false, timerHandle = 0, heartbeatHandle = 0, netStrikes = 0, running = false;
+  const entries = [];   // { file, state: queued|up|done|dup|error|stopped, sent, n, ctrl, row, error }
+
+  function kindOf(file) {
+    const ty = file.type || "";
+    return ty.startsWith("image/") ? "image" : ty.startsWith("video/") ? "video" : "file";
+  }
+
+  function render(entry) {
+    const r = entry.row;
+    r.li.className = entry.state === "done" || entry.state === "dup" ? "done" : entry.state === "error" ? "error" : "";
+    r.ic.innerHTML = entry.state === "done" || entry.state === "dup" ? ICONS.done : entry.state === "error" ? ICONS.error : ICONS[kindOf(entry.file)];
+    const size = fmtSize(entry.file.size);
+    let meta;
+    switch (entry.state) {
+      case "queued": meta = size + " · " + t("Sırada"); break;
+      case "up": meta = fmtSize(entry.sent) + " / " + size + " · " + t("Şifreleniyor ve gönderiliyor"); break;
+      case "done": meta = size + " · " + t("Kasaya eklendi"); break;
+      case "dup": meta = size + " · " + t("Kasada zaten vardı"); break;
+      case "stopped": meta = size + " · " + t("Durduruldu"); break;
+      default: meta = entry.error || t("Sunucu hatası");
+    }
+    r.meta.textContent = meta;
+    r.track.hidden = entry.state !== "up";
+    r.bar.style.width = (entry.file.size ? Math.min(100, (100 * entry.sent) / entry.file.size) : 0) + "%";
+    const canRetry = (entry.state === "error" || entry.state === "stopped") && !ended;
+    const canStop = entry.state === "queued" || entry.state === "up";
+    r.act.hidden = !(canRetry || canStop);
+    r.act.innerHTML = canRetry ? ICONS.retry : ICONS.x;
+    r.act.setAttribute("aria-label", canRetry ? t("Yeniden dene") : t("İptal"));
+  }
+
+  function renderSummary() {
+    const done = entries.filter((e) => e.state === "done").length;
+    const busy = entries.filter((e) => e.state === "queued" || e.state === "up").length;
+    $("summary").textContent = busy ? tn("{0} dosya gönderiliyor", busy) : tn("{0} dosya eklendi", done);
+    $("stop-all").hidden = !busy;
+    $("list-wrap").hidden = entries.length === 0;
+  }
+
+  function addFiles(files) {
+    for (const file of files) {
+      const entry = { file, state: "queued", sent: 0, n: null, ctrl: null, error: null };
+      const li = el("li"), ic = el("div", "ic"), info = el("div", "info");
+      const name = el("div", "name", file.name || "?"), meta = el("div", "meta");
+      const track = el("div", "track"), bar = el("i");
+      track.appendChild(bar);
+      info.append(name, meta, track);
+      const act = el("button", "act");
+      act.onclick = () => (entry.state === "error" || entry.state === "stopped") ? retry(entry) : stop(entry);
+      li.append(ic, info, act);
+      entry.row = { li, ic, meta, track, bar, act };
+      entries.push(entry);
+      $("list").appendChild(li);
+      render(entry);
+    }
+    renderSummary();
+    pump();
+  }
+
+  function stop(entry) {
+    if (entry.state === "queued") { entry.state = "stopped"; render(entry); renderSummary(); return; }
+    if (entry.state === "up" && entry.ctrl) entry.ctrl.abort();
+  }
+  function retry(entry) {
+    if (ended) return;
+    Object.assign(entry, { state: "queued", sent: 0, n: null, ctrl: null, error: null });
+    render(entry); renderSummary(); pump();
+  }
+  function cancelOnServer(entry) {
+    if (entry.n == null) return;
+    fetch("x/" + entry.n, { method: "POST", cache: "no-store", credentials: "omit" }).catch(() => {});
+  }
+
+  async function upload(entry) {
+    const file = entry.file, ctrl = new AbortController();
+    entry.ctrl = ctrl;
+    if (file.size > status.maxFileSize) throw new UploadError("too-large");
+    const { n } = await post("n", null, ctrl.signal);
+    if (!Number.isInteger(n) || n < 1) throw new UploadError("http");
+    entry.n = n;
+    const meta = { name: file.name || "dosya", size: file.size, type: file.type || null, modified: file.lastModified || null };
+    await post("u/" + n + "/0", MahzenUpload.seal(key, 2 * n, new TextEncoder().encode(JSON.stringify(meta))), ctrl.signal);
+    const chunks = MahzenUpload.chunkCount(file.size), per = status.framesPerPart || 4;
+    let result = {};
+    for (let first = 0, part = 1; first < chunks; first += per, part++) {
+      let body;
+      try { body = await MahzenUpload.fileFrames(key, 2 * n + 1, file, first, per); }
+      catch (_) { throw new UploadError("read"); }
+      if (ctrl.signal.aborted) throw new UploadError("abort");
+      const last = first + per >= chunks;
+      result = await post("u/" + n + "/" + part + (last ? "?end=1" : ""), body, ctrl.signal);
+      entry.sent = Math.min(file.size, (first + per) * MahzenUpload.CHUNK);
+      render(entry);
+    }
+    return result;
+  }
+
+  async function pump() {
+    if (running || ended) return;
+    const entry = entries.find((e) => e.state === "queued");
+    if (!entry) return;
+    running = true;
+    entry.state = "up";
+    render(entry); renderSummary();
+    try {
+      const result = await upload(entry);
+      entry.state = result.result === "duplicate" ? "dup" : "done";
+      entry.sent = entry.file.size;
+    } catch (e) {
+      cancelOnServer(entry);
+      if (e.kind === "abort") entry.state = "stopped";
+      else { entry.state = "error"; entry.error = errorText(e.kind); }
+      if (e.kind === "gone") {
+        running = false;
+        return end(t("Oturum durduruldu"), t("Bilgisayardaki Mahzen oturumu kapattı."));
+      }
+    }
+    entry.ctrl = null;
+    running = false;
+    render(entry); renderSummary();
+    pump();
+  }
+
+  // ---------- Bitiş, süre ve bağlantı denetimi ----------
+  function showError(title, text) {
+    $("splash").hidden = true;
+    $("app").hidden = true;
+    $("error-title").textContent = title;
+    $("error-text").textContent = text;
+    $("error").hidden = false;
+  }
+  function end(title, text) {
+    if (ended) return;
+    ended = true;
+    clearInterval(timerHandle); clearInterval(heartbeatHandle);
+    for (const e of entries) {
+      if (e.state === "up" && e.ctrl) e.ctrl.abort();
+      if (e.state === "queued") e.state = "stopped";
+    }
+    try { sessionStorage.removeItem(KEY_SLOT); } catch (_) {}
+    key = null;
+    // Biten oturumda liste görünür kalsın (neyin eklendiği belli olsun); seçim kapanır.
+    if (entries.length) {
+      $("pick").hidden = true;
+      $("input").disabled = true;
+      $("timer").hidden = true;
+      $("ended-title").textContent = title;
+      $("ended-text").textContent = text;
+      $("ended").hidden = false;
+      for (const e of entries) render(e);
+      renderSummary();
+    } else {
+      showError(title, text);
+    }
+  }
+  function tick() {
+    const left = Math.round(status.expiresAt - Date.now() / 1000);
+    if (left <= 0) return end(t("Oturum sona erdi"), t("Yeniden eklemek için bilgisayardaki Mahzen'de yeni bir QR kod oluşturun."));
+    $("timer-text").textContent = Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
+    $("timer").classList.toggle("low", left < 60);
+  }
+  async function checkAlive() {
+    if (ended) return;
+    try {
+      const res = await fetch("s", { cache: "no-store", credentials: "omit" });
+      if (res.status === 404) return end(t("Oturum durduruldu"), t("Bilgisayardaki Mahzen oturumu kapattı."));
+      netStrikes = 0;
+    } catch (_) {
+      if (++netStrikes >= 2 && !running) end(t("Bağlantı kesildi"), t("Bilgisayardaki oturum kapandı ya da telefon aynı Wi-Fi ağında değil."));
+    }
+  }
+  window.addEventListener("beforeunload", (e) => {
+    if (!ended && entries.some((x) => x.state === "queued" || x.state === "up")) { e.preventDefault(); e.returnValue = ""; }
+  });
+
+  // ---------- Başlangıç ----------
+  async function start() {
+    if (!key || key.length !== 32) {
+      return showError(t("Anahtar bulunamadı"), t("QR kodu bilgisayardaki Mahzen'den yeniden okutun. Bağlantıyı kopyalamak yerine kamerayla açın."));
+    }
+    let res;
+    try { res = await fetch("s", { cache: "no-store", credentials: "omit" }); } catch (_) {
+      return showError(t("Bilgisayara ulaşılamadı"), t("Telefon ile bilgisayar aynı Wi-Fi ağında olmalı ve Mahzen'de oturum açık kalmalı."));
+    }
+    if (!res.ok) return showError(t("Oturum bulunamadı"), t("Oturumun süresi dolmuş ya da bilgisayarda durdurulmuş."));
+    try {
+      const dec = MahzenStream.decoder(key, 0), parts = dec.push(new Uint8Array(await res.arrayBuffer()));
+      parts.push(dec.finish());
+      const bytes = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+      let o = 0;
+      for (const p of parts) { bytes.set(p, o); o += p.length; }
+      status = JSON.parse(new TextDecoder().decode(bytes));
+    } catch (_) {
+      return showError(t("Anahtar uyuşmuyor"), t("Bu bağlantı eski bir oturuma ait olabilir. QR kodu yeniden okutun."));
+    }
+    $("folder").textContent = status.folder;
+    $("limit").textContent = t("Dosya başına en fazla {0}", fmtSize(status.maxFileSize));
+    $("input").addEventListener("change", (e) => {
+      const files = Array.from(e.target.files || []);
+      e.target.value = "";
+      if (files.length && !ended) addFiles(files);
+    });
+    $("stop-all").onclick = () => { for (const e of entries.slice().reverse()) stop(e); };
+    $("splash").hidden = true;
+    $("app").hidden = false;
+    tick();
+    timerHandle = setInterval(tick, 1000);
+    heartbeatHandle = setInterval(checkAlive, 15000);
+  }
+  start();
+})();</script>
+</body></html>

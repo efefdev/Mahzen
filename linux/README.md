@@ -69,6 +69,8 @@ Most of the features of the macOS version are available on Linux too:
   and whole folders (subfolders included, structure preserved), duplicate detection, an offer to move the originals to the trash after adding
 - **Show on Phone:** shows the selected photos and videos, or a folder, on a phone on the same Wi-Fi through a QR
   code, end-to-end encrypted (see below)
+- **Add from Phone:** the reverse; files picked in the phone's browser are encrypted on the phone and added to the
+  current folder (see below)
 - **Notes:** colored, pinnable notes; adjustable font and size
 - **Passwords:** account, card, Wi-Fi and server entries; password generator and strength meter; a copied password is
   cleared from the clipboard after the time you choose
@@ -107,6 +109,24 @@ If the phone can't open the page: check that both devices are on the same networ
 temporarily allow incoming connections from the local network; Fedora's default *FedoraWorkstation* zone already
 allows high ports).
 
+### Add from Phone
+
+Click the arrow next to the **+** button in the Files header → **Add from Phone…** (files go to the folder that is
+open), or right-click a folder → **Add from Phone…**. Scan the QR code with the phone's camera; on the page that opens,
+tap **Choose photos, videos or files**. The window lists each file as it arrives.
+
+- **Encrypted on the phone:** every file is encrypted in the phone's browser with the 256-bit session key from the
+  QR code (the same ChaCha20-Poly1305 stream format as Show on Phone) and sent in parts. The computer verifies and
+  decrypts each part in memory and encrypts it straight into the vault; no unencrypted copy is ever written to disk.
+  File names travel encrypted too.
+- **Safe to interrupt:** up to 8 GB per file. A file that is cancelled on the phone, interrupted, or sends nothing for
+  90 seconds is dropped and its partial encrypted file is deleted. A file that is already in the vault is not added
+  again. Only bytes that pass verification with the session key are ever written.
+- **Local network only, time-limited:** same as Show on Phone (random port, unguessable token, 10 minutes, ends on
+  **Stop**, closing the window or locking). The same virtual-machine warning applies.
+- Keep the page open on the phone until the upload finishes; a phone that locks its screen pauses the browser.
+- Images get a thumbnail made in memory from the vault copy.
+
 ### Linux-specific differences
 
 | Topic | On Linux |
@@ -143,6 +163,10 @@ Start with **a new vault made for testing**, not your real one:
 9. **Show on Phone:** select a few images, right-click → **Show on Phone…** and scan the QR code with a phone on the
    same Wi-Fi. The images should open on the phone and the device count in the window should go up; within half a
    minute of **Stop** the page on the phone should show that sharing has ended and clear its content.
+10. **Add from Phone:** open a folder, click the arrow next to **+** → **Add from Phone…**, scan the QR code and pick a
+    few photos and a video on the phone. Each file should appear in the window's list and in the folder (images with a
+    thumbnail); picking the same photo again should say "Already in the vault"; cancelling a large video on the phone
+    should leave no new file behind.
 
 If you run into a problem, start the app from a terminal with `mahzen` and
 [open an issue](https://github.com/efefdev/Mahzen/issues) with the output attached.
@@ -190,8 +214,15 @@ version's (a fixed-key cross-check), an end-to-end transfer from a real vault to
 security headers, the token and time-limit checks, the QR encoder and, if Node.js is installed, that the JavaScript
 decoder in the phone page opens the Python stream. The stream written by the macOS test can be passed in as well:
 `MAHZEN_PHONE_FIXTURE=/path/prefix swift test --filter PhoneShareTests`, then the Python tests with the same variable.
-The phone page (`mahzen/core/phone_viewer.html`) is carried over from the macOS source; if the page changes on macOS:
-`python3 linux/tests/sync_phone_viewer.py`.
+
+`tests/test_phoneupload.py` tests Add from Phone: the streaming decoder and vault writer (byte-for-byte identical to
+the regular import), the upload receiver's rejections (wrong key, size limit, disk space, order, tampering,
+truncation) and clean-up, an end-to-end upload to the local server over HTTP including cancel and interrupted
+requests, and, if Node.js is installed, that the JavaScript encryptor in the phone page produces streams Python opens
+(the same fixed-key vectors are checked in Swift). `MAHZEN_UPLOAD_FIXTURE=/path/prefix` writes the browser's stream for
+`swift test --filter PhoneUploadTests`.
+The phone pages (`mahzen/core/phone_viewer.html`, `mahzen/core/phone_upload.html`) are carried over from the macOS
+source; if a page changes on macOS: `python3 linux/tests/sync_phone_viewer.py`.
 
 ## Project layout
 

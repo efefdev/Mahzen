@@ -76,6 +76,8 @@ final class AppState: ObservableObject {
     @Published var integrityReport: IntegrityReport?
     /// Açık "Telefonda Göster" oturumu; kasa kilitlenince durdurulur.
     @Published var phoneShare: PhoneShareSession?
+    /// Açık "Telefondan Ekle" oturumu; kasa kilitlenince durdurulur.
+    @Published var phoneUpload: PhoneUploadSession?
     /// Açık kasa bu Mac'teki anahtar dosyasıyla mı korunuyor?
     @Published private(set) var keyfileEnabled = false
     /// Yanlış parola sınırı (kasa başlığında); `nil` = kapalı.
@@ -266,6 +268,8 @@ final class AppState: ObservableObject {
     func lock() {
         guard phase == .unlocked else { return }
         stopPhoneShare()
+        phoneUpload?.stop()
+        phoneUpload = nil
         cancelTask()
         task = nil
         flushSave()
@@ -562,6 +566,43 @@ final class AppState: ObservableObject {
                 alert = AlertItem(title: LN("{0} dosya şifrelendi", added), message: notes.joined(separator: "\n\n"))
             }
         }
+    }
+
+    /// Telefondan gelen, kasaya şifreli olarak yazılmış bir dosyayı dizine ekler. Aynı içerik zaten varsa ya da
+    /// oturum değiştiyse şifreli kopya silinir. Küçük resim, kasadaki dosyadan bellekte üretilir.
+    func acceptPhoneUpload(_ upload: PhoneUploadServer.Completed, from session: PhoneUploadSession) -> PhoneUploadServer.Outcome {
+        guard let vault, phase == .unlocked, phoneUpload === session else { return .rejected }
+        if index.existingFile(withHash: upload.sha256) != nil {
+            vault.deleteFile(upload.fileID)
+            return .duplicate
+        }
+        var name = upload.meta.safeName
+        let ext = (name as NSString).pathExtension
+        var type = ext.isEmpty ? nil : UTType(filenameExtension: ext)
+        if type == nil || type?.isDynamic == true, let mime = upload.meta.type, let byMime = UTType(mimeType: mime) {
+            if ext.isEmpty, let e = byMime.preferredFilenameExtension { name += "." + e }
+            type = byMime
+        }
+        // Klasör bu arada silindiyse ya da çöpe taşındıysa dosya köke eklenir.
+        let target = session.folderID.flatMap { id in index.folder(id).flatMap { $0.deletedAt == nil ? id : nil } }
+        let id = upload.fileID
+        mutate { idx in
+            idx.files.append(FileRecord(id: id, name: name, size: upload.meta.size, contentType: type?.identifier,
+                                        originalModifiedAt: upload.meta.modifiedDate, folderID: target, sha256: upload.sha256))
+        }
+        if let type, type.conforms(to: .image) || type.conforms(to: .movie) || type.conforms(to: .video) {
+            let token = self.session
+            Task {
+                guard let thumb = await Task.detached(priority: .utility, operation: {
+                    await PhoneUploadSession.thumbnail(vault: vault, id: id, type: type)
+                }).value, isCurrent(token), index.files.contains(where: { $0.id == id }) else { return }
+                guard (try? await Task.detached { try vault.writeThumbnail(thumb, id: id) }.value) != nil, isCurrent(token) else { return }
+                mutate { idx in
+                    if let i = idx.files.firstIndex(where: { $0.id == id }) { idx.files[i].hasThumbnail = true }
+                }
+            }
+        }
+        return .saved
     }
 
     func cancelTask() {
