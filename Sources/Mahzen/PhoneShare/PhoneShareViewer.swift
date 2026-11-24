@@ -40,6 +40,13 @@ enum PhoneShareViewer {
 
     private static let scriptHash = Data(SHA256.hash(data: Data(script.utf8))).base64EncodedString()
 
+    /// Betiğin şifreleme kısmı (`MahzenCrypto` + `MahzenStream`). "Telefondan Ekle" sayfası da aynısını kullanır.
+    static let cryptoScript: String = {
+        let marker = "\n\n(() => {\n  \"use strict\";"
+        guard let end = script.range(of: marker) else { preconditionFailure("telefon betiği: şifreleme kısmı bulunamadı") }
+        return String(script[..<end.lowerBound])
+    }()
+
     private static let css = #"""
 :root {
   --bg: #0b0b0d; --panel: rgba(22,22,26,.78); --tile: #1b1b20; --line: rgba(255,255,255,.08);
@@ -205,7 +212,7 @@ section h2 .path span { color: var(--dim); }
 </div>
 """#
 
-    private static let script = #"""
+    static let script = #"""
 // ChaCha20-Poly1305 (RFC 8439) — telefondaki tarayıcıda çözme için. Web Crypto, yerel ağdaki HTTP
 // sayfalarında kullanılamadığından saf JavaScript. Yalnızca 32 bit tamsayı ve kesin (2^53 altı) kayan nokta
 // aritmetiği kullanır; Poly1305 birikimcisi 13 bitlik 10 parça hâlinde tutulur.

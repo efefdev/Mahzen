@@ -8,6 +8,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Callable
 
 import gi
@@ -20,11 +21,12 @@ from ..core import paths  # noqa: E402
 from ..core import vault as vaultmod  # noqa: E402
 from ..core.errors import Cancelled, WrongPassword  # noqa: E402
 from ..core.importplan import ImportPlan  # noqa: E402
-from ..core.index import VaultIndex, new_file_record, new_id, new_note, now  # noqa: E402
+from ..core.index import VaultIndex, format_date, new_file_record, new_id, new_note, now  # noqa: E402
 from ..core.keyfiles import KeyfileStore  # noqa: E402
 from ..core.vault import Vault  # noqa: E402
 from ..core.filetypes import IMAGE_PREVIEWABLE, content_type_for, extension  # noqa: E402
-from ..core.phoneshare import PhoneShareSession, folder_files  # noqa: E402
+from ..core.phoneshare import _MIME, PhoneShareSession, folder_files  # noqa: E402
+from ..core.phoneupload import Completed, PhoneUploadSession  # noqa: E402
 from ..i18n import tr  # noqa: E402
 
 
@@ -75,6 +77,8 @@ class AppState(GObject.Object):
         self.integrity_report = None
         # Açık "Telefonda Göster" oturumu; kasa kilitlenince durdurulur.
         self.phone_share: PhoneShareSession | None = None
+        # Açık "Telefondan Ekle" oturumu; kasa kilitlenince durdurulur.
+        self.phone_upload: PhoneUploadSession | None = None
         self._session = uuid.uuid4()
         self._cancel = CancelFlag()
         self._save_source = 0
@@ -284,6 +288,7 @@ class AppState(GObject.Object):
         if self.phase != "unlocked":
             return
         self.stop_phone_share()
+        self.stop_phone_upload(quiet=True)
         self._cancel.value = True
         self.set_task(None)
         self.flush_save()
@@ -648,6 +653,95 @@ class AppState(GObject.Object):
             self.phone_share.stop()
             self.phone_share = None
 
+    # MARK: - Telefondan Ekle
+
+    def start_phone_upload(self, folder_id: str | None) -> PhoneUploadSession | None:
+        """Telefondan dosya almak için oturum kurar (sunucuyu pencere başlatır); dosyalar `folder_id` klasörüne
+        (None = kök) eklenir. Açık paylaşım ve yükleme oturumları durdurulur."""
+        if not self.vault:
+            return None
+        self.stop_phone_share()
+        self.stop_phone_upload(quiet=True)
+        folder = self.index.folder(folder_id) if folder_id else None
+        session = PhoneUploadSession(self.vault, folder["id"] if folder else None,
+                                     folder["name"] if folder else tr("Dosyalar"))
+        token = self._session
+
+        def accept(completed: Completed) -> str:
+            # Sunucu iş parçacığında: kaydı ana döngüde yap, sonucu bekle.
+            done = threading.Event()
+            box = {"result": "rejected", "late": False}
+            guard = threading.Lock()
+
+            def on_main() -> bool:
+                with guard:
+                    if not box["late"]:
+                        box["result"] = self._accept_phone_upload(completed, session, token)
+                done.set()
+                return False
+
+            GLib.idle_add(on_main)
+            if not done.wait(60):
+                with guard:
+                    box["late"] = True
+            return box["result"]
+
+        session.accept = accept
+        self.phone_upload = session
+        return session
+
+    def _accept_phone_upload(self, completed: Completed, session: PhoneUploadSession, token) -> str:
+        """Telefondan gelen, kasaya şifreli yazılmış dosyayı dizine ekler. Aynı içerik varsa şifreli kopya silinir;
+        oturum değiştiyse "rejected" döner (dosyayı sunucu siler). Küçük resim kasadaki dosyadan bellekte üretilir."""
+        vault = self.vault
+        if not vault or not self.is_current(token) or self.phone_upload is not session:
+            return "rejected"
+        if self.index.existing_file_with_hash(completed.sha256):
+            vault.delete_file(completed.file_id)
+            return "duplicate"
+        name = completed.meta.safe_name
+        if not extension(name) and completed.meta.type:
+            ext = next((e for e, m in _MIME.items() if m == completed.meta.type and e != "jpeg"), None)
+            if ext:
+                name += "." + ext
+        folder = self.index.folder(session.folder_id) if session.folder_id else None
+        target = folder["id"] if folder and not folder.get("deletedAt") else None
+        seconds = completed.meta.modified_seconds
+        modified = format_date(datetime.fromtimestamp(seconds, tz=timezone.utc)) if seconds else None
+        fid, size = completed.file_id, completed.meta.size
+        self.mutate(lambda idx: idx.files.append(
+            new_file_record(fid, name, size, content_type_for(name), modified, False, target, completed.sha256)))
+        if extension(name) in IMAGE_PREVIEWABLE and size <= 200 * 1024 * 1024:
+            def work():
+                thumb = _thumbnail_from_bytes(vault.read_file(fid))
+                if thumb:
+                    vault.write_thumbnail(thumb, fid)
+                return bool(thumb)
+
+            def finished(ok, error):
+                if ok and not error and self.is_current(token):
+                    def mark(idx: VaultIndex) -> None:
+                        for f in idx.files:
+                            if f["id"] == fid:
+                                f["hasThumbnail"] = True
+                    self.mutate(mark)
+                    self.thumbnails.pop(fid, None)
+
+            self.run_background(work, finished)
+        return "saved"
+
+    def stop_phone_upload(self, session: PhoneUploadSession | None = None, quiet: bool = False) -> None:
+        """Açık yükleme oturumunu (ya da verilen oturumu) durdurur; eklenen dosya sayısını bildirir."""
+        if session is not None and session is not self.phone_upload:
+            session.stop()
+            return
+        session, self.phone_upload = self.phone_upload, None
+        if session is None:
+            return
+        session.stop()
+        if not quiet and session.saved_count:
+            self.toast(tr("{n} dosya telefondan eklendi", n=session.saved_count))
+
     def wipe_temporary_files(self) -> None:
         shutil.rmtree(self.temp_root, ignore_errors=True)
 
@@ -1004,6 +1098,36 @@ def _unique_path(directory: str, name: str) -> str:
         path = os.path.join(directory, f"{base} {n}{ext}")
         n += 1
     return path
+
+
+def _thumbnail_from_bytes(data: bytes) -> bytes | None:
+    """Bellekteki bir görselden küçük resim (telefondan gelen dosyalar; düz içerik diske yazılmaz)."""
+    try:
+        loader = GdkPixbuf.PixbufLoader()
+        loader.connect("size-prepared", lambda ld, w, h: ld.set_size(*_fit(w, h, 440)))
+        loader.write(data)
+        loader.close()
+        pixbuf = loader.get_pixbuf()
+        return _jpeg(pixbuf) if pixbuf else None
+    except GLib.Error:
+        return None
+
+
+def _fit(width: int, height: int, limit: int) -> tuple[int, int]:
+    scale = min(1.0, limit / max(width, height, 1))
+    return max(1, round(width * scale)), max(1, round(height * scale))
+
+
+def _jpeg(pixbuf) -> bytes | None:
+    pixbuf = pixbuf.apply_embedded_orientation() or pixbuf
+    if pixbuf.get_has_alpha():
+        flat = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, pixbuf.get_width(), pixbuf.get_height())
+        flat.fill(0xFFFFFFFF)
+        pixbuf.composite(flat, 0, 0, pixbuf.get_width(), pixbuf.get_height(), 0, 0, 1, 1,
+                         GdkPixbuf.InterpType.BILINEAR, 255)
+        pixbuf = flat
+    ok, data = pixbuf.save_to_bufferv("jpeg", ["quality"], ["78"])
+    return bytes(data) if ok else None
 
 
 def _make_thumbnail(path: str) -> bytes | None:

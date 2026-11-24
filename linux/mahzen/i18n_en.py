@@ -603,4 +603,32 @@ ENGLISH = {
     "Önceki (←)": "Previous (←)",
     "Sonraki (→)": "Next (→)",
     "Önizlemede önceki / sonraki dosya": "Previous / next file in preview",
+
+    # Telefondan Ekle
+    "Telefondan Ekle": "Add from Phone",
+    "Telefondan Ekle…": "Add from Phone…",
+    "Dosya Seç…": "Choose Files…",
+    "Diğer ekleme yolları": "More ways to add",
+    "Açılan sayfada fotoğraf, video ya da dosya seçin. Dosyalar telefonda şifrelenir ve kasaya şifreli olarak "
+    "yazılır; telefon bu bilgisayarla aynı Wi-Fi ağında olmalı.":
+        "Choose photos, videos or files on the page that opens. Files are encrypted on the phone and written to "
+        "the vault encrypted; the phone must be on the same Wi-Fi network as this computer.",
+    "Oturum başlatılamadı": "Couldn't start the session",
+    "Oturum başlatılamadı: {error}": "Couldn't start the session: {error}",
+    "Oturum sona erdi": "Session ended",
+    "Telefondaki sayfa artık dosya gönderemez. Yeniden eklemek için yeni bir QR kod oluşturun.":
+        "The page on the phone can no longer send files. To add more, create a new QR code.",
+    "{n} dosya eklendi": ("{n} file added", "{n} files added"),
+    "{n} dosya telefondan eklendi": ("{n} file added from the phone", "{n} files added from the phone"),
+    "Kasaya eklendi": "Added to the vault",
+    "Kasada zaten vardı": "Already in the vault",
+    "Telefonda durduruldu": "Stopped on the phone",
+    "Telefondan veri gelmedi": "No data arrived from the phone",
+    "Bağlantı koptu": "Connection lost",
+    "Doğrulanamadı": "Failed verification",
+    "Dosya çok büyük": "File is too large",
+    "Diskte yer yok": "Not enough disk space",
+    "Kasaya yazılamadı": "Couldn't write to the vault",
+    "Geçersiz istek": "Invalid request",
+    "akış bozuk": "stream is corrupted",
 }

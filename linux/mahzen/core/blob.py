@@ -119,6 +119,84 @@ def write_atomically(destination: str, body: Callable[[BinaryIO], None]) -> None
         raise
 
 
+class BlobWriter:
+    """Parça parça gelen düz içeriği doğrudan şifreli dosya biçimine yazar ("Telefondan Ekle").
+
+    macOS'taki `BlobWriter.swift` ile aynı: içerik bellekte en fazla bir parça kadar tutulur, diske yalnızca şifreli
+    bayt yazılır. Önce gizli bir geçici dosyaya yazılır; `finish()` başarılı olunca yerine taşınır. `cancel()`
+    geçici dosyayı siler. Çıktı, aynı içerikle `encrypt_stream` çıktısıyla bayt bayt aynıdır.
+    """
+
+    def __init__(self, destination: str, key: bytes, chunk_size: int = DEFAULT_CHUNK_SIZE):
+        directory, name = os.path.split(destination)
+        os.makedirs(directory, exist_ok=True)
+        self.destination = destination
+        self.temporary = os.path.join(directory, f".{name}.{str(uuid.uuid4()).upper()}.tmp")
+        self.plain_size = 0
+        self._aes = AESGCM(key)
+        self._chunk_size = chunk_size
+        self._header = header(chunk_size)
+        self._buffer = bytearray()
+        self._index = 0
+        self._hasher = hashlib.sha256()
+        self._closed = False
+        self._file = open(self.temporary, "xb")
+        try:
+            self._file.write(self._header)
+        except BaseException:
+            self.cancel()
+            raise
+
+    def append(self, data: bytes) -> None:
+        """Düz içeriğin bir sonraki bölümü. Dolan parçalar hemen yazılır; son parça `finish()` ile yazılır."""
+        if self._closed:
+            raise ValueError("BlobWriter kapandı")
+        self._hasher.update(data)
+        self.plain_size += len(data)
+        self._buffer += data
+        offset = 0
+        while len(self._buffer) - offset > self._chunk_size:
+            self._seal(bytes(self._buffer[offset:offset + self._chunk_size]), False)
+            offset += self._chunk_size
+        if offset:
+            del self._buffer[:offset]
+
+    def finish(self) -> str:
+        """Son parçayı yazar, diske işler ve yerine taşır; düz içeriğin SHA-256 özetini (onaltılık) döndürür."""
+        if self._closed:
+            raise ValueError("BlobWriter kapandı")
+        try:
+            self._seal(bytes(self._buffer), True)
+            self._buffer = bytearray()
+            self._file.flush()
+            os.fsync(self._file.fileno())
+            self._file.close()
+            self._closed = True
+            os.replace(self.temporary, self.destination)
+        except BaseException:
+            self.cancel()
+            raise
+        return self._hasher.hexdigest()
+
+    def cancel(self) -> None:
+        """Yazmayı bırakır ve geçici dosyayı siler. Birden çok kez çağrılabilir."""
+        if not self._closed:
+            self._closed = True
+            try:
+                self._file.close()
+            except OSError:
+                pass
+        self._buffer = bytearray()
+        try:
+            os.remove(self.temporary)
+        except OSError:
+            pass
+
+    def _seal(self, plain: bytes, is_final: bool) -> None:
+        self._file.write(self._aes.encrypt(nonce(self._index, is_final), plain, self._header))
+        self._index += 1
+
+
 def encrypt_file(source: str, destination: str, key: bytes, progress: Progress = None) -> str:
     """Şifrelerken düz içeriğin SHA-256 özetini (onaltılık) de hesaplar (mükerrer dosya tespiti için)."""
     hasher = hashlib.sha256()

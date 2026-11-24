@@ -444,6 +444,18 @@ class Vault:
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         return blob.encrypt_file(source, dest, self.file_key(fid), progress)
 
+    def begin_import(self, fid: str) -> blob.BlobWriter:
+        """Kasaya parça parça yazılacak yeni bir dosya ("Telefondan Ekle"). `finish()` SHA-256 özetini döndürür."""
+        return blob.BlobWriter(self.blob_path(fid), self.file_key(fid))
+
+    def available_capacity(self) -> int | None:
+        """Kasa klasörünün bulunduğu diskte kullanılabilir alan (bayt); bilinmiyorsa None."""
+        try:
+            st = os.statvfs(self.folder)
+        except (OSError, AttributeError):
+            return None
+        return st.f_bavail * st.f_frsize
+
     def export_file(self, fid: str, destination: str, progress: blob.Progress = None) -> None:
         blob.decrypt_file(self.blob_path(fid), destination, self.file_key(fid), progress)
 

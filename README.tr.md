@@ -62,6 +62,12 @@ Mahzen; dosyalarını, notlarını ve parolalarını tek bir şifreli klasörde 
 - **Yalnızca yerel ağ, süreli:** internete çıkmaz; paylaşım 10 dakika sonra, Durdur'a basınca ya da kasa kilitlenince kapanır
 - macOS ve Linux sürümlerinde aynı ([Linux ayrıntıları](linux/README.tr.md#telefonda-göster))
 
+**Telefondan Ekle**
+- Telefonda Göster'in tersi: QR kodu okutun, telefonun tarayıcısında fotoğraf, video ya da herhangi bir dosya seçin; dosyalar kasada açık olan klasöre eklenir. Telefona uygulama kurmak gerekmez
+- **Telefonda şifrelenir:** her dosya, gönderilmeden önce telefonun tarayıcısında QR koddaki oturum anahtarıyla şifrelenir (aynı ChaCha20-Poly1305 akış biçimi). Bilgisayar akışı bellekte çözer ve doğrudan kasaya şifreler; şifresiz kopya hiçbir an diske yazılmaz
+- Dosya başına en fazla 8 GB; iptal edilen ya da yarıda kesilen yüklemeler iz bırakmaz; aynı dosya iki kez eklenmez
+- **Yalnızca yerel ağ, süreli:** 10 dakika sonra, Durdur'a basınca ya da kasa kilitlenince kapanır. Dosyalar araç çubuğundaki `+` menüsünden ya da bir klasöre sağ tıklayıp **Telefondan Ekle…** ([Linux ayrıntıları](linux/README.tr.md#telefondan-ekle))
+
 **Notlar ve parolalar**
 - Renkli, sabitlenebilir notlar; yazı tipi ve boyutu ayarlanabilir
 - Hesap, kart, Wi-Fi ve sunucu kayıtları; parola üretici ve güç ölçer

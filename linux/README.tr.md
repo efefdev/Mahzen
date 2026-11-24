@@ -68,6 +68,8 @@ macOS sürümündeki özelliklerin çoğu Linux'ta da var:
   kayar), geçici açma, dışa aktarma, mükerrer dosya tespiti, ekledikten sonra orijinalleri çöpe taşıma önerisi
 - **Telefonda Göster:** seçili fotoğraf ve videoları ya da bir klasörü aynı Wi-Fi'deki telefonda QR kodla,
   uçtan uca şifreli gösterir (aşağıda)
+- **Telefondan Ekle:** tersi; telefonun tarayıcısında seçilen dosyalar telefonda şifrelenip açık klasöre eklenir
+  (aşağıda)
 - **Notlar:** renkli, sabitlenebilir notlar; yazı tipi ve boyutu ayarlanabilir
 - **Parolalar:** hesap, kart, Wi-Fi, sunucu kayıtları; parola üretici ve güç ölçer; kopyalanan parola seçilen süre
   sonunda panodan silinir
@@ -101,6 +103,23 @@ Telefonda ızgara, tam ekran, kaydırma, yakınlaştırma ve video oynatma sunan
 Telefon sayfayı açamıyorsa: iki cihaz aynı ağda mı, ağ "misafir/istemci yalıtımı" kullanıyor mu, bilgisayarın
 güvenlik duvarı gelen bağlantıları engelliyor mu bakın (ör. `ufw` açıksa geçici olarak yerel ağdan gelen
 bağlantılara izin verin; Fedora'nın varsayılan *FedoraWorkstation* bölgesi yüksek portlara zaten izin verir).
+
+### Telefondan Ekle
+
+Dosyalar başlığındaki **+** düğmesinin yanındaki ok → **Telefondan Ekle…** (dosyalar açık olan klasöre gider) ya da bir
+klasöre sağ tıklayıp **Telefondan Ekle…**. QR kodu telefonun kamerasıyla okutun; açılan sayfada **Fotoğraf, video ya da
+dosya seç**'e dokunun. Pencere gelen her dosyayı listeler.
+
+- **Telefonda şifrelenir:** her dosya, telefonun tarayıcısında QR koddaki 256 bitlik oturum anahtarıyla şifrelenir
+  (Telefonda Göster ile aynı ChaCha20-Poly1305 akış biçimi) ve parça parça gönderilir. Bilgisayar her parçayı bellekte
+  doğrulayıp çözer ve doğrudan kasaya şifreler; şifresiz kopya hiçbir an diske yazılmaz. Dosya adları da şifreli gider.
+- **Yarıda kesilebilir:** dosya başına en fazla 8 GB. Telefonda iptal edilen, yarıda kesilen ya da 90 saniye veri
+  göndermeyen dosya bırakılır ve yarım şifreli dosyası silinir. Kasada zaten olan dosya yeniden eklenmez. Diske yalnızca
+  oturum anahtarıyla doğrulanan baytlar yazılır.
+- **Yalnızca yerel ağ, süreli:** Telefonda Göster ile aynı (rastgele port, tahmin edilemez jeton, 10 dakika; **Durdur**,
+  pencereyi kapatma ya da kilitlenmeyle biter). Sanal makine uyarısı burada da geçerlidir.
+- Yükleme bitene kadar sayfayı telefonda açık tutun; ekranı kilitlenen telefon tarayıcıyı duraklatır.
+- Görsellerin küçük resmi kasadaki kopyadan bellekte üretilir.
 
 ### Linux'a özgü farklar
 
@@ -138,6 +157,10 @@ Gerçek kasanızla değil, **deneme amaçlı yeni bir kasayla** başlayın:
 9. **Telefonda Göster:** birkaç görsel seçip sağ tık → **Telefonda Göster…**; QR kodu aynı Wi-Fi'deki telefonla
    okutun. Görseller telefonda açılmalı, penceredeki cihaz sayısı artmalı; **Durdur**'dan sonra en geç yarım
    dakika içinde telefondaki sayfa paylaşımın kapandığını göstermeli ve içeriği silmeli.
+10. **Telefondan Ekle:** bir klasör açıp **+** yanındaki ok → **Telefondan Ekle…**; QR kodu okutup telefonda birkaç
+    fotoğraf ve bir video seçin. Her dosya penceredeki listede ve klasörde görünmeli (görseller küçük resimle); aynı
+    fotoğrafı yeniden seçince "Kasada zaten vardı" yazmalı; büyük bir videoyu telefonda iptal edince yeni dosya
+    kalmamalı.
 
 Bir sorun görürseniz terminalden `mahzen` ile başlatıp çıktıyı da ekleyerek
 [bir konu açın](https://github.com/efefdev/Mahzen/issues).
@@ -183,8 +206,15 @@ sürümle oluşturulur ve macOS tarafındaki `swift test` (LinuxCompatibilityTes
 başlıklarını, jeton ve süre denetimini, QR üreticisini ve Node.js kuruluysa telefon sayfasındaki JavaScript
 çözücünün Python akışını açtığını. macOS testinin yazdığı akış da verilebilir:
 `MAHZEN_PHONE_FIXTURE=/yol/onek swift test --filter PhoneShareTests` sonra aynı değişkenle Python testleri.
-Telefon sayfası (`mahzen/core/phone_viewer.html`) macOS kaynağından aktarılır; macOS'ta sayfa değişirse:
-`python3 linux/tests/sync_phone_viewer.py`.
+
+`tests/test_phoneupload.py` Telefondan Ekle'yi sınar: parça parça çözücüyü ve kasaya akışla yazıcıyı (normal içe
+aktarmayla bayt bayt aynı), yükleme alıcısının reddettiği durumları (yanlış anahtar, boyut sınırı, disk alanı, sıra,
+değiştirme, kesilme) ve temizliği, iptal ve yarıda kesilen isteklerle birlikte yerel sunucuya HTTP üzerinden uçtan uca
+yüklemeyi ve Node.js kuruluysa telefon sayfasındaki JavaScript şifreleyicinin ürettiği akışın Python'da açıldığını (aynı
+sabit anahtarlı değerler Swift'te de denetlenir). `MAHZEN_UPLOAD_FIXTURE=/yol/onek` tarayıcının akışını
+`swift test --filter PhoneUploadTests` için yazar.
+Telefon sayfaları (`mahzen/core/phone_viewer.html`, `mahzen/core/phone_upload.html`) macOS kaynağından aktarılır;
+macOS'ta bir sayfa değişirse: `python3 linux/tests/sync_phone_viewer.py`.
 
 ## Proje yapısı
 

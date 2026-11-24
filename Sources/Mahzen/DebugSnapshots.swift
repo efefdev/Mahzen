@@ -103,6 +103,14 @@ enum DebugSnapshots {
             report += await phoneShareChecks(state)
             await snap("03c-telefonda-goster", outDir)
             state.stopPhoneShare()
+            if ProcessInfo.processInfo.environment["MAHZEN_UPLOAD_WAIT"] != nil {
+                // Tarayıcıyla elle denerken pencere etkin olmadığından otomatik kilit oturumu kapatmasın.
+                state.updatePreferences { $0.autoLockMinutes = 0 }
+            }
+            state.addFromPhone(into: trip.id)
+            report += await phoneUploadChecks(state, folder: trip.id, outDir: outDir)
+            await snap("03d-telefondan-ekle", outDir)
+            state.stopPhoneUpload()
         }
         state.currentFolder = nil
         state.updatePreferences { $0.filesLayout = "list" }
@@ -137,7 +145,7 @@ enum DebugSnapshots {
         await snap("12-acik-karsilama", outDir)
 
         // Kilitledikten sonra kasa klasöründe düz metin kalmadığını doğrula.
-        let leaks = scanForPlaintext(vaultURL, needles: [D("Pasaport", "Passport"), "ornek-gmail-parolasi", D("ornek@gmail.com", "example@gmail.com"), D("manzara", "sunset"), D("rapor", "report"), D("Tatil", "Vacation"), D("gizli", "private"), "benzersiz"])
+        let leaks = scanForPlaintext(vaultURL, needles: ["telefondan-gizli-icerik", "telefon-belgesi", D("Pasaport", "Passport"), "ornek-gmail-parolasi", D("ornek@gmail.com", "example@gmail.com"), D("manzara", "sunset"), D("rapor", "report"), D("Tatil", "Vacation"), D("gizli", "private"), "benzersiz"])
         report.append(leaks.isEmpty ? "Düz metin taraması: TEMIZ" : "SIZINTI: \(leaks)")
         report += await wipeScenes(state, vaultURL: vaultURL, outDir: outDir)
         try? report.joined(separator: "\n").write(to: outDir.appendingPathComponent("tarama.txt"), atomically: true, encoding: .utf8)
@@ -227,6 +235,114 @@ enum DebugSnapshots {
         let (wrong, _, _) = await get("../yanlis-jeton/m")
         lines.append("Yanlış jeton: \(wrong)")
         return lines
+    }
+
+    /// "Telefondan Ekle": telefonu taklit eden bir istemciyle (aynı şifreli biçim) uçtan uca yükleme, mükerrer
+    /// dosya, iptal ve yanlış istekler. `MAHZEN_UPLOAD_WAIT=<saniye>` verilirse oturum o kadar açık kalır ve adresi
+    /// `<çıktı>/telefondan-ekle-adres.txt` dosyasına yazılır (gerçek bir tarayıcıyla denemek için).
+    private static func phoneUploadChecks(_ state: AppState, folder: UUID, outDir: URL) async -> [String] {
+        guard let session = state.phoneUpload else { return ["Telefondan ekle: oturum açılmadı"] }
+        for _ in 0..<50 where session.phase == .starting { try? await Task.sleep(for: .milliseconds(100)) }
+        guard case .running(let address) = session.phase, let hash = address.firstIndex(of: "#") else {
+            return ["Telefondan ekle: \(session.phase)"]
+        }
+        var b64 = String(address[address.index(after: hash)...]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while b64.count % 4 != 0 { b64 += "=" }
+        guard let keyData = Data(base64Encoded: b64) else { return ["Telefondan ekle: anahtar okunamadı"] }
+        let key = SymmetricKey(data: keyData)
+        let base = String(address[..<hash])
+        func request(_ path: String, method: String = "GET", body: Data? = nil) async -> (Int, Data) {
+            guard let url = URL(string: base + path) else { return (0, Data()) }
+            var req = URLRequest(url: url)
+            req.httpMethod = method
+            req.httpBody = body
+            guard let (data, response) = try? await URLSession.shared.data(for: req),
+                  let http = response as? HTTPURLResponse else { return (0, Data()) }
+            return (http.statusCode, data)
+        }
+        /// Telefon sayfasının yaptığı gibi bir dosyayı yükler; son yanıtın gövdesini döndürür.
+        func upload(name: String, data: Data, type: String?) async -> String {
+            let (_, reserved) = await request("n", method: "POST")
+            guard let n = (try? JSONSerialization.jsonObject(with: reserved) as? [String: Int])?["n"] else { return "numara yok" }
+            let meta = try! JSONEncoder().encode(PhoneUploadMeta(name: name, size: Int64(data.count), type: type))
+            let (metaStatus, _) = await request("u/\(n)/0", method: "POST", body: try! PhoneShare.seal(meta, key: key, stream: PhoneUpload.metaStream(n)))
+            guard metaStatus == 200 else { return "bilgi \(metaStatus)" }
+            let content = try! PhoneShare.seal(data, key: key, stream: PhoneUpload.contentStream(n))
+            let partSize = PhoneUpload.framesPerPart * (4 + PhoneShare.chunkSize + 16)
+            var last = ""
+            for (i, start) in stride(from: 0, to: content.count, by: partSize).enumerated() {
+                let end = min(content.count, start + partSize)
+                let (status, body) = await request("u/\(n)/\(i + 1)" + (end == content.count ? "?end=1" : ""), method: "POST", body: content.subdata(in: start..<end))
+                last = "\(status) \(String(decoding: body, as: UTF8.self))"
+                guard status == 200 else { break }
+            }
+            return last
+        }
+
+        var lines: [String] = []
+        let (pageStatus, page) = await request("")
+        lines.append("Yükleme sayfası: \(pageStatus) · \(page.count) bayt")
+        let (_, statusData) = await request("s")
+        let status = (try? PhoneShare.open(statusData, key: key, streamID: PhoneUpload.statusStream))
+            .flatMap { try? JSONDecoder().decode(PhoneUploadStatus.self, from: $0) }
+        lines.append("Yükleme oturumu: \(status.map { "klasör \($0.folder), sınır \($0.maxFileSize)" } ?? "ÇÖZÜLEMEDİ")")
+
+        var big = Data(count: 6 * PhoneShare.chunkSize + 321)
+        for i in big.indices { big[i] = UInt8((i * 7 + i / 1000) & 0xff) }
+        big.replaceSubrange(0..<23, with: Data("telefondan-gizli-icerik".utf8))
+        lines.append("Yükleme (6 MB): \(await upload(name: "telefon-belgesi.bin", data: big, type: nil))")
+        lines.append("Aynı dosya yeniden: \(await upload(name: "kopya.bin", data: big, type: nil))")
+        lines.append("Uzantısız fotoğraf: \(await upload(name: "foto", data: makeJPEG(), type: "image/jpeg"))")
+        try? await Task.sleep(for: .milliseconds(1500))
+        let added = state.index.liveFiles(in: folder).filter { $0.name.hasPrefix("telefon-belgesi") || $0.name.hasPrefix("foto") }
+        if let doc = added.first(where: { $0.name == "telefon-belgesi.bin" }), let opened = try? await state.readFile(doc) {
+            lines.append("Kasadaki dosya: \(opened == big ? "aynı" : "FARKLI") · \(added.map(\.name).sorted()) · küçük resim \(added.filter(\.hasThumbnail).map(\.name))")
+        } else {
+            lines.append("Kasadaki dosya: YOK (\(added.map(\.name)))")
+        }
+
+        // İptal: içeriğin bir kısmı gönderildikten sonra; geçici dosya kalmamalı.
+        let (_, reserved) = await request("n", method: "POST")
+        if let n = (try? JSONSerialization.jsonObject(with: reserved) as? [String: Int])?["n"], let vault = state.vaultURL {
+            let meta = try! JSONEncoder().encode(PhoneUploadMeta(name: "iptal.bin", size: Int64(big.count)))
+            _ = await request("u/\(n)/0", method: "POST", body: try! PhoneShare.seal(meta, key: key, stream: PhoneUpload.metaStream(n)))
+            let content = try! PhoneShare.seal(big, key: key, stream: PhoneUpload.contentStream(n))
+            _ = await request("u/\(n)/1", method: "POST", body: content.prefix(PhoneUpload.framesPerPart * (4 + PhoneShare.chunkSize + 16)))
+            let (cancelStatus, _) = await request("x/\(n)", method: "POST")
+            try? await Task.sleep(for: .milliseconds(300))
+            let temporary = (FileManager.default.enumerator(atPath: vault.appendingPathComponent("blobs").path)?.allObjects as? [String] ?? [])
+                .filter { $0.hasSuffix(".tmp") }
+            lines.append("İptal: \(cancelStatus) · geçici dosya \(temporary.isEmpty ? "yok" : "VAR \(temporary)")")
+        }
+        let (wrongKey, _) = await request("u/99/0", method: "POST", body: Data(count: 40))
+        let (badToken, _) = await request("../yanlis-jeton/s")
+        lines.append("Bilinmeyen yükleme: \(wrongKey) · yanlış jeton: \(badToken) · liste \(session.items.map { "\($0.name)=\($0.state)" })")
+
+        if let wait = ProcessInfo.processInfo.environment["MAHZEN_UPLOAD_WAIT"].flatMap(Double.init) {
+            try? address.write(to: outDir.appendingPathComponent("telefondan-ekle-adres.txt"), atomically: true, encoding: .utf8)
+            let before = Set(state.index.liveFiles.map(\.id))
+            let deadline = Date().addingTimeInterval(wait)
+            while Date() < deadline, state.phoneUpload === session, case .running = session.phase {
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+            try? await Task.sleep(for: .milliseconds(1500))
+            for file in state.index.liveFiles where !before.contains(file.id) {
+                let data = try? await state.readFile(file)
+                let digest = data.map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() } ?? "OKUNAMADI"
+                lines.append("Tarayıcıdan: \(file.name) · \(file.size) bayt · \(file.contentType ?? "-") · sha256 \(digest) · küçük resim \(file.hasThumbnail) · klasör \(state.index.folder(file.folderID)?.name ?? "kök")")
+            }
+            lines.append("Tarayıcı listesi: \(session.items.map { "\($0.name)=\($0.state)" })")
+        }
+        return lines
+    }
+
+    private static func makeJPEG() -> Data {
+        let image = NSImage(size: NSSize(width: 320, height: 200), flipped: false) { rect in
+            NSGradient(colors: [.systemOrange, .systemPurple])?.draw(in: rect, angle: 30)
+            return true
+        }
+        guard let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) else { return Data() }
+        return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) ?? Data()
     }
 
     /// Dikdörtgenle seçim: 60 fotoğraflık kasada pencereye gerçek fare olayları gönderip ekranın kenarına
