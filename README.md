@@ -140,7 +140,13 @@ This feature protects against someone trying passwords on the lock screen. What 
 > For Linux: [linux/README.md](linux/README.md)
 
 ### Prebuilt app
-Will be added to the [Releases](../../releases) page. For now, build from source.
+
+**[Download the latest release](https://github.com/efefdev/Mahzen/releases/latest)** → `Mahzen-<version>-macOS.zip` (Apple Silicon + Intel, macOS 14+). Unzip it and move `Mahzen.app` to Applications or to the root of an SSD.
+
+The app is not notarized by Apple, so the first launch needs one extra step:
+- **macOS 15 and later:** Try to open it once, then go to **System Settings → Privacy & Security** and click **"Open Anyway"** at the bottom. (Right-click → Open no longer works on macOS 15.)
+- **macOS 14:** Right-click the app in Finder → **Open**.
+- Or remove the download flag in Terminal: `xattr -dr com.apple.quarantine /Applications/Mahzen.app`
 
 ### Building from source
 
@@ -184,7 +190,7 @@ site/             Website (mahzen.efef.dev); published to GitHub Pages automatic
 ## Roadmap
 
 - [x] **Linux app** ([linux/](linux/))
-- [ ] Prebuilt releases
+- [x] Prebuilt releases ([Releases](https://github.com/efefdev/Mahzen/releases))
 - [ ] Markdown notes, attaching files to notes
 - [ ] Password health screen (weak / reused passwords)
 - [ ] ⌘K quick search, menu bar icon

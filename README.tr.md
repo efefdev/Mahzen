@@ -140,7 +140,13 @@ Bu özellik kilit ekranında parola deneyen birine karşıdır; bilinmesi gereke
 > Linux için: [linux/README.tr.md](linux/README.tr.md)
 
 ### Hazır uygulama
-[Sürümler](../../releases) sayfasına eklenecek. Şimdilik kaynaktan derleyin.
+
+**[Son sürümü indir](https://github.com/efefdev/Mahzen/releases/latest)** → `Mahzen-<sürüm>-macOS.zip` (Apple Silicon + Intel, macOS 14+). Zip'i açıp `Mahzen.app`'i Uygulamalar klasörüne ya da bir SSD'nin köküne taşıyın.
+
+Uygulama Apple tarafından noter onaylı olmadığı için ilk açılışta bir adım daha gerekir:
+- **macOS 15 ve sonrası:** Önce bir kez açmayı deneyin, sonra **Sistem Ayarları → Gizlilik ve Güvenlik** sayfasının altındaki **"Yine de Aç"** düğmesine basın. (macOS 15'te sağ tık → Aç artık işe yaramıyor.)
+- **macOS 14:** Finder'da uygulamaya sağ tık → **Aç**.
+- Ya da Terminal'de indirme işaretini kaldırın: `xattr -dr com.apple.quarantine /Applications/Mahzen.app`
 
 ### Kaynaktan derleme
 
@@ -184,7 +190,7 @@ site/             Tanıtım sitesi (mahzen.efef.dev); main'e girince GitHub Page
 ## Yol haritası
 
 - [x] **Linux uygulaması** ([linux/](linux/))
-- [ ] Hazır derlenmiş sürümler
+- [x] Hazır derlenmiş sürümler ([Sürümler](https://github.com/efefdev/Mahzen/releases))
 - [ ] Markdown notlar, notlara dosya ekleme
 - [ ] Parola sağlığı ekranı (zayıf / tekrar kullanılan parolalar)
 - [ ] ⌘K hızlı arama, menü çubuğu simgesi
